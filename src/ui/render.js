@@ -79,7 +79,8 @@ export function renderAll(state = {}) {
   const weekChipsHtml = renderWeekChips(state);
   const mainHtml = renderMainContent(state);
   const modalsHtml = renderModals(state);
-
+ const workout = state?.workoutOfDay ?? state?.workout;
+  const warnBadgeVisible = (workout?.warnings?.length ?? 0) > 0;
   return {
     subtitle,
     weekChipsHtml,
@@ -240,9 +241,18 @@ function renderWorkoutLine(line, lineId, ui) {
 
   const text = escapeHtml(rawText);
 
-  const load = typeof line === 'object' ? line.loadCalculation : null;
-  const hasLoad = load && load.calculated && load.displayText;
-  const isWarning = load?.warnings?.length > 0;
+  const loadObj =
+    (typeof line === 'object' && line) ? (line.loadCalculation ?? null) : null;
+
+  const display =
+    loadObj?.displayText ??
+    loadObj?.calculatedText ??
+    (typeof line === 'object'
+      ? (line.calculatedText ?? line.calculated ?? '')
+      : '');
+
+  const hasLoad = !!String(display || '').trim();
+  const isWarning = (loadObj?.warnings?.length ?? 0) > 0 || !!line?.warning;
 
   if (!trainingMode) {
     return `
@@ -250,7 +260,7 @@ function renderWorkoutLine(line, lineId, ui) {
         <div class="exercise-text">${text}</div>
         ${hasLoad ? `
           <div class="load-calc ${isWarning ? 'load-warning' : ''}">
-            → ${escapeHtml(load.displayText)}
+            → ${escapeHtml(display)}
           </div>
         ` : ''}
       </div>
@@ -283,13 +293,14 @@ function renderWorkoutLine(line, lineId, ui) {
         <div class="exercise-text">${text}</div>
         ${hasLoad ? `
           <div class="load-calc ${isWarning ? 'load-warning' : ''}">
-            → ${escapeHtml(load.displayText)}
+            → ${escapeHtml(display)}
           </div>
         ` : ''}
       </button>
     </div>
   `;
 }
+
 
 function renderPrsModal(prs = {}) {
   const entries = Object.entries(prs).sort((a, b) => a[0].localeCompare(b[0]));
