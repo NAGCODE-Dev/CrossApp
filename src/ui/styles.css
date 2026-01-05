@@ -462,43 +462,44 @@ html, body {
 
 .pr-item{
   display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 1rem;
+  flex-direction: column;     /* duas linhas */
+  gap: 0.35rem;
+  padding: 0.9rem 1rem;
   background: var(--bg-input);
   border-radius: 1rem;
   border: 1px solid var(--border);
 }
 
-/* Nome do exercício: usa o espaço que sobrar */
+/* Linha de cima: nome */
 .pr-label{
-  flex: 1 1 auto;
-  min-width: 0;
   font-weight: 700;
   color: var(--text-white);
-  font-size: 1rem;
-  white-space: nowrap;
+  font-size: 0.98rem;
+  white-space: nowrap;        /* uma linha só */
   overflow: hidden;
-  text-overflow: ellipsis; /* fica numa linha só */
+  text-overflow: ellipsis;
 }
 
-/* Campo do PR e botão não encolhem */
+/* Linha de baixo: valor + salvar + lixeira */
+.pr-actions-row{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+}
+
 .pr-input{
-  flex: 0 0 auto;
   width: 80px;
+  flex: 0 0 auto;
 }
 
-.pr-input:focus {
-  outline: none;
-  border-color: var(--accent-primary);
+.pr-save-btn{
+  flex: 1 1 auto;
 }
 
-.pr-remove {
-  background: transparent;
-  border: none;
-  font-size: 1.25rem;
-  cursor: pointer;
-  padding: 0.5rem;
+.pr-remove{
+  flex: 0 0 auto;
 }
 
 .pr-add {
