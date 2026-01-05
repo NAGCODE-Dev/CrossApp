@@ -960,3 +960,20 @@ body.ui-trainingMode .load-calc {
   padding: 0.35rem;
   line-height: 1;
 }
+/* Garantir que as cargas apareçam no mobile */
+.load-calc{
+  white-space: normal;       /* permite quebrar linha */
+}
+
+/* Em telas muito pequenas, deixa a linha em coluna */
+@media (max-width: 420px){
+  .workout-line{
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
+  }
+
+  .load-calc{
+    align-self: flex-end;    /* encosta à direita, abaixo do texto */
+  }
+}
