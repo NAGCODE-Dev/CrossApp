@@ -256,28 +256,29 @@ export function renderPrsModal(prs = {}) {
   const entries = Object.entries(prs).sort((a, b) => a[0].localeCompare(b[0]));
 
   return `
-    <div class="modal-overlay" id="modal-prs">
+    <div class="modal-overlay" id="modal-prs" role="dialog" aria-modal="true" aria-label="Personal Records">
       <div class="modal-container">
         <div class="modal-header">
           <h2 class="modal-title">🎯 Personal Records</h2>
-          <button class="modal-close" data-action="closeModal">✕</button>
+          <button class="modal-close" data-action="modal:close" aria-label="Fechar">✕</button>
         </div>
-        
+
         <div class="modal-body">
           <div class="pr-search">
-            <input 
-              type="text" 
-              class="search-input" 
-              placeholder="Buscar exercício..." 
+            <input
+              type="text"
+              class="search-input"
+              placeholder="Buscar exercício..."
               id="ui-prsSearch"
+              autocomplete="off"
             />
           </div>
 
           <div class="pr-actions">
-            <button class="btn-secondary" data-action="exportPrs">
+            <button class="btn-secondary" data-action="prs:export" type="button">
               💾 Exportar
             </button>
-            <button class="btn-secondary" data-action="importPrs">
+            <button class="btn-secondary" data-action="prs:import-file" type="button">
               📥 Importar
             </button>
           </div>
@@ -287,45 +288,74 @@ export function renderPrsModal(prs = {}) {
               <div class="empty-state-small">
                 <p>Nenhum PR cadastrado</p>
               </div>
-            ` : entries.map(([exercise, value]) => `
-              <div class="pr-item" data-exercise="${escapeHtml(exercise)}">
-                <label class="pr-label">${escapeHtml(exercise)}</label>
-                <input 
-                  type="number" 
-                  class="pr-input" 
-                  value="${value}" 
-                  data-exercise="${escapeHtml(exercise)}"
-                  step="0.5"
-                  min="0"
-                />
-                <button 
-                  class="pr-remove" 
-                  data-action="removePr" 
-                  data-exercise="${escapeHtml(exercise)}"
-                  title="Remover"
-                >
-                  🗑️
-                </button>
-              </div>
-            `).join('')}
+            ` : entries.map(([exercise, value]) => {
+              const ex = String(exercise || '').toUpperCase();
+              const safeEx = escapeHtml(ex);
+              const safeVal = Number(value) || '';
+
+              return `
+                <div class="pr-item" data-pr-row="${safeEx}">
+                  <label class="pr-label" title="${safeEx}">
+                    ${safeEx}
+                  </label>
+
+                  <input
+                    type="number"
+                    class="pr-input"
+                    value="${safeVal}"
+                    step="0.5"
+                    min="0"
+                    inputmode="decimal"
+                    data-action="prs:editValue"
+                    data-exercise="${safeEx}"
+                    aria-label="PR de ${safeEx}"
+                  />
+
+                  <div class="pr-rowActions">
+                    <button
+                      class="btn-secondary pr-save"
+                      data-action="prs:save"
+                      data-exercise="${safeEx}"
+                      type="button"
+                      title="Salvar"
+                    >
+                      Salvar
+                    </button>
+
+                    <button
+                      class="pr-remove"
+                      data-action="prs:remove"
+                      data-exercise="${safeEx}"
+                      type="button"
+                      title="Remover"
+                      aria-label="Remover PR de ${safeEx}"
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                </div>
+              `;
+            }).join('')}
           </div>
 
           <div class="pr-add">
-            <input 
-              type="text" 
-              class="add-input" 
-              placeholder="Nome do exercício" 
-              id="pr-new-exercise"
+            <input
+              type="text"
+              class="add-input"
+              placeholder="Nome do exercício"
+              id="ui-prsNewName"
+              autocomplete="off"
             />
-            <input 
-              type="number" 
-              class="add-input" 
-              placeholder="PR (kg)" 
-              id="pr-new-value"
+            <input
+              type="number"
+              class="add-input"
+              placeholder="PR (kg)"
+              id="ui-prsNewValue"
               step="0.5"
               min="0"
+              inputmode="decimal"
             />
-            <button class="btn-primary" data-action="addPr">
+            <button class="btn-primary" data-action="prs:add" type="button">
               ➕ Adicionar
             </button>
           </div>
