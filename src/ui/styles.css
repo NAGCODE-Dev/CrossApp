@@ -1006,3 +1006,35 @@ body.ui-trainingMode .load-calc {
     align-self: flex-end;
   }
 }
+/* Layout da linha de treino */
+.workout-line{
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.exercise-text{
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Carga sempre visível */
+.load-calc{
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+/* Mobile: empilha para não cortar nada */
+@media (max-width: 480px){
+  .workout-line{
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .load-calc{
+    white-space: normal;
+    align-self: flex-end;
+  }
+}
