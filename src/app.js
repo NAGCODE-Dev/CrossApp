@@ -25,7 +25,7 @@ import { on, emit } from './core/events/eventBus.js';
 // Use-cases
 import { calculateLoads } from './core/usecases/calculateLoads.js';
 import { copyWorkout } from './core/usecases/copyWorkout.js';
-import { exportWorkout } from './core/usecases/exportWorkout.js';
+import { exportWorkout, importWorkout } from './core/usecases/exportWorkout.js';
 import { exportPRs } from './core/usecases/exportPRs.js';
 import { importPRs } from './core/usecases/importPRs.js';
 import { addOrUpdatePR, removePR, listAllPRs } from './core/usecases/managePRs.js';
@@ -376,6 +376,64 @@ export async function handleImportPRsFromCSV(csvString, merge = true) {
     errors: parseResult.errors,
   };
 }
+/**
+ * Importar treino de JSON
+ * @param {File} file - Arquivo JSON
+ * @returns {Promise<Object>}
+ */
+export async function handleImportWorkout(file) {
+  try {
+    const text = await file.text();
+    const result = importWorkout(text);
+    
+    if (!result.success) {
+      console.error('❌ Falha ao importar:', result.error);
+      return { success: false, error: result.error };
+    }
+    
+    const workout = result.data;
+    
+    console.log('📥 Treino importado:', {
+      day: workout.day,
+      sections: workout.sections.length,
+      weekNumber: result.weekNumber
+    });
+    
+    // Converte sections → blocks
+    const blocks = workout.sections.map(s => ({
+      type: s.type || 'DEFAULT',
+      lines: s.lines
+    }));
+    
+    // Salva no estado
+    const state = getState();
+    setState({
+      workout: {
+        day: workout.day,
+        blocks: blocks
+      },
+      activeWeekNumber: result.weekNumber || state.activeWeekNumber,
+      ui: {
+        ...state.ui,
+        activeScreen: 'workout'
+      }
+    });
+    
+    emit('workout:imported', { workout });
+    
+    console.log('✅ Treino importado com sucesso');
+    return { success: true };
+    
+  } catch (error) {
+    console.error('❌ Erro ao importar:', error);
+    return { 
+      success: false, 
+      error: error.message 
+    };
+  }
+}
+
+
 
 /**
  * Exportar PRs para CSV
@@ -419,6 +477,10 @@ export async function downloadPRsTemplate() {
  * Processa treino do dia de uma semana específica
  * @param {Object} week - Semana parseada
  */
+/**
+ * Processa treino do dia de uma semana específica
+ * @param {Object} week - Semana parseada
+ */
 async function processWorkoutFromWeek(week) {
   const state = getState();
   const dayName = state.currentDay;
@@ -427,9 +489,9 @@ async function processWorkoutFromWeek(week) {
   if (dayName === 'Domingo') {
     setState({
       workout: null,
-      ui: { activeScreen: 'rest' },
+      ui: { ...state.ui, activeScreen: 'rest' }
     });
-    console.log('😴 Dia de descanso');
+    console.log('💤 Dia de descanso');
     return;
   }
 
@@ -438,75 +500,114 @@ async function processWorkoutFromWeek(week) {
   if (!workout) {
     setState({
       workout: null,
-      ui: { activeScreen: 'welcome' },
+      ui: { ...state.ui, activeScreen: 'welcome' }
     });
     console.log(`⚠️ Nenhum treino para ${dayName} na semana ${week.weekNumber}`);
     return;
   }
 
-  // ✅ CONVERTE OBJETOS {raw} → STRINGS
-  const normalizedBlocks = (workout.blocks || []).map(block => ({
+  // 🔥 CORREÇÃO: Normaliza MAS preserva objetos já processados
+  const normalizedBlocks = workout.blocks.map(block => ({
     ...block,
-    lines: (block.lines || []).map(line => {
-      if (typeof line === 'object' && line !== null && line.raw) {
-        return String(line.raw);
+    lines: block.lines.map(line => {
+      // Se já é objeto com calculated, mantém
+      if (typeof line === 'object' && line !== null && line.calculated) {
+        return line;
       }
+      
+      // Se é objeto sem calculated, extrai string
+      if (typeof line === 'object' && line !== null) {
+        return String(line.raw || line.text || '');
+      }
+      
+      // Se já é string, mantém
       return String(line);
     })
   }));
 
-  // Calcula cargas
+  console.log('📋 Blocos normalizados:', normalizedBlocks.length);
+  console.log('📋 Primeira linha:', normalizedBlocks[0]?.lines[0]);
+
+  // 🔥 Calcula cargas APENAS para linhas que NÃO têm calculated
   let hasWarnings = false;
   let blocksWithLoads = normalizedBlocks;
 
   const workoutForCalc = {
     day: workout.day,
-    sections: normalizedBlocks,
+    sections: normalizedBlocks
   };
 
   try {
+    console.log('🔢 Calculando cargas...');
+    console.log('🔢 PRs disponíveis:', Object.keys(state.prs));
+    console.log('🔢 Total de linhas:', normalizedBlocks.reduce((sum, b) => sum + b.lines.length, 0));
+
     const loadResult = calculateLoads(workoutForCalc, state.prs, state.preferences);
-    
-    console.log('🧮 calculateLoads result:', {
+
+    console.log('✅ calculateLoads result:', {
       success: loadResult.success,
+      error: loadResult.error,
       hasWarnings: loadResult.hasWarnings,
       dataLength: loadResult.data?.length,
-      firstResults: loadResult.data?.slice(0, 3)
+      linesWithPercent: loadResult.linesWithPercent
     });
-    
-    hasWarnings = loadResult.hasWarnings || false;
 
-    // ✅ APLICA CARGAS CALCULADAS DE VOLTA NAS LINHAS
-    if (loadResult.success && loadResult.data && loadResult.data.length > 0) {
+    if (!loadResult.success) {
+      console.error('❌ Falha ao calcular cargas:', loadResult.error);
+    } else if (!loadResult.data || loadResult.data.length === 0) {
+      console.warn('⚠️ Nenhum resultado de cálculo');
+    } else {
+      hasWarnings = loadResult.hasWarnings || false;
+
+      // 🔥 APLICA CARGAS CALCULADAS
       let globalIndex = 0;
-      
+
       blocksWithLoads = normalizedBlocks.map(block => {
         const newLines = block.lines.map(line => {
-          const result = loadResult.data[globalIndex];
-          globalIndex++;
-          
-          // Se linha tem carga calculada, cria objeto com raw + calculated
-          if (result && result.calculatedText && result.calculatedText.trim()) {
+          const result = loadResult.data[globalIndex++];
+
+          // Se linha JÁ tem calculated, preserva
+          if (typeof line === 'object' && line.calculated) {
+            return line;
+          }
+
+          // Se resultado tem cálculo, aplica
+          if (result && result.hasPercent && result.calculatedText) {
             return {
-              raw: line,
+              raw: result.originalLine || line,
               calculated: result.calculatedText,
-              hasWarning: result.isWarning || false
+              hasWarning: result.isWarning || false,
+              isMax: result.isMax || false
             };
           }
-          
-          // Se não, mantém string pura
+
+          // Marca cabeçalhos
+          if (result && result.isExerciseHeader) {
+            return {
+              raw: result.originalLine || line,
+              isHeader: true,
+              exercise: result.exercise
+            };
+          }
+
+          // Marca descanso
+          if (result && result.isRest) {
+            return {
+              raw: result.originalLine || line,
+              isRest: true
+            };
+          }
+
+          // Mantém linha original
           return line;
         });
-        
-        return {
-          ...block,
-          lines: newLines
-        };
-      });
-      
-      console.log('✅ Cargas aplicadas. Primeira linha processada:', blocksWithLoads[0]?.lines[1]);
-    }
 
+        return { ...block, lines: newLines };
+      });
+
+      console.log('✅ Cargas aplicadas!');
+      console.log('✅ Linha 20:', blocksWithLoads[0]?.lines[20]);
+    }
   } catch (error) {
     console.error('❌ Erro ao calcular cargas:', error);
   }
@@ -515,24 +616,24 @@ async function processWorkoutFromWeek(week) {
   setState({
     workout: {
       ...workout,
-      blocks: blocksWithLoads,
+      blocks: blocksWithLoads
     },
     ui: {
+      ...state.ui,
       activeScreen: 'workout',
-      hasWarnings: hasWarnings,
-    },
+      hasWarnings: hasWarnings
+    }
   });
 
-  console.log(`💪 Treino carregado:`, {
+  console.log('💪 Treino carregado:', {
     day: dayName,
     week: week.weekNumber,
     blocks: blocksWithLoads.length,
+    totalLines: blocksWithLoads.reduce((sum, b) => sum + b.lines.length, 0)
   });
 
   emit('workout:loaded', { workout, week: week.weekNumber });
 }
-
-
 // ========== PUBLIC ACTIONS ==========
 
 /**
@@ -638,37 +739,75 @@ export async function handleCopyWorkout() {
  * Exportar treino
  * @returns {Object}
  */
+/**
+ * Exportar treino
+ * @returns {Object}
+ */
+/**
+ * Exportar treino
+ * @returns {Object}
+ */
+/**
+ * Exportar treino
+ * @returns {Object}
+ */
 export function handleExportWorkout() {
   const state = getState();
-
-  if (!state.workout) {
-    return {
-      success: false,
-      error: 'Nenhum treino carregado',
+  
+  // 🔥 Pega o workout do estado (JÁ com cargas calculadas)
+  const workout = state.workout;
+  
+  console.log('📤 [EXPORT] Estado completo:', {
+    hasWorkout: !!workout,
+    workoutKeys: workout ? Object.keys(workout) : [],
+    day: workout?.day,
+    blocksLength: workout?.blocks?.length,
+    firstBlock: workout?.blocks?.[0],
+    firstLine: workout?.blocks?.[0]?.lines?.[0],
+    secondLine: workout?.blocks?.[0]?.lines?.[1],
+    thirdLine: workout?.blocks?.[0]?.lines?.[2]
+  });
+  
+  if (!workout || !workout.blocks) {
+    return { 
+      success: false, 
+      error: 'Nenhum treino carregado' 
     };
   }
 
-  // Adapta estrutura
+  // 🔥 Adapta estrutura: blocks → sections (PRESERVA objetos!)
   const workoutForExport = {
-    day: state.workout.day,
-    sections: state.workout.blocks || [],
+    day: workout.day,
+    sections: workout.blocks.map(block => ({
+      type: block.type || 'DEFAULT',
+      lines: block.lines // 🔥 NÃO toca nas linhas!
+    }))
   };
+
+  console.log('📤 [EXPORT] Workout para exportação:', {
+    day: workoutForExport.day,
+    sectionsLength: workoutForExport.sections.length,
+    firstSection: workoutForExport.sections[0],
+    firstLine: workoutForExport.sections[0]?.lines?.[0],
+    secondLine: workoutForExport.sections[0]?.lines?.[1]
+  });
 
   const result = exportWorkout(workoutForExport, {
     exportedBy: 'Treino do Dia PWA',
-    weekNumber: state.activeWeekNumber,
+    weekNumber: state.activeWeekNumber
   });
 
   if (!result.success) {
+    console.error('❌ Falha ao exportar:', result.error);
     return result;
   }
 
-  downloadFile(result.json, result.filename, 'application/json');
+  console.log('✅ JSON gerado (preview):', result.json.substring(0, 500));
 
+  downloadFile(result.json, result.filename, 'application/json');
   emit('workout:exported', { filename: result.filename });
 
-  console.log('💾 Treino exportado:', result.filename);
-
+  console.log('✅ Treino exportado:', result.filename);
   return { success: true };
 }
 
@@ -852,7 +991,7 @@ function exposeDebugAPIs() {
     // Workout
     copyWorkout: handleCopyWorkout,
     exportWorkout: handleExportWorkout,
-
+    importWorkout: handleImportWorkout,
     // PRs
     addPR: handleAddPR,
     removePR: handleRemovePR,

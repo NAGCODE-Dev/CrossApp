@@ -6,7 +6,7 @@
 import { calculatePercent, kgToLbs, roundToNearest, formatNumber } from '../utils/math.js';
 import { isValidPR, isValidPercent } from '../utils/validators.js';
 import { normalizeExerciseName, extractNumbers } from '../utils/text.js';
-import { getPR } from './prsService.js';
+import { getPR, hasPR } from './prsService.js';
 
 /**
  * Calcula carga baseada em PR e percentual
@@ -76,13 +76,33 @@ export function calculateLoad(exerciseName, percent, prs, options = {}) {
 }
 
 /**
- * Extrai percentual de uma linha de treino
+ * Extrai percentual de uma linha (suporta @XX% e @?)
  * @param {string} line - Linha do treino (ex: "3x5 @80%")
- * @returns {number|null} Percentual ou null se não encontrado
+ * @returns {number|string|null} Percentual, 'MAX' ou null
+ */
+/**
+ * Extrai percentual de uma linha (suporta @XX%, @?, e variações com x/séries)
+ * @param {string} line - Linha do treino (ex: "3x5 @80%", "1@82% x4")
+ * @returns {number|string|null} Percentual, 'MAX' ou null
+ */
+/**
+ * Extrai percentual de uma linha (suporta @XX%, @?, e variações com x/séries)
+ * @param {string} line - Linha do treino (ex: "3x5 @80%", "1@82% x4")
+ * @returns {number|string|null} Percentual, 'MAX' ou null
+ */
+/**
+ * Extrai percentual de uma linha - IGNORA tudo antes/depois
+ * @param {string} line - Linha do treino (ex: "1@82% x4" → 82)
+ * @returns {number|string|null} Percentual, 'MAX' ou null
  */
 export function extractPercent(line) {
-  // ✅ Aceita espaço opcional entre @ e número
-  const match = line.match(/@\s*(\d+)%/);
+  // @? = máximo do dia
+  if (/@\?/.test(line)) {
+    return 'MAX';
+  }
+  
+  // 🔥 BUSCA: qualquer @XX% (ignora resto)
+  const match = line.match(/@\s*(\d+)/);
   return match ? parseInt(match[1], 10) : null;
 }
 
@@ -112,6 +132,7 @@ export function extractExerciseName(line, prs) {
 
 /**
  * Processa linha completa de exercício
+ * ⚠️ VERSÃO ÚNICA E COMPLETA (mesclada)
  * @param {string} line - Linha do treino (ex: "BACK SQUAT 3x5 @80%")
  * @param {Object} prs - Objeto de PRs
  * @param {Object} preferences - Preferências do usuário
@@ -128,14 +149,17 @@ export function processExerciseLine(line, prs, preferences = {}, lastExercise = 
     return {
       hasPercent: false,
       originalLine: line,
-      exercise: exerciseName, // ✅ Retorna exercício identificado para usar como contexto
+      exercise: exerciseName, // Retorna exercício identificado para usar como contexto
     };
   }
+  
+  // 🔥 Trata @? como máximo (100%)
+  const percentValue = percent === 'MAX' ? 100 : percent;
   
   // Linha com porcentagem - tenta identificar exercício na própria linha
   let exerciseName = extractExerciseName(line, prs);
   
-  // ✅ Se não encontrou exercício na linha, usa o último exercício (contexto)
+  // Se não encontrou exercício na linha, usa o último exercício (contexto)
   if (!exerciseName && lastExercise) {
     exerciseName = lastExercise;
   }
@@ -149,7 +173,7 @@ export function processExerciseLine(line, prs, preferences = {}, lastExercise = 
     };
   }
   
-  const calculation = calculateLoad(exerciseName, percent, prs, {
+  const calculation = calculateLoad(exerciseName, percentValue, prs, {
     includeLbs: preferences.showLbsConversion || false,
   });
   
@@ -157,9 +181,12 @@ export function processExerciseLine(line, prs, preferences = {}, lastExercise = 
     hasPercent: true,
     originalLine: line,
     exercise: exerciseName,
-    percent: percent,
-    calculatedText: calculation.success ? formatLoadResult(calculation) : null, // ✅ Adiciona texto calculado
-    isWarning: calculation.warning || false, // ✅ Adiciona flag de aviso
+    percent: percentValue,
+    isMax: percent === 'MAX', // Sinaliza que é máximo (@?)
+    calculatedText: calculation.success 
+      ? formatLoadResult(calculation) 
+      : null,
+    isWarning: calculation.warning || false,
     ...calculation,
   };
 }
@@ -184,19 +211,49 @@ export function formatLoadResult(result) {
 }
 
 /**
- * Calcula todas as cargas de um treino
+ * Calcula todas as cargas de um treino MANTENDO CONTEXTO
  * @param {Array} workoutLines - Linhas do treino
  * @param {Object} prs - PRs cadastrados
  * @param {Object} preferences - Preferências
  * @returns {Array} Array com resultados de cada linha
  */
 export function calculateWorkoutLoads(workoutLines, prs, preferences = {}) {
-  let lastExercise = null; // ✅ Mantém contexto do último exercício identificado
+  let lastExercise = null; // Mantém contexto do último exercício identificado
   
   return workoutLines.map(line => {
-    const result = processExerciseLine(line, prs, preferences, lastExercise);
+    // Extrai string da linha
+    const lineStr = typeof line === 'object' 
+      ? (line?.raw || line?.text || '') 
+      : String(line);
     
-    // ✅ Atualiza contexto se linha identificou um exercício
+    // 🔥 Detecta se linha é nome de exercício (maiúsculas)
+    const exerciseMatch = lineStr.match(/^([A-Z][A-Z\s]+)$/);
+    if (exerciseMatch) {
+      const exerciseName = normalizeExerciseName(exerciseMatch[1].trim());
+      if (hasPR(prs, exerciseName)) {
+        lastExercise = exerciseName;
+        return {
+          hasPercent: false,
+          originalLine: lineStr,
+          exercise: exerciseName,
+          isExerciseHeader: true // Flag para identificar cabeçalhos
+        };
+      }
+    }
+    
+    // 🔥 Ignora linhas de descanso, mas mantém contexto
+    if (/REST|DESCANSO/i.test(lineStr)) {
+      return {
+        hasPercent: false,
+        originalLine: lineStr,
+        isRest: true
+      };
+    }
+    
+    // Processa linha normal (com ou sem percentual)
+    const result = processExerciseLine(lineStr, prs, preferences, lastExercise);
+    
+    // Atualiza contexto se linha identificou um exercício
     if (result.exercise) {
       lastExercise = result.exercise;
     }

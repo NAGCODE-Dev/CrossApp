@@ -1,33 +1,81 @@
 /* ========================================
-   RESET & VARIABLES
+   RESET & BASE
    ======================================== */
 * {
-  box-sizing: border-box;
   margin: 0;
   padding: 0;
+  box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
 }
 
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  background: #0a0e1a;
+  color: #e0e0e0;
+  touch-action: manipulation;
+  font-size: 16px;
+}
+
+/* ========================================
+   VARIÁVEIS
+   ======================================== */
 :root {
-  --bg-dark: #0a0e1a;
-  --bg-card: #151b2e;
+  --bg-primary: #0a0e1a;
+  --bg-card: #1a1a2e;
   --bg-input: #1e2639;
+  --border: rgba(255, 255, 255, 0.1);
+  --text-white: rgba(255, 255, 255, 0.95);
+  --text-gray: rgba(255, 255, 255, 0.7);
   --accent-primary: #667eea;
   --accent-secondary: #764ba2;
   --accent-green: #00ff88;
-  --text-white: #ffffff;
-  --text-gray: #94a3b8;
-  --border: rgba(255,255,255,0.08);
-  --shadow: 0 8px 32px rgba(0,0,0,0.4);
-  --nav-height: 72px;
+  --nav-height: 80px;
+  
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
 }
+
+/* ========================================
+   APP CONTAINER
+   ======================================== */
+#app {
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app-container {
+  width: 100%;
+  max-width: 640px;
+  height: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-primary);
+}
+
 /* ========================================
    LOADING SCREEN
    ======================================== */
 .loading-screen {
   position: fixed;
   inset: 0;
-  background: var(--bg-dark);
+  background: var(--bg-primary);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -39,12 +87,13 @@
 .loading-screen.hide {
   opacity: 0;
   visibility: hidden;
+  pointer-events: none;
 }
 
 .spinner {
   width: 56px;
   height: 56px;
-  border: 4px solid rgba(255,255,255,0.1);
+  border: 4px solid rgba(255, 255, 255, 0.1);
   border-top-color: var(--accent-primary);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
@@ -60,40 +109,15 @@
   font-size: 1rem;
   font-weight: 600;
 }
-html, body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-  background: var(--bg-dark);
-  color: var(--text-white);
-  line-height: 1.6;
-  overflow-x: hidden;
-  -webkit-font-smoothing: antialiased;
-  font-size: 16px;
-  height: 100%;
-}
-
-/* ========================================
-   APP CONTAINER
-   ======================================== */
-.app-container {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  max-width: 640px;
-  margin: 0 auto;
-  background: var(--bg-dark);
-  padding-bottom: var(--nav-height);
-}
 
 /* ========================================
    HEADER
    ======================================== */
 .app-header {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
-  padding: 1.5rem 1.25rem;
-  box-shadow: var(--shadow);
+  flex-shrink: 0;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  padding: calc(var(--safe-top) + 1.5rem) 1.25rem 1.5rem;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
 }
 
 .header-content {
@@ -104,23 +128,177 @@ html, body {
   font-size: 1.75rem;
   font-weight: 900;
   color: white;
-  margin-bottom: 0.5rem;
+  margin: 0 0 0.5rem 0;
   letter-spacing: -0.02em;
 }
 
 .app-subtitle {
   font-size: 0.9375rem;
-  color: rgba(255,255,255,0.9);
+  color: rgba(255, 255, 255, 0.9);
   font-weight: 600;
+  margin: 0;
 }
+
+/* ========================================
+   DAY SELECT - DESIGN PREMIUM
+   ======================================== */
+.day-select {
+  position: relative;
+  flex: 1;
+  max-width: 220px;
+  padding: 0.75rem 2.75rem 0.75rem 1rem;
+  border-radius: 1rem;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: white;
+  font-size: 0.9375rem;
+  font-weight: 700;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  transition: all 0.2s ease;
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  
+  /* Ícone de dropdown (seta) */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  background-size: 16px;
+}
+
+.day-select:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.45);
+  transform: translateY(-1px);
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.day-select:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.35);
+  box-shadow: 
+    0 0 0 4px rgba(255, 255, 255, 0.2), 
+    0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+/* ========================================
+   DROPDOWN OPTIONS (lista que abre)
+   ======================================== */
+
+/* Estilo das opções INDIVIDUAIS */
+.day-select option {
+  background: #1a1a2e; /* Fundo escuro limpo */
+  color: white;
+  padding: 0.875rem 1rem; /* Espaçamento confortável */
+  font-weight: 600;
+  font-size: 1rem;
+  border: none;
+  cursor: pointer;
+}
+
+/* Hover nas opções (funciona melhor no Firefox) */
+.day-select option:hover {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+}
+
+/* Opção SELECIONADA (checked) */
+.day-select option:checked {
+  background: linear-gradient(135deg, #667eea, #764ba2) !important;
+  color: white !important;
+  font-weight: 700;
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.2);
+}
+
+/* Placeholder (primeira opção desabilitada) */
+.day-select option:disabled {
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* ========================================
+   DROPDOWN ABERTO - WEBKIT (Chrome/Safari)
+   ======================================== */
+
+/* Container do dropdown quando aberto */
+.day-select:focus option {
+  background: #1a1a2e;
+  padding: 0.75rem 1rem;
+  transition: all 0.15s ease;
+}
+
+/* Hover no Chrome/Safari (limitado) */
+.day-select option:hover,
+.day-select option:focus {
+  background: #667eea;
+  outline: none;
+}
+
+/* ========================================
+   ANIMAÇÕES
+   ======================================== */
+
+@keyframes selectPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
+
+.day-select:focus {
+  animation: selectPulse 0.3s ease;
+}
+
+/* ========================================
+   MOBILE RESPONSIVO
+   ======================================== */
+@media (max-width: 480px) {
+  .day-select {
+    max-width: 180px;
+    padding: 0.65rem 2.5rem 0.65rem 0.875rem;
+    font-size: 0.875rem;
+    background-size: 14px;
+    background-position: right 0.75rem center;
+  }
+  
+  .day-select option {
+    padding: 0.75rem 0.875rem;
+    font-size: 0.9375rem;
+  }
+}
+
+/* ========================================
+   FIREFOX - Melhor controle de estilo
+   ======================================== */
+@-moz-document url-prefix() {
+  .day-select option:hover {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+  }
+  
+  .day-select option:checked {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    font-weight: 700;
+  }
+}
+
 
 /* ========================================
    WEEK CHIPS
    ======================================== */
 .week-chips-container {
-  background: var(--bg-dark);
+  background: var(--bg-primary);
   border-bottom: 1px solid var(--border);
   padding: 1rem 0;
+  flex-shrink: 0;
 }
 
 .week-chips {
@@ -146,16 +324,31 @@ html, body {
   font-weight: 700;
   font-size: 0.9375rem;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.2s;
   white-space: nowrap;
+  user-select: none;
 }
 
-.week-chip-active {
+.week-chip:hover {
+  background: rgba(102, 126, 234, 0.1);
+  border-color: var(--accent-primary);
+}
+
+.week-chip:active {
+  transform: scale(0.95);
+}
+
+.week-chip.week-chip-active {
   background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
   border-color: transparent;
   color: white;
-  transform: scale(1.05);
   box-shadow: 0 4px 16px rgba(102, 126, 234, 0.4);
+}
+
+.week-chip-empty {
+  padding: 0.875rem 1.75rem;
+  color: var(--text-gray);
+  font-size: 0.875rem;
 }
 
 /* ========================================
@@ -164,10 +357,16 @@ html, body {
 .app-main {
   flex: 1;
   padding: 1.25rem;
+  padding-bottom: calc(var(--nav-height) + 1.25rem + var(--safe-bottom));
   overflow-y: auto;
+  overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
 }
 
+/* ========================================
+   WORKOUT CONTAINER
+   ======================================== */
 .workout-container {
   max-width: 100%;
 }
@@ -183,13 +382,14 @@ html, body {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  margin-bottom: 0.5rem;
+  margin: 0 0 0.5rem 0;
 }
 
 .workout-warnings {
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
+  margin-top: 0.75rem;
 }
 
 .warning-badge {
@@ -211,22 +411,34 @@ html, body {
   padding: 1.5rem;
   margin-bottom: 1.5rem;
   border: 1px solid var(--border);
-  box-shadow: var(--shadow);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
 }
 
 .workout-line {
-  margin-bottom: 1.25rem;
+  margin-bottom: 1rem;
   padding: 1.25rem;
   background: var(--bg-input);
   border-radius: 1rem;
   border-left: 3px solid transparent;
-  transition: all 0.3s;
+  transition: all 0.2s;
 }
 
-.workout-line:active {
+.workout-line:last-child {
+  margin-bottom: 0;
+}
+
+.workout-line:hover {
+  background: rgba(102, 126, 234, 0.05);
+}
+
+.workout-line.is-active {
   background: rgba(102, 126, 234, 0.1);
   border-left-color: var(--accent-primary);
-  transform: translateX(4px);
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+.workout-line.is-done {
+  opacity: 0.55;
 }
 
 .exercise-text {
@@ -234,6 +446,7 @@ html, body {
   color: var(--text-white);
   line-height: 1.6;
   margin-bottom: 0.75rem;
+  word-wrap: break-word;
 }
 
 .load-calc {
@@ -265,7 +478,7 @@ html, body {
   font-size: 1.5rem;
   font-weight: 800;
   color: var(--text-white);
-  margin-bottom: 0.75rem;
+  margin: 0 0 0.75rem 0;
 }
 
 .empty-state p {
@@ -283,13 +496,14 @@ html, body {
   right: 0;
   max-width: 640px;
   margin: 0 auto;
-  height: var(--nav-height);
+  height: calc(var(--nav-height) + var(--safe-bottom));
   background: var(--bg-card);
   border-top: 1px solid var(--border);
+  padding-bottom: var(--safe-bottom);
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 0;
-  box-shadow: 0 -4px 24px rgba(0,0,0,0.4);
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.4);
   z-index: 1000;
 }
 
@@ -303,8 +517,16 @@ html, body {
   background: transparent;
   color: var(--text-gray);
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.2s;
   padding: 0.5rem;
+  user-select: none;
+  -webkit-user-select: none;
+  min-height: 44px;
+}
+
+.nav-btn:hover {
+  color: var(--text-white);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .nav-btn:active {
@@ -327,6 +549,12 @@ html, body {
   background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
   border-radius: 1.25rem 1.25rem 0 0;
   margin: -0.5rem 0.5rem 0;
+  box-shadow: 0 -4px 16px rgba(102, 126, 234, 0.3);
+}
+
+.nav-btn-primary:hover {
+  background: linear-gradient(135deg, #7b8ff7, #8a5fb8);
+  box-shadow: 0 -6px 20px rgba(102, 126, 234, 0.4);
 }
 
 /* ========================================
@@ -335,14 +563,18 @@ html, body {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.85);
-  display: flex;
+  background: rgba(0, 0, 0, 0.9);
+  display: none;
   align-items: center;
   justify-content: center;
   z-index: 10000;
   padding: 1.5rem;
   backdrop-filter: blur(8px);
   animation: fadeIn 0.3s;
+}
+
+.modal-overlay.isOpen {
+  display: flex;
 }
 
 @keyframes fadeIn {
@@ -358,7 +590,7 @@ html, body {
   width: 100%;
   overflow: hidden;
   border: 1px solid var(--border);
-  box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
   animation: slideUp 0.3s;
 }
 
@@ -385,6 +617,7 @@ html, body {
   font-size: 1.5rem;
   font-weight: 800;
   color: var(--text-white);
+  margin: 0;
 }
 
 .modal-close {
@@ -395,11 +628,17 @@ html, body {
   cursor: pointer;
   padding: 0.5rem;
   line-height: 1;
+  transition: all 0.2s;
+}
+
+.modal-close:hover {
+  color: var(--text-white);
 }
 
 .modal-body {
   padding: 1.5rem;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   max-height: calc(85vh - 80px);
 }
 
@@ -417,7 +656,7 @@ html, body {
   border: 2px solid var(--border);
   border-radius: 1rem;
   color: var(--text-white);
-  font-size: 1rem;
+  font-size: 16px;
 }
 
 .search-input:focus {
@@ -429,10 +668,12 @@ html, body {
   display: flex;
   gap: 0.75rem;
   margin-bottom: 1.5rem;
+  flex-wrap: wrap;
 }
 
 .btn-secondary {
   flex: 1;
+  min-width: 100px;
   padding: 1rem;
   background: var(--bg-input);
   border: 2px solid var(--border);
@@ -440,10 +681,22 @@ html, body {
   color: var(--text-white);
   font-weight: 700;
   cursor: pointer;
+  transition: all 0.2s;
+  font-size: 16px;
+}
+
+.btn-secondary:hover {
+  background: rgba(102, 126, 234, 0.1);
+  border-color: var(--accent-primary);
+}
+
+.btn-secondary:active {
+  transform: scale(0.95);
 }
 
 .btn-primary {
   flex: 1;
+  min-width: 100px;
   padding: 1rem;
   background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
   border: none;
@@ -451,6 +704,17 @@ html, body {
   color: white;
   font-weight: 800;
   cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+  font-size: 16px;
+}
+
+.btn-primary:hover {
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.btn-primary:active {
+  transform: scale(0.95);
 }
 
 .pr-list {
@@ -460,46 +724,67 @@ html, body {
   margin-bottom: 1.5rem;
 }
 
-.pr-item{
-  display: flex;
-  flex-direction: column;     /* duas linhas */
-  gap: 0.35rem;
-  padding: 0.9rem 1rem;
+.pr-item {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 0.75rem;
+  padding: 1rem;
   background: var(--bg-input);
   border-radius: 1rem;
   border: 1px solid var(--border);
+  align-items: center;
 }
 
-/* Linha de cima: nome */
-.pr-label{
+.pr-label {
   font-weight: 700;
   color: var(--text-white);
   font-size: 0.98rem;
-  white-space: nowrap;        /* uma linha só */
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* Linha de baixo: valor + salvar + lixeira */
-.pr-actions-row{
+.pr-input {
+  width: 80px;
+  padding: 0.75rem;
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px solid var(--border);
+  border-radius: 0.75rem;
+  color: var(--text-white);
+  font-size: 16px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.pr-input:focus {
+  outline: none;
+  border-color: var(--accent-primary);
+}
+
+.pr-remove {
+  background: transparent;
+  border: 2px solid rgba(239, 68, 68, 0.3);
+  color: #ef4444;
+  padding: 0.5rem;
+  border-radius: 0.75rem;
+  cursor: pointer;
+  font-size: 1.25rem;
+  line-height: 1;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  width: 100%;
+  justify-content: center;
+  transition: all 0.2s;
 }
 
-.pr-input{
-  width: 80px;
-  flex: 0 0 auto;
+.pr-remove:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: #ef4444;
 }
 
-.pr-save-btn{
-  flex: 1 1 auto;
-}
-
-.pr-remove{
-  flex: 0 0 auto;
+.pr-remove:active {
+  transform: scale(0.9);
 }
 
 .pr-add {
@@ -515,12 +800,18 @@ html, body {
   border: 2px solid var(--border);
   border-radius: 1rem;
   color: var(--text-white);
-  font-size: 1rem;
+  font-size: 16px;
 }
 
 .add-input:focus {
   outline: none;
   border-color: var(--accent-primary);
+}
+
+.empty-state-small {
+  text-align: center;
+  padding: 2rem;
+  color: var(--text-gray);
 }
 
 /* ========================================
@@ -541,12 +832,18 @@ html, body {
   background: var(--bg-input);
   border-radius: 1rem;
   cursor: pointer;
+  transition: all 0.2s;
+}
+
+.settings-label:hover {
+  background: rgba(102, 126, 234, 0.05);
 }
 
 .settings-label input[type="checkbox"] {
   width: 24px;
   height: 24px;
   cursor: pointer;
+  accent-color: var(--accent-primary);
 }
 
 .settings-actions {
@@ -555,15 +852,8 @@ html, body {
 }
 
 /* ========================================
-   RESPONSIVE
+   TRAINING MODE / CHECKLIST
    ======================================== */
-@media (min-width: 640px) {
-  .app-container {
-    box-shadow: 0 0 80px rgba(0,0,0,0.6);
-  }
-}
-/* ====== TRAINING MODE / CHECKLIST ====== */
-
 body.ui-trainingMode .week-chips-container {
   display: none;
 }
@@ -583,11 +873,11 @@ body.ui-trainingMode .app-main {
   flex: 1;
   text-align: center;
   font-weight: 800;
-  color: rgba(255,255,255,0.92);
-  background: rgba(0,0,0,0.15);
+  color: rgba(255, 255, 255, 0.92);
+  background: rgba(0, 0, 0, 0.15);
   border: 1px solid var(--border);
   border-radius: 1rem;
-  padding: 0.75rem 0.75rem;
+  padding: 0.75rem;
 }
 
 .wod-stickyNext {
@@ -605,7 +895,7 @@ body.ui-trainingMode .app-main {
 .wod-stickyNext .btn-primary {
   width: 100%;
   pointer-events: auto;
-  box-shadow: 0 14px 40px rgba(102, 126, 234, 0.30);
+  box-shadow: 0 14px 40px rgba(102, 126, 234, 0.3);
 }
 
 .workout-line {
@@ -617,18 +907,29 @@ body.ui-trainingMode .app-main {
 .line-check {
   width: 52px;
   min-width: 52px;
+  height: 52px;
   border-radius: 1rem;
   border: 2px solid var(--border);
-  background: rgba(0,0,0,0.18);
-  color: rgba(255,255,255,0.9);
+  background: rgba(0, 0, 0, 0.18);
+  color: rgba(255, 255, 255, 0.9);
   font-weight: 900;
-  font-size: 1.25rem;
+  font-size: 1.5rem;
   cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.line-check:active {
+  transform: scale(0.9);
 }
 
 .line-check[aria-pressed="true"] {
-  border-color: rgba(0, 255, 136, 0.5);
+  border-color: var(--accent-green);
   color: var(--accent-green);
+  background: rgba(0, 255, 136, 0.1);
 }
 
 .line-body {
@@ -640,15 +941,6 @@ body.ui-trainingMode .app-main {
   cursor: pointer;
 }
 
-.workout-line.is-active {
-  border-left-color: var(--accent-primary);
-  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.20), 0 10px 24px rgba(0,0,0,0.25);
-}
-
-.workout-line.is-done {
-  opacity: 0.55;
-}
-
 body.ui-trainingMode .exercise-text {
   font-size: 1.05rem;
 }
@@ -656,405 +948,494 @@ body.ui-trainingMode .exercise-text {
 body.ui-trainingMode .load-calc {
   font-size: 1.6rem;
 }
-/* ==============================
-   COMPACT MODE (mobile-first)
-   ============================== */
 
-.day-controls {
-  display: flex;
-  gap: 0.5rem;
-  justify-content: center;
-  align-items: center;
-  margin-top: 0.75rem;
-}
-
-.day-controls .btn-secondary {
-  flex: 0 0 auto;
-  padding: 0.6rem 0.85rem;
-  border-radius: 0.9rem;
-  font-weight: 800;
-}
-
-.day-select {
-  width: auto;
-  max-width: 52vw;
-  padding: 0.6rem 0.75rem;
-  border-radius: 0.9rem;
-  border: 2px solid var(--border);
-  background: rgba(0,0,0,0.18);
-  color: var(--text-white);
-}
-
-/* Mobile: encolhe tudo */
-@media (max-width: 420px) {
-  :root {
-    --nav-height: 64px; /* era 72px */
+/* ========================================
+   RESPONSIVE
+   ======================================== */
+@media (min-width: 640px) {
+  .app-container {
+    box-shadow: 0 0 80px rgba(0, 0, 0, 0.6);
   }
-
-  .app-header {
-    padding: 1rem 0.9rem; /* era 1.5rem 1.25rem */
+  
+  .modal-overlay {
+    padding: 1.5rem;
   }
-
-  .app-title {
-    font-size: 1.35rem; /* era 1.75rem */
-    margin-bottom: 0.35rem;
-  }
-
-  .app-subtitle {
-    font-size: 0.85rem;
-  }
-
-  .week-chips-container {
-    padding: 0.65rem 0;
-  }
-
-  .week-chips {
-    gap: 0.5rem;
-    padding: 0 0.9rem;
-  }
-
-  .week-chip {
-    padding: 0.55rem 1rem; /* era 0.875rem 1.75rem */
-    font-size: 0.85rem;
+  
+  .modal-container {
     border-radius: 1.5rem;
   }
+}
 
-  .app-main {
-    padding: 0.9rem;
-  }
-
-  .workout-title {
-    font-size: 1.3rem; /* era 1.75rem */
-  }
-
-  .workout-block {
-    padding: 1rem;      /* era 1.5rem */
-    border-radius: 1rem;
-    margin-bottom: 1rem;
-  }
-
+@media (max-width: 480px) {
   .workout-line {
-    padding: 0.9rem;    /* era 1.25rem */
-    margin-bottom: 0.85rem;
-    border-radius: 0.85rem;
+    flex-direction: column;
+    align-items: flex-start;
   }
-
-  .exercise-text {
-    font-size: 0.95rem;
-    margin-bottom: 0.5rem;
-  }
-
+  
   .load-calc {
-    font-size: 1.15rem; /* era 1.375rem */
+    align-self: flex-end;
+    white-space: normal;
   }
-
-  .nav-icon {
-    font-size: 1.35rem; /* era 1.5rem */
+  
+  .modal-overlay {
+    align-items: flex-end;
+    padding: 0;
   }
-
-  .nav-label {
-    font-size: 0.62rem;
+  
+  .modal-container {
+    border-radius: 1.5rem 1.5rem 0 0;
+    max-height: 90vh;
   }
+}
 
-  .nav-btn {
-    padding: 0.4rem;
+/* ========================================
+   UTILITIES
+   ======================================== */
+.hidden {
+  display: none !important;
+}
+
+.text-center {
+  text-align: center;
+}
+/* ========================================
+   WORKOUT - ELEMENTOS ESPECIAIS
+   ======================================== */
+
+/* Cabeçalho de Seção/Exercício */
+.workout-section-header {
+  margin: 2rem 0 1rem 0;
+  padding: 0 0 0.75rem 0;
+  border-bottom: 2px solid var(--accent-primary);
+}
+
+.section-title {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--text-white);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Linha de Descanso com Timer */
+.workout-rest {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  margin: 1.25rem 0;
+  padding: 1rem;
+  background: rgba(251, 191, 36, 0.1);
+  border-left: 3px solid #fbbf24;
+  border-radius: 0.75rem;
+}
+
+.rest-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.rest-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.rest-text {
+  font-weight: 700;
+  color: #fbbf24;
+  font-size: 0.9375rem;
+}
+
+.btn-timer {
+  align-self: flex-start;
+  padding: 0.5rem 1rem;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  border: none;
+  border-radius: 0.5rem;
+  color: white;
+  font-weight: 700;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.btn-timer:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-timer:active {
+  transform: translateY(0);
+}
+
+/* Notas/Observações */
+.workout-note {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  margin: 0.75rem 0;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-left: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.5rem;
+}
+
+.note-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.note-text {
+  font-size: 0.875rem;
+  color: var(--text-gray);
+  line-height: 1.5;
+}
+
+/* Mobile: ajusta tamanhos */
+@media (max-width: 480px) {
+  .section-title {
+    font-size: 1.125rem;
   }
+  
+  .workout-rest {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .rest-content {
+    width: 100%;
+  }
+  
+  .btn-timer {
+    width: 100%;
+  }
+}
+/* ========================================
+   TIMER MODAL
+   ======================================== */
+.timer-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10001;
+  animation: fadeIn 0.3s;
+}
 
+.timer-content {
+  text-align: center;
+  padding: 2rem;
+}
+
+.timer-display {
+  margin-bottom: 2rem;
+}
+
+.timer-time {
+  font-size: 5rem;
+  font-weight: 900;
+  color: white;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 40px rgba(102, 126, 234, 0.6);
+}
+
+.btn-timer-cancel {
+  padding: 1rem 2rem;
+  background: rgba(239, 68, 68, 0.2);
+  border: 2px solid #ef4444;
+  border-radius: 1rem;
+  color: #ef4444;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-timer-cancel:hover {
+  background: rgba(239, 68, 68, 0.3);
+  transform: scale(1.05);
+}
+
+@media (max-width: 480px) {
+  .timer-time {
+    font-size: 3.5rem;
+  }
+}
+/* ========================================
+   ELEMENTOS ESPECIAIS DO TREINO
+   ======================================== */
+
+.workout-section-header {
+  margin: 1.5rem 0 1rem 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid rgba(102, 126, 234, 0.5);
+}
+
+.section-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #667eea;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0;
+}
+
+.workout-rest {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  margin: 1rem 0;
+  padding: 1rem;
+  background: rgba(251, 191, 36, 0.1);
+  border-left: 3px solid #fbbf24;
+  border-radius: 0.5rem;
+}
+
+.rest-icon {
+  font-size: 1.5rem;
+}
+
+.rest-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.rest-text {
+  font-weight: 600;
+  color: #fbbf24;
+}
+
+.btn-timer {
+  padding: 0.5rem 1rem;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  border: none;
+  border-radius: 0.5rem;
+  color: white;
+  font-weight: 600;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.btn-timer:hover {
+  transform: translateY(-2px);
+}
+
+.workout-note {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.5rem 0;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-left: 2px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.5rem;
+}
+
+.note-icon {
+  font-size: 1rem;
+}
+
+.note-text {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.timer-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10001;
+}
+
+.timer-content {
+  text-align: center;
+}
+
+.timer-time {
+  font-size: 5rem;
+  font-weight: 900;
+  color: white;
+  margin-bottom: 2rem;
+  text-shadow: 0 0 40px rgba(102, 126, 234, 0.6);
+}
+
+.btn-timer-cancel {
+  padding: 1rem 2rem;
+  background: rgba(239, 68, 68, 0.2);
+  border: 2px solid #ef4444;
+  border-radius: 1rem;
+  color: #ef4444;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+@media (max-width: 480px) {
+  .rest-content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .btn-timer {
+    width: 100%;
+  }
+  
+  .timer-time {
+    font-size: 3.5rem;
+  }
+}
+/* Mobile: 2 linhas de 3 botões */
+@media (max-width: 480px) {
+  .bottom-nav {
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    height: calc(var(--nav-height) * 1.5 + var(--safe-bottom));
+  }
+  
   .nav-btn-primary {
-    margin: -0.35rem 0.4rem 0; /* reduz o “saltão” do botão PDF */
-    border-radius: 1.1rem 1.1rem 0 0;
+    margin: -0.5rem 0.5rem 0;
   }
 }
-/* ==============================
-   COMPACTAR SOMENTE O TREINO
-   ============================== */
-@media (max-width: 420px) {
-  /* Menos espaço vertical geral do treino */
-  .workout-header {
-    margin-bottom: 0.9rem; /* era 1.5rem */
-  }
+/* ========================================
+   RESPONSIVO: Bottom Nav com 6 botões
+   ======================================== */
 
-  .workout-block {
-    padding: 0.85rem;      /* era 1.5rem */
-    margin-bottom: 0.85rem;/* era 1.5rem */
-    border-radius: 0.95rem;
+@media (max-width: 480px) {
+  .bottom-nav {
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    height: calc(var(--nav-height) * 1.6 + var(--safe-bottom));
   }
-
-  /* Card/linha mais baixo */
-  .workout-line {
-    padding: 0.75rem;      /* era 1.25rem */
-    margin-bottom: 0.4rem;/* era 1.25rem */
-    border-radius: 0.85rem;
-    border-left-width: 2px;
+  
+  .nav-icon {
+    font-size: 1.25rem;
   }
-
-  /* Texto ocupa menos espaço */
-  .exercise-text {
-    font-size: 0.92rem;    /* era 1rem */
-    line-height: 1;     /* era 1.6 */
-    margin-bottom: 0.1rem;/* era 0.75rem */
+  
+  .nav-label {
+    font-size: 0.625rem;
   }
-
-  /* Carga menor e com menos “glow” */
-  .load-calc {
-    font-size: 1.05rem;    /* era 1.375rem */
-    text-shadow: none;     /* tira o brilho que “engorda” visualmente */
+  
+  .nav-btn-primary {
+    margin: -0.5rem 0.5rem 0;
   }
 }
-/* Modal só aparece quando tiver .isOpen */
-.modal-overlay { display: none; }
-.modal-overlay.isOpen { display: flex; }
-/* ==============================
-   COMPACTAR PERSONAL RECORDS
-   ============================== */
-@media (max-width: 420px) {
-  /* Modal mais compacto */
-  .modal-overlay { padding: 0.9rem; }
-  .modal-header { padding: 1rem; }
-  .modal-title { font-size: 1.2rem; }
-  .modal-body { padding: 1rem; }
+/* PDF VIEWER CENTRALIZADO */
 
-  /* Barra de busca menor */
-  .pr-search { margin-bottom: 0.9rem; }
-  .search-input {
-    padding: 0.75rem;
-    border-radius: 0.85rem;
-    font-size: 0.92rem;
-  }
-
-  /* Botões de ação menores (Exportar/Importar/Colar JSON etc.) */
-  .pr-actions { gap: 0.5rem; margin-bottom: 0.9rem; flex-wrap: wrap; }
-  .pr-actions .btn-secondary,
-  .pr-actions .btn-primary {
-    padding: 0.75rem;
-    border-radius: 0.85rem;
-    font-size: 0.9rem;
-  }
-
-  /* Itens da lista (cada PR) mais baixos */
-  .pr-list { gap: 0.5rem; margin-bottom: 1rem; }
-  .pr-item {
-    padding: 0.75rem;
-    border-radius: 0.85rem;
-    gap: 0.5rem;
-    grid-template-columns: 1fr 72px auto; /* label | input | ações */
-  }
-
-  .pr-label { font-size: 0.92rem; }
-  .pr-input {
-    width: 72px;
-    padding: 0.55rem;
-    border-radius: 0.7rem;
-    font-size: 1rem; /* era 1.125rem */
-  }
-
-  .pr-remove { padding: 0.35rem; font-size: 1.1rem; }
-
-  /* Área de adicionar novo PR */
-  .pr-add { gap: 0.55rem; }
-  .add-input {
-    padding: 0.75rem;
-    border-radius: 0.85rem;
-    font-size: 0.92rem;
-  }
-}
-/* ==============================
-   PR CARDS MAIS BAIXOS
-   ============================== */
-@media (max-width: 420px) {
-  .pr-item {
-    padding: 0.55rem 0.65rem;      /* era 1rem */
-    gap: 0.45rem;                  /* era 0.75rem */
-    border-radius: 0.75rem;        /* era 1rem */
-    align-items: center;
-  }
-
-  .pr-label {
-    line-height: 1.2;              /* reduz altura do texto */
-    font-size: 0.9rem;
-  }
-
-  .pr-input {
-    padding: 0.45rem 0.5rem;       /* era 0.75rem */
-    line-height: 1.1;
-  }
-
-  /* botão "Salvar" e lixeira não esticarem */
-  .pr-save,
-  .pr-remove {
-    padding: 0.3rem 0.45rem;
-    line-height: 1;
-  }
-}
-/* PR item: 4 colunas (label | input | salvar | remover) */
-.pr-item{
-  grid-template-columns: minmax(0, 1fr) 72px 86px 40px; /* era 1fr auto auto */
-  align-items: center;
-}
-
-/* Evita quebrar "SQUAT SNATCH" em 2 linhas */
-.pr-label{
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Botões menores (menos altura) */
-.pr-save{
-  padding: 0.55rem 0.7rem;
-  font-size: 0.9rem;
-  border-radius: 0.85rem;
-}
-
-.pr-remove{
-  padding: 0.35rem;
-  font-size: 1.1rem;
-  justify-self: end;
-}
-
-/* Mobile: ainda mais compacto */
-@media (max-width: 420px){
-  .pr-item{
-    padding: 0.6rem 0.65rem; /* era 1rem */
-    gap: 0.45rem;           /* era 0.75rem */
-    border-radius: 0.85rem; /* era 1rem */
-    grid-template-columns: minmax(0, 1fr) 66px 78px 36px;
-  }
-  .pr-input{
-    width: 66px;
-    padding: 0.45rem 0.5rem;
-    font-size: 1rem;
-  }
-}
-/* PRs: manter tudo em 1 linha e reduzir altura do card */
-.pr-item{
-  grid-template-columns: minmax(0, 1fr) 80px 84px 40px; /* label | input | salvar | lixeira */
-  gap: 0.5rem;
-  padding: 0.75rem;              /* era 1rem */
-  border-radius: 0.9rem;         /* era 1rem */
-  align-items: center;
-}
-
-.pr-label{
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1.2;
-}
-
-.pr-input{
-  padding: 0.55rem 0.5rem;       /* era 0.75rem */
-  line-height: 1.1;
-  font-size: 1rem;               /* era 1.125rem */
-}
-
-.pr-save{
-  padding: 0.55rem 0.7rem;
-  line-height: 1;
-}
-
-.pr-remove{
-  grid-column: 4;
-  grid-row: 1;
-  justify-self: end;
-  padding: 0.35rem;
-  line-height: 1;
-}
-/* Garantir que as cargas apareçam no mobile */
-.load-calc{
-  white-space: normal;       /* permite quebrar linha */
-}
-
-/* Em telas muito pequenas, deixa a linha em coluna */
-@media (max-width: 420px){
-  .workout-line{
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.35rem;
-  }
-
-  .load-calc{
-    align-self: flex-end;    /* encosta à direita, abaixo do texto */
-  }
-}
-.workout-line{
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.exercise-text{
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.load-calc{
-  flex: 0 0 auto;
-  white-space: nowrap;
-}
-
-/* Mobile: empilha texto e carga, para não sumir */
-@media (max-width: 480px){
-  .workout-line{
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .load-calc{
-    white-space: normal;
-    align-self: flex-end;
-  }
-}
-/* Layout da linha de treino */
-.workout-line{
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-
-.exercise-text{
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-/* Carga sempre visível */
-.load-calc{
-  flex: 0 0 auto;
-  white-space: nowrap;
-}
-
-/* Mobile: empilha para não cortar nada */
-@media (max-width: 480px){
-  .workout-line{
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .load-calc{
-    white-space: normal;
-    align-self: flex-end;
-  }
-}
-/* Container da linha de PR */
-.pr-row{
+.pdf-modal {
+  position: fixed;
+  inset: 0; /* top: 0, right: 0, bottom: 0, left: 0 */
+  background: rgba(0, 0, 0, 0.9);
+  z-index: 1000;
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) auto auto; /* nome pode encolher */
-  column-gap: 0.5rem;
+  place-items: center;
+  padding: 20px;
 }
 
-/* Nome do exercício */
-.pr-name{
+.pdf-modal-content {
+  width: 100%;
+  max-width: 900px;
+  max-height: 90vh;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  animation: slideIn 0.3s ease-out;
 }
 
-/* Mobile: deixa o nome quebrar em 2 linhas em vez de cortar tão cedo */
-@media (max-width: 480px){
-  .pr-name{
-    white-space: normal;
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.pdf-viewer {
+  flex: 1;
+  overflow: auto;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #f5f5f5 0%, #fff 100%);
+}
+
+.pdf-page {
+  max-width: 100%;
+  max-height: 100%;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+}
+/* ========================================
+   BOTTOM NAV - CENTRALIZAR PDF
+   ======================================== */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  max-width: 640px;
+  margin: 0 auto;
+  height: calc(var(--nav-height) + var(--safe-bottom));
+  background: var(--bg-card);
+  border-top: 1px solid var(--border);
+  padding-bottom: var(--safe-bottom);
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 0;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+}
+
+/* Botão PDF ocupa 2 colunas no centro */
+.nav-btn-primary {
+  color: white;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  border-radius: 1.25rem 1.25rem 0 0;
+  margin: -0.5rem 0.5rem 0;
+  box-shadow: 0 -4px 16px rgba(102, 126, 234, 0.3);
+  grid-column: span 2; /* 🔥 Ocupa 2 colunas */
+}
+
+.nav-btn-primary:hover {
+  background: linear-gradient(135deg, #7b8ff7, #8a5fb8);
+  box-shadow: 0 -6px 20px rgba(102, 126, 234, 0.4);
+}
+
+/* Mobile: 2 linhas de 3 botões */
+@media (max-width: 480px) {
+  .bottom-nav {
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    height: calc(var(--nav-height) * 1.6 + var(--safe-bottom));
+  }
+  
+  /* PDF fica centralizado na linha de baixo */
+  .nav-btn-primary {
+    grid-column: 2 / 3; /* 🔥 Coluna do meio */
+    grid-row: 2; /* 🔥 Segunda linha */
+    margin: -0.5rem 0;
+  }
+}
+@media (max-width: 480px) {
+  .nav-btn-primary {
+    grid-column: 2 / 3; /* Coluna do meio */
+    grid-row: 1; /* Primeira linha */
   }
 }

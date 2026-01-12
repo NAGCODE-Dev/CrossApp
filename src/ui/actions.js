@@ -1,32 +1,31 @@
 export function setupActions({ root, toast, rerender, getUiState, setUiState, patchUiState }) {
   if (!root) throw new Error('setupActions: root é obrigatório');
+  
   // Busca de PRs (filtra em tempo real)
-root.addEventListener('input', (e) => {
-  const t = e.target;
-  if (!t || t.id !== 'ui-prsSearch') return;
-  filterPrs(root, t.value);
-});
+  root.addEventListener('input', (e) => {
+    const t = e.target;
+    if (!t || t.id !== 'ui-prsSearch') return;
+    filterPrs(root, t.value);
+  });
 
-function filterPrs(root, query) {
-  const q = String(query || '').trim().toUpperCase();
+  function filterPrs(root, query) {
+    const q = String(query || '').trim().toUpperCase();
+    const table = root.querySelector('#ui-prsTable');
+    if (!table) return;
 
-  const table = root.querySelector('#ui-prsTable');
-  if (!table) return;
+    const items = Array.from(table.querySelectorAll('.pr-item'));
+    let visible = 0;
 
-  const items = Array.from(table.querySelectorAll('.pr-item'));
-  let visible = 0;
+    for (const item of items) {
+      const ex = String(item.getAttribute('data-exercise') || '').toUpperCase();
+      const show = !q || ex.includes(q);
+      item.style.display = show ? '' : 'none';
+      if (show) visible++;
+    }
 
-  for (const item of items) {
-    const ex = String(item.getAttribute('data-exercise') || '').toUpperCase();
-    const show = !q || ex.includes(q);
-    item.style.display = show ? '' : 'none';
-    if (show) visible++;
+    const countEl = root.querySelector('#ui-prsCount');
+    if (countEl) countEl.textContent = `${visible} PRs`;
   }
-
-  // opcional: mostra contador em algum lugar (se existir no seu shell)
-  const countEl = root.querySelector('#ui-prsCount');
-  if (countEl) countEl.textContent = `${visible} PRs`;
-}
 
   // Clicks (delegação)
   root.addEventListener('click', async (e) => {
@@ -71,7 +70,6 @@ function filterPrs(root, query) {
         }
 
         case 'day:auto': {
-          // Compat: alguns cores usam resetDay()
           if (typeof window.__APP__?.resetDay === 'function') {
             const result = await window.__APP__.resetDay();
             if (result?.success === false) throw new Error(result?.error || 'Falha ao voltar para automático');
@@ -114,9 +112,40 @@ function filterPrs(root, query) {
           return;
         }
 
+        case 'workout:import': {
+          const input = document.createElement('input');
+          input.type = 'file';
+          input.accept = '.json,application/json';
+          input.style.display = 'none';
+          
+          input.addEventListener('change', async (e2) => {
+            const file = e2.target.files?.[0];
+            if (!file) return;
+            
+            try {
+              const result = await window.__APP__.importWorkout(file);
+              if (result?.success) {
+                toast('✅ Treino importado!'); // 🔥 ADICIONA TOAST
+                await rerender();
+              } else {
+                toast(result?.error || 'Erro ao importar');
+              }
+            } catch (err) {
+              toast(err?.message || 'Erro ao importar');
+              console.error(err);
+            } finally {
+              document.body.removeChild(input);
+            }
+          }, { once: true });
+          
+          document.body.appendChild(input);
+          input.click();
+          return;
+        }
+
         // ----- Modais -----
         case 'modal:open': {
-          const modal = el.dataset.modal || null; // 'prs' | 'settings'
+          const modal = el.dataset.modal || null;
           await setUiState({ modal });
           await rerender();
 
@@ -130,7 +159,6 @@ function filterPrs(root, query) {
           return;
         }
 
-        // Compat com HTML antigo
         case 'prs:open': {
           await setUiState({ modal: 'prs' });
           await rerender();
@@ -346,6 +374,14 @@ function filterPrs(root, query) {
           return;
         }
 
+        case 'timer:start': {
+          const seconds = Number(el.dataset.seconds);
+          if (!seconds || seconds <= 0) return;
+          
+          startRestTimer(seconds, toast);
+          return;
+        }
+
         default:
           return;
       }
@@ -381,7 +417,6 @@ function filterPrs(root, query) {
     const overlay = e.target.closest('.modal-overlay');
     if (!overlay) return;
 
-    // só fecha se clicou no overlay (fora do container)
     if (e.target === overlay) {
       await setUiState({ modal: null });
       await rerender();
@@ -487,4 +522,45 @@ function pickPdfFile() {
 
 function cssEscape(value) {
   return String(value || '').replace(/[\"\\]/g, '\\$&');
+}
+
+function startRestTimer(totalSeconds, toast) {
+  let remaining = totalSeconds;
+  
+  const modal = document.createElement('div');
+  modal.className = 'timer-modal';
+  modal.innerHTML = `
+    <div class="timer-content">
+      <div class="timer-time" id="timer-time">${formatTime(remaining)}</div>
+      <button class="btn-timer-cancel" id="timer-cancel">Cancelar</button>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  const display = document.getElementById('timer-time');
+  const cancel = document.getElementById('timer-cancel');
+  
+  const interval = setInterval(() => {
+    remaining--;
+    display.textContent = formatTime(remaining);
+    
+    if (remaining <= 0) {
+      clearInterval(interval);
+      document.body.removeChild(modal);
+      toast('✅ Descanso finalizado!');
+    }
+  }, 1000);
+  
+  cancel.onclick = () => {
+    clearInterval(interval);
+    document.body.removeChild(modal);
+    toast('⏹️ Timer cancelado');
+  };
+}
+
+function formatTime(sec) {
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }

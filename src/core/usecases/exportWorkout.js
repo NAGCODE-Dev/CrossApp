@@ -26,11 +26,22 @@ export function exportWorkout(workout, metadata = {}) {
       version: '1.0.0',
       exportedAt: getTimestamp(),
       day: workout.day,
-      sections: workout.sections,
+      sections: workout.sections, // 🔥 JÁ vem com { raw, calculated }
       ...metadata,
     };
     
+    // 🔥 ADICIONAR LOG PARA DEBUG
+    console.log('📦 Payload para JSON.stringify:', {
+      day: payload.day,
+      sections: payload.sections.length,
+      firstSection: payload.sections[0],
+      firstLine: payload.sections[0]?.lines?.[0],
+      secondLine: payload.sections[0]?.lines?.[1]
+    });
+    
     const json = JSON.stringify(payload, null, 2);
+    
+    console.log('✅ JSON gerado:', json.substring(0, 500)); // Primeiros 500 chars
     
     return {
       success: true,
@@ -40,6 +51,7 @@ export function exportWorkout(workout, metadata = {}) {
     };
     
   } catch (error) {
+    console.error('❌ Erro ao exportar:', error);
     return {
       success: false,
       error: 'Erro ao exportar: ' + error.message,
@@ -86,7 +98,6 @@ export function exportAllWorkouts(workouts) {
     };
   }
 }
-
 /**
  * Importa treino de JSON
  * @param {string} jsonString - JSON string
@@ -104,6 +115,7 @@ export function importWorkout(jsonString) {
   try {
     const parsed = JSON.parse(jsonString);
     
+    // Valida estrutura
     if (!parsed.day || !Array.isArray(parsed.sections)) {
       return {
         success: false,
@@ -119,6 +131,7 @@ export function importWorkout(jsonString) {
         sections: parsed.sections,
       },
       version: parsed.version || 'unknown',
+      weekNumber: parsed.weekNumber || null,
     };
     
   } catch (error) {

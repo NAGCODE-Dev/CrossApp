@@ -37,9 +37,6 @@ export function renderAppShell() {
       <!-- MAIN -->
       <main class="app-main" id="ui-main"></main>
 
-      <!-- EVENTS (debug) -->
-      <div id="ui-events" class="ui-events"></div>
-
       <!-- MODALS -->
       <div id="ui-modals"></div>
 
@@ -65,6 +62,11 @@ export function renderAppShell() {
           <span class="nav-label">Exportar</span>
         </button>
 
+        <button class="nav-btn" data-action="workout:import" type="button">
+          <span class="nav-icon">📥</span>
+          <span class="nav-label">Importar</span>
+        </button>
+
         <button class="nav-btn" data-action="modal:open" data-modal="settings" type="button">
           <span class="nav-icon">⚙️</span>
           <span class="nav-label">Config</span>
@@ -79,8 +81,7 @@ export function renderAll(state = {}) {
   const weekChipsHtml = renderWeekChips(state);
   const mainHtml = renderMainContent(state);
   const modalsHtml = renderModals(state);
- const workout = state?.workoutOfDay ?? state?.workout;
-  const warnBadgeVisible = (workout?.warnings?.length ?? 0) > 0;
+  
   return {
     subtitle,
     weekChipsHtml,
@@ -233,31 +234,77 @@ function renderWorkoutBlock(block, blockIndex, ui) {
 
 function renderWorkoutLine(line, lineId, ui) {
   const trainingMode = !!ui?.trainingMode;
-
-  const rawText =
-    typeof line === 'string'
-      ? line
-      : (line?.text ?? line?.raw ?? line?.label ?? '');
-
-  const text = escapeHtml(rawText);
-
-  // novo: usa o formato { raw, calculated, hasWarning }
-  const display =
-    typeof line === 'object'
-      ? (line.calculated ?? '')
-      : '';
-
-  const hasLoad = !!String(display || '').trim();
+  
+  const rawText = typeof line === 'string' ? line : (line?.raw || line?.text || '');
+  const display = typeof line === 'object' ? (line.calculated ?? '') : '';
+  const hasLoad = !!String(display).trim();
   const isWarning = !!(typeof line === 'object' && line.hasWarning);
-
-  const loadHtml = hasLoad
-    ? `
-      <div class="load-calc ${isWarning ? 'load-warning' : ''}">
-        ${escapeHtml(display)}
+  const isHeader = !!(typeof line === 'object' && line.isHeader);
+  const isRest = !!(typeof line === 'object' && line.isRest);
+  
+  const text = escapeHtml(rawText);
+  
+  // Filtro: Remove linhas indesejadas
+  if (
+    rawText.includes('#garanta') ||
+    rawText.includes('#treine') ||
+    rawText.toLowerCase().includes('@hotmail') ||
+    rawText.toLowerCase().includes('@gmail')
+  ) {
+    return '';
+  }
+  
+  // Cabeçalho
+  if (isHeader) {
+    return `
+      <div class="workout-section-header" data-line-id="${escapeHtml(lineId)}">
+        <h3 class="section-title">${text}</h3>
       </div>
-    `
-    : '';
-
+    `;
+  }
+  
+  // Descanso com timer
+  if (isRest) {
+    const restMatch = rawText.match(/(\d+)['`´]/);
+    const restSeconds = restMatch ? parseInt(restMatch[1]) * 60 : null;
+    
+    return `
+      <div class="workout-rest" data-line-id="${escapeHtml(lineId)}">
+        <div class="rest-icon">⏱️</div>
+        <div class="rest-content">
+          <span class="rest-text">${text}</span>
+          ${restSeconds ? `
+            <button 
+              class="btn-timer" 
+              data-action="timer:start" 
+              data-seconds="${restSeconds}"
+              type="button"
+            >
+              Timer ${Math.floor(restSeconds / 60)}min
+            </button>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  }
+  
+  // Nota
+  if (rawText.startsWith('*')) {
+    return `
+      <div class="workout-note" data-line-id="${escapeHtml(lineId)}">
+        <span class="note-icon">💡</span>
+        <span class="note-text">${text.replace(/^\*+\s*/, '')}</span>
+      </div>
+    `;
+  }
+  
+  // Linha normal
+  const loadHtml = hasLoad ? `
+    <div class="load-calc ${isWarning ? 'load-warning' : ''}">
+      ${escapeHtml(display)}
+    </div>
+  ` : '';
+  
   if (!trainingMode) {
     return `
       <div class="workout-line" data-line-id="${escapeHtml(lineId)}">
@@ -266,27 +313,27 @@ function renderWorkoutLine(line, lineId, ui) {
       </div>
     `;
   }
-
+  
+  // Modo treino
   const done = !!ui?.done?.[lineId];
   const isActive = ui?.activeLineId === lineId;
-
+  
   return `
     <div class="workout-line ${done ? 'is-done' : ''} ${isActive ? 'is-active' : ''}" data-line-id="${escapeHtml(lineId)}">
-      <button
-        class="line-check"
-        type="button"
-        aria-pressed="${done}"
-        data-action="wod:toggle"
+      <button 
+        class="line-check" 
+        type="button" 
+        aria-pressed="${done}" 
+        data-action="wod:toggle" 
         data-line-id="${escapeHtml(lineId)}"
         title="Marcar como feito"
       >
-        ✓
+        ${done ? '✓' : ''}
       </button>
-
-      <button
-        class="line-body"
-        type="button"
-        data-action="wod:toggle"
+      <button 
+        class="line-body" 
+        type="button" 
+        data-action="wod:toggle" 
         data-line-id="${escapeHtml(lineId)}"
         title="Selecionar/alternar"
       >
@@ -318,20 +365,19 @@ function renderPrsModal(prs = {}) {
             />
           </div>
 
-         <div class="pr-actions">
-  <button class="btn-secondary" data-action="prs:export" type="button">
-    💾 Exportar
-  </button>
+          <div class="pr-actions">
+            <button class="btn-secondary" data-action="prs:export" type="button">
+              💾 Exportar
+            </button>
 
-  <button class="btn-secondary" data-action="prs:import-file" type="button">
-    📁 Importar arquivo
-  </button>
+            <button class="btn-secondary" data-action="prs:import-file" type="button">
+              📁 Importar arquivo
+            </button>
 
-  <button class="btn-secondary" data-action="prs:import" type="button">
-    📋 Colar JSON
-  </button>
-</div>
-
+            <button class="btn-secondary" data-action="prs:import" type="button">
+              📋 Colar JSON
+            </button>
+          </div>
 
           <div class="pr-list" id="ui-prsTable">
             ${entries.length === 0 ? `

@@ -155,7 +155,6 @@ function getRefs(root) {
     main: q('#ui-main'),
     modals: q('#ui-modals'),
     prsCount: q('#ui-prsCount'),
-    events: q('#ui-events'),
   };
 }
 
