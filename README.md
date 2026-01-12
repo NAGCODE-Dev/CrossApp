@@ -1,6 +1,4 @@
-Com base no seu perfil e nos projetos que você tem desenvolvido (especialmente o "Treino-do-Dia" PWA para CrossFit), vou criar um README profissional e completo para o seu repositório CrossApp. Como não consegui acessar diretamente os arquivos do repositório, vou criar um modelo baseado nas características técnicas que você costuma usar e no tipo de aplicação que você desenvolve:
 
-```markdown
 # CrossApp 🏋️
 
 Progressive Web App para rastreamento e gestão de treinos de CrossFit, com cálculo automático de cargas baseado em recordes pessoais.
