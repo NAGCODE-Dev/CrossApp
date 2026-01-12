@@ -3,6 +3,8 @@
 
 Progressive Web App para rastreamento e gestão de treinos de CrossFit, com cálculo automático de cargas baseado em recordes pessoais.
 
+https://nikolasagc.github.io/CrossApp/
+
 ## 📋 Sobre o Projeto
 
 CrossApp é uma aplicação web progressiva (PWA) desenvolvida para atletas de CrossFit que desejam acompanhar seus treinos diários, calcular cargas de trabalho com base em percentuais dos seus recordes pessoais (PRs) e manter um histórico completo de performance.
