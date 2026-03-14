@@ -80,6 +80,12 @@ const coachWorkoutStorage = createStorage('coach-workout-cache', 300_000);
 const PDF_KEY = 'workout-pdf';
 const METADATA_KEY = 'workout-pdf-metadata';
 const COACH_FEED_KEY = 'feed';
+const AUTO_SYNC_DEBOUNCE_MS = 2500;
+const AUTO_SYNC_MUTE_AFTER_PULL_MS = 5000;
+
+let autoSyncTimeout = null;
+let autoSyncMutedUntil = 0;
+
 const remoteHandlers = createRemoteHandlers({
   getState,
   setState,
@@ -121,8 +127,7 @@ async function restoreSessionIfPossible() {
   if (!hasStoredSession()) return;
 
   try {
-    await remoteHandlers.handleRefreshSession();
-    await remoteHandlers.handleGetWorkoutFeed();
+    await handleRefreshSession();
     logDebug('🔐 Sessão restaurada');
   } catch (error) {
     await remoteHandlers.handleSignOut();
@@ -262,8 +267,41 @@ function setupEventListeners() {
       }, 500);
     }
   });
+
+  subscribe((newState, oldState) => {
+    if (isProcessing) return;
+    if (!hasStoredSession()) return;
+    if (Date.now() < autoSyncMutedUntil) return;
+
+    const syncRelevantChanged =
+      newState.prs !== oldState.prs ||
+      newState.preferences !== oldState.preferences ||
+      newState.weeks !== oldState.weeks ||
+      newState.activeWeekNumber !== oldState.activeWeekNumber ||
+      newState.currentDay !== oldState.currentDay;
+
+    if (!syncRelevantChanged) return;
+    scheduleAutoSyncPush();
+  });
   
   logDebug('🎧 Event listeners configurados');
+}
+
+function scheduleAutoSyncPush() {
+  clearTimeout(autoSyncTimeout);
+  autoSyncTimeout = setTimeout(async () => {
+    if (!hasStoredSession()) return;
+    if (Date.now() < autoSyncMutedUntil) return;
+
+    try {
+      const result = await remoteHandlers.handleSyncPush();
+      if (result?.success) {
+        logDebug('☁️ Auto-sync enviado');
+      }
+    } catch (error) {
+      console.warn('Falha no auto-sync:', error?.message || error);
+    }
+  }, AUTO_SYNC_DEBOUNCE_MS);
 }
 
 /**
@@ -1138,21 +1176,12 @@ async function applyImportedBackupData(backup, options = {}) {
  * Cadastro/Login/Assinatura/Sync - integração comercial
  */
 export const {
-  handleSignUp,
-  handleSignIn,
-  handleSignInWithGoogle,
-  handleRefreshSession,
-  handleRequestPasswordReset,
-  handleConfirmPasswordReset,
-  handleSignOut,
   handleGetProfile,
   handleGetAdminOverview,
   handleOpenCheckout,
   handleGetSubscriptionStatus,
   handleGetEntitlements,
   handleActivateMockSubscription,
-  handleSyncPush,
-  handleSyncPull,
   handleListSyncSnapshots,
   handleGetRuntimeConfig,
   handleSetRuntimeConfig,
@@ -1182,6 +1211,66 @@ export const {
   handleGetCompetitionLeaderboard,
   handleGetEventLeaderboard,
 } = remoteHandlers;
+
+export async function handleSignUp(credentials) {
+  const result = await remoteHandlers.handleSignUp(credentials);
+  await postAuthHydration();
+  return result;
+}
+
+export async function handleSignIn(credentials) {
+  const result = await remoteHandlers.handleSignIn(credentials);
+  await postAuthHydration();
+  return result;
+}
+
+export async function handleSignInWithGoogle(payload) {
+  const result = await remoteHandlers.handleSignInWithGoogle(payload);
+  await postAuthHydration();
+  return result;
+}
+
+export async function handleRefreshSession() {
+  const result = await remoteHandlers.handleRefreshSession();
+  await postAuthHydration();
+  return result;
+}
+
+export const {
+  handleRequestPasswordReset,
+  handleConfirmPasswordReset,
+  handleSignOut,
+} = remoteHandlers;
+
+export async function handleSyncPush() {
+  return remoteHandlers.handleSyncPush();
+}
+
+export async function handleSyncPull() {
+  const result = await remoteHandlers.handleSyncPull();
+  if (result?.success) {
+    autoSyncMutedUntil = Date.now() + AUTO_SYNC_MUTE_AFTER_PULL_MS;
+  }
+  return result;
+}
+
+async function postAuthHydration() {
+  try {
+    const pullResult = await remoteHandlers.handleSyncPull();
+    if (pullResult?.success) {
+      autoSyncMutedUntil = Date.now() + AUTO_SYNC_MUTE_AFTER_PULL_MS;
+      logDebug('☁️ Snapshot remoto aplicado após autenticação');
+    }
+  } catch (error) {
+    console.warn('Falha ao baixar snapshot após autenticação:', error?.message || error);
+  }
+
+  try {
+    await remoteHandlers.handleGetWorkoutFeed();
+  } catch (error) {
+    console.warn('Falha ao atualizar feed após autenticação:', error?.message || error);
+  }
+}
 
 
 

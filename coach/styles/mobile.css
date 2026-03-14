@@ -19,6 +19,25 @@
     padding: 14px;
   }
 
+  .auth-layout,
+  .auth-layout-loading {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .auth-panel {
+    padding: 18px;
+  }
+
+  .auth-panel h2 {
+    font-size: 1.46rem;
+    max-width: none;
+  }
+
+  .auth-panelGrid {
+    grid-template-columns: 1fr;
+  }
+
   .hero,
   .billing-banner,
   .billing-bannerActions,

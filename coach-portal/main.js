@@ -109,34 +109,47 @@ function App() {
 
   if (!token) {
     return React.createElement('div', { className: 'portal-shell auth-shell' },
-      React.createElement('div', { className: 'auth-card' },
-        React.createElement('div', { className: 'eyebrow' }, 'CrossApp'),
-        React.createElement('h1', null, 'Coach Portal'),
-        React.createElement('p', { className: 'muted' }, 'Portal separado do atleta, usando a mesma API e a mesma sessão.'),
-        error ? React.createElement('div', { className: 'notice error' }, error) : null,
-        message ? React.createElement('div', { className: 'notice success' }, message) : null,
-        React.createElement('form', { className: 'stack', onSubmit: handleLogin },
-          React.createElement('input', {
-            className: 'field',
-            type: 'email',
-            placeholder: 'Email',
-            value: login.email,
-            onChange: (e) => setLogin((prev) => ({ ...prev, email: e.target.value })),
-          }),
-          React.createElement('input', {
-            className: 'field',
-            type: 'password',
-            placeholder: 'Senha',
-            value: login.password,
-            onChange: (e) => setLogin((prev) => ({ ...prev, password: e.target.value })),
-          }),
-          React.createElement('button', { className: 'btn btn-primary', type: 'submit', disabled: loading }, loading ? 'Entrando...' : 'Entrar')
+      React.createElement('div', { className: 'auth-layout' },
+        React.createElement('section', { className: 'auth-card' },
+          React.createElement('div', { className: 'eyebrow' }, 'CrossApp'),
+          React.createElement('h1', null, 'Coach Portal'),
+          React.createElement('p', { className: 'muted' }, 'Acesse a operação do box, publique treinos e gerencie atletas em um portal separado do app do atleta.'),
+          error ? React.createElement('div', { className: 'notice error' }, error) : null,
+          message ? React.createElement('div', { className: 'notice success' }, message) : null,
+          React.createElement('form', { className: 'stack', onSubmit: handleLogin },
+            React.createElement('input', {
+              className: 'field',
+              type: 'email',
+              placeholder: 'Email',
+              value: login.email,
+              onChange: (e) => setLogin((prev) => ({ ...prev, email: e.target.value })),
+            }),
+            React.createElement('input', {
+              className: 'field',
+              type: 'password',
+              placeholder: 'Senha',
+              value: login.password,
+              onChange: (e) => setLogin((prev) => ({ ...prev, password: e.target.value })),
+            }),
+            React.createElement('button', { className: 'btn btn-primary', type: 'submit', disabled: loading }, loading ? 'Entrando...' : 'Entrar')
+          ),
+          React.createElement('div', { className: 'auth-google' },
+            React.createElement('div', { className: 'muted auth-dividerText' }, 'ou'),
+            React.createElement('div', { id: 'coach-google-signin' })
+          ),
+          React.createElement('a', { className: 'portal-link', href: '/' }, 'Abrir app do atleta')
         ),
-        React.createElement('div', { className: 'auth-google' },
-          React.createElement('div', { className: 'muted auth-dividerText' }, 'ou'),
-          React.createElement('div', { id: 'coach-google-signin' })
-        ),
-        React.createElement('a', { className: 'portal-link', href: '/' }, 'Abrir app do atleta')
+        React.createElement('aside', { className: 'auth-panel' },
+          React.createElement('div', { className: 'eyebrow' }, 'Operação do coach'),
+          React.createElement('h2', null, 'Organize a rotina do box sem depender de planilha solta e mensagens dispersas.'),
+          React.createElement('p', { className: 'muted auth-panelCopy' }, 'O Coach Portal concentra publicação de treinos, grupos, atletas, benchmarks e acesso do box em uma interface única.'),
+          React.createElement('div', { className: 'auth-panelGrid' },
+            authFeatureCard('Publique treinos', 'Envie programação para todos, grupos ou atletas específicos.'),
+            authFeatureCard('Gerencie atletas', 'Centralize membros, grupos e contexto operacional do gym.'),
+            authFeatureCard('Acompanhe acesso', 'Visualize plano, status e benefícios herdados pelos atletas.'),
+            authFeatureCard('Use a mesma conta', 'Coach e atleta compartilham sessão, mas com experiências separadas.')
+          )
+        )
       )
     );
   }
@@ -145,10 +158,12 @@ function App() {
     Suspense,
     {
       fallback: React.createElement('div', { className: 'portal-shell auth-shell' },
-        React.createElement('div', { className: 'auth-card' },
-          React.createElement('div', { className: 'eyebrow' }, 'CrossApp'),
-          React.createElement('h1', null, 'Coach Portal'),
-          React.createElement('p', { className: 'muted' }, 'Carregando workspace...')
+        React.createElement('div', { className: 'auth-layout auth-layout-loading' },
+          React.createElement('div', { className: 'auth-card' },
+            React.createElement('div', { className: 'eyebrow' }, 'CrossApp'),
+            React.createElement('h1', null, 'Coach Portal'),
+            React.createElement('p', { className: 'muted' }, 'Carregando workspace...')
+          )
         )
       ),
     },
@@ -204,6 +219,13 @@ function readProfile() {
 
 function writeProfile(profile) {
   localStorage.setItem(STORAGE_KEYS.profile, JSON.stringify(profile || null));
+}
+
+function authFeatureCard(title, copy) {
+  return React.createElement('div', { className: 'auth-feature' },
+    React.createElement('strong', null, title),
+    React.createElement('span', null, copy)
+  );
 }
 
 function readRuntimeConfig() {
