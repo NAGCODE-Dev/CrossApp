@@ -3,6 +3,7 @@ import { apiRequest } from './apiClient.js';
 export async function getCompetitionCalendar(params = {}) {
   const search = new URLSearchParams();
   if (params.gymId) search.set('gymId', String(params.gymId));
+  if (params.sportType) search.set('sportType', String(params.sportType));
   const suffix = search.toString() ? `?${search.toString()}` : '';
   return apiRequest(`/competitions/calendar${suffix}`, { method: 'GET' });
 }
@@ -23,6 +24,7 @@ export async function getBenchmarkLeaderboard(slug, params = {}) {
   const search = new URLSearchParams();
   if (params.gymId) search.set('gymId', String(params.gymId));
   if (params.limit) search.set('limit', String(params.limit));
+  if (params.sportType) search.set('sportType', String(params.sportType));
   const suffix = search.toString() ? `?${search.toString()}` : '';
   return apiRequest(`/leaderboards/benchmarks/${slug}${suffix}`, { method: 'GET' });
 }

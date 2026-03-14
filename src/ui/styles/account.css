@@ -32,6 +32,17 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.page-stack-account .coach-grid,
+.page-stack-competitions .coach-grid {
+  align-items: start;
+}
+
+.page-stack-account .coach-card,
+.page-stack-competitions .coach-card,
+.page-stack-history .coach-card {
+  min-height: 100%;
+}
+
 .admin-toolbar {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

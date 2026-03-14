@@ -17,6 +17,7 @@ const filesToCopy = [
 const dirsToCopy = [
   'src',
   'icons',
+  'sports',
 ];
 
 const runtimeConfig = {
@@ -47,12 +48,14 @@ const frontendConfig = `window.__CROSSAPP_CONFIG__ = ${JSON.stringify(runtimeCon
 await writeFile(path.join(distDir, 'config.js'), frontendConfig, 'utf8');
 
 await patchHtml(path.join(distDir, 'index.html'));
+await patchHtml(path.join(distDir, 'sports/cross/index.html'));
+await patchHtml(path.join(distDir, 'sports/running/index.html'));
+await patchHtml(path.join(distDir, 'sports/strength/index.html'));
 
 console.log(`[build-static] dist ready at ${distDir}`);
 
 async function patchHtml(filePath) {
   const raw = await readFile(filePath, 'utf8');
-  const updated = raw
-    .replace('./src/ui/styles.css', raw.includes('/coach/') ? './styles.css' : './src/ui/styles.css');
+  const updated = raw.replace('./src/ui/styles.css', raw.includes('/coach/') ? './styles.css' : './src/ui/styles.css');
   await writeFile(filePath, updated, 'utf8');
 }

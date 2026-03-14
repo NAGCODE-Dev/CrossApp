@@ -7,6 +7,31 @@ import { getAccessContextForUser, getUserMemberships } from '../access.js';
 export function createAthleteRouter({ buildBenchmarkTrendSeries, buildPrTrendSeries }) {
   const router = express.Router();
 
+  function normalizeSportType(value) {
+    const raw = String(value || 'cross').trim().toLowerCase();
+    return ['cross', 'running', 'strength'].includes(raw) ? raw : 'cross';
+  }
+
+  async function validateAccessibleWorkout(workoutId, userId, sportType) {
+    if (!Number.isFinite(workoutId)) return null;
+
+    const result = await pool.query(
+      `SELECT DISTINCT w.id, w.title
+       FROM workouts w
+       JOIN gym_memberships gm ON gm.gym_id = w.gym_id
+       LEFT JOIN workout_assignments wa ON wa.workout_id = w.id
+       WHERE w.id = $1
+         AND w.sport_type = $2
+         AND gm.user_id = $3
+         AND gm.status = 'active'
+         AND (wa.gym_membership_id IS NULL OR wa.gym_membership_id = gm.id)
+       LIMIT 1`,
+      [workoutId, sportType, userId],
+    );
+
+    return result.rows[0] || null;
+  }
+
   router.post('/athletes/me/prs', authRequired, async (req, res) => {
     const exercise = String(req.body?.exercise || '').trim().toUpperCase();
     const value = Number(req.body?.value);
@@ -63,6 +88,7 @@ export function createAthleteRouter({ buildBenchmarkTrendSeries, buildPrTrendSer
   });
 
   router.get('/athletes/me/dashboard', authRequired, async (req, res) => {
+    const sportType = normalizeSportType(req.query?.sportType);
     const memberships = await getUserMemberships(req.user.userId);
     const gymIds = memberships.map((membership) => membership.gym_id);
     const contexts = await getAccessContextForUser(req.user.userId);
@@ -70,7 +96,7 @@ export function createAthleteRouter({ buildBenchmarkTrendSeries, buildPrTrendSer
       .filter((ctx) => ctx?.access?.gymAccess?.canAthletesUseApp)
       .map((ctx) => ctx.membership.gym_id);
 
-    const [resultsRes, competitionsRes, workoutsRes, benchmarkTrendRes, prTrendRes, resultCountRes, competitionCountRes, workoutCountRes] = await Promise.all([
+    const [resultsRes, competitionsRes, workoutsRes, benchmarkTrendRes, prTrendRes, resultCountRes, competitionCountRes, workoutCountRes, runningHistoryRes, strengthHistoryRes] = await Promise.all([
       pool.query(
         `SELECT
           br.*,
@@ -81,9 +107,10 @@ export function createAthleteRouter({ buildBenchmarkTrendSeries, buildPrTrendSer
          JOIN benchmark_library b ON b.slug = br.benchmark_slug
          LEFT JOIN gyms g ON g.id = br.gym_id
          WHERE br.user_id = $1
+           AND br.sport_type = $2
          ORDER BY br.created_at DESC
          LIMIT 8`,
-        [req.user.userId],
+        [req.user.userId, sportType],
       ),
       allowedGymIds.length
         ? pool.query(
@@ -99,11 +126,12 @@ export function createAthleteRouter({ buildBenchmarkTrendSeries, buildPrTrendSer
              LEFT JOIN competition_events ce ON ce.competition_id = c.id
              LEFT JOIN gyms g ON g.id = c.gym_id
              WHERE c.gym_id = ANY($1::int[])
+               AND c.sport_type = $2
                AND c.starts_at >= NOW() - INTERVAL '1 day'
              GROUP BY c.id, g.name
              ORDER BY c.starts_at ASC
              LIMIT 6`,
-            [allowedGymIds],
+            [allowedGymIds, sportType],
           )
         : Promise.resolve({ rows: [] }),
       allowedGymIds.length
@@ -117,9 +145,10 @@ export function createAthleteRouter({ buildBenchmarkTrendSeries, buildPrTrendSer
              FROM workouts w
              JOIN gyms g ON g.id = w.gym_id
              WHERE w.gym_id = ANY($1::int[])
+               AND w.sport_type = $2
              ORDER BY w.scheduled_date DESC, w.created_at DESC
              LIMIT 8`,
-            [allowedGymIds],
+            [allowedGymIds, sportType],
           )
         : Promise.resolve({ rows: [] }),
       pool.query(
@@ -133,9 +162,10 @@ export function createAthleteRouter({ buildBenchmarkTrendSeries, buildPrTrendSer
          FROM benchmark_results br
          JOIN benchmark_library b ON b.slug = br.benchmark_slug
          WHERE br.user_id = $1
+           AND br.sport_type = $2
          ORDER BY br.created_at DESC
          LIMIT 60`,
-        [req.user.userId],
+        [req.user.userId, sportType],
       ),
       pool.query(
         `SELECT exercise, value, unit, source, created_at
@@ -145,17 +175,37 @@ export function createAthleteRouter({ buildBenchmarkTrendSeries, buildPrTrendSer
          LIMIT 80`,
         [req.user.userId],
       ),
-      pool.query(`SELECT COUNT(*)::int AS total FROM benchmark_results WHERE user_id = $1`, [req.user.userId]),
+      pool.query(`SELECT COUNT(*)::int AS total FROM benchmark_results WHERE user_id = $1 AND sport_type = $2`, [req.user.userId, sportType]),
       allowedGymIds.length
-        ? pool.query(`SELECT COUNT(*)::int AS total FROM competitions WHERE gym_id = ANY($1::int[]) AND starts_at >= NOW() - INTERVAL '1 day'`, [allowedGymIds])
+        ? pool.query(`SELECT COUNT(*)::int AS total FROM competitions WHERE gym_id = ANY($1::int[]) AND sport_type = $2 AND starts_at >= NOW() - INTERVAL '1 day'`, [allowedGymIds, sportType])
         : Promise.resolve({ rows: [{ total: 0 }] }),
       allowedGymIds.length
-        ? pool.query(`SELECT COUNT(*)::int AS total FROM workouts WHERE gym_id = ANY($1::int[])`, [allowedGymIds])
+        ? pool.query(`SELECT COUNT(*)::int AS total FROM workouts WHERE gym_id = ANY($1::int[]) AND sport_type = $2`, [allowedGymIds, sportType])
         : Promise.resolve({ rows: [{ total: 0 }] }),
+      sportType === 'running'
+        ? pool.query(
+            `SELECT id, workout_id, title, session_type, distance_km, duration_min, avg_pace, target_pace, zone, notes, logged_at
+             FROM running_session_logs
+             WHERE user_id = $1
+             ORDER BY logged_at DESC
+             LIMIT 20`,
+            [req.user.userId],
+          )
+        : Promise.resolve({ rows: [] }),
+      sportType === 'strength'
+        ? pool.query(
+            `SELECT id, workout_id, exercise, sets_count, reps_text, load_value, load_text, rir, notes, logged_at
+             FROM strength_session_logs
+             WHERE user_id = $1
+             ORDER BY logged_at DESC
+             LIMIT 24`,
+            [req.user.userId],
+          )
+        : Promise.resolve({ rows: [] }),
     ]);
 
     const benchmarkHistory = buildBenchmarkTrendSeries(benchmarkTrendRes.rows);
-    const prHistory = buildPrTrendSeries(prTrendRes.rows);
+    const prHistory = sportType === 'cross' ? buildPrTrendSeries(prTrendRes.rows) : [];
     const prCurrent = prHistory.reduce((acc, item) => {
       acc[item.exercise] = item.latestValue;
       return acc;
@@ -170,6 +220,7 @@ export function createAthleteRouter({ buildBenchmarkTrendSeries, buildPrTrendSer
         assignedWorkouts: Number(workoutCountRes.rows[0]?.total || 0),
         trackedBenchmarks: benchmarkHistory.length,
         trackedPrs: prHistory.length,
+        sportType,
       },
       recentResults: resultsRes.rows,
       upcomingCompetitions: competitionsRes.rows,
@@ -177,6 +228,8 @@ export function createAthleteRouter({ buildBenchmarkTrendSeries, buildPrTrendSer
       benchmarkHistory,
       prHistory,
       prCurrent,
+      runningHistory: runningHistoryRes.rows,
+      strengthHistory: strengthHistoryRes.rows,
       gymAccess: contexts.map((ctx) => ({
         gymId: ctx.membership.gym_id,
         gymName: ctx.membership.gym_name,
@@ -184,6 +237,194 @@ export function createAthleteRouter({ buildBenchmarkTrendSeries, buildPrTrendSer
         canAthletesUseApp: ctx?.access?.gymAccess?.canAthletesUseApp || false,
         warning: ctx?.access?.gymAccess?.warning || null,
       })),
+    });
+  });
+
+  router.post('/athletes/me/running/logs', authRequired, async (req, res) => {
+    const workoutId = req.body?.workoutId !== undefined && req.body?.workoutId !== '' ? Number(req.body.workoutId) : null;
+    const completionState = String(req.body?.completionState || '').trim().toLowerCase();
+    const sourceLabel = String(req.body?.sourceLabel || '').trim();
+    const title = String(req.body?.title || '').trim();
+    const sessionType = String(req.body?.sessionType || '').trim().toLowerCase();
+    const distanceKm = req.body?.distanceKm !== undefined && req.body?.distanceKm !== '' ? Number(req.body.distanceKm) : null;
+    const durationMin = req.body?.durationMin !== undefined && req.body?.durationMin !== '' ? Number(req.body.durationMin) : null;
+    const avgPace = String(req.body?.avgPace || '').trim();
+    const targetPace = String(req.body?.targetPace || '').trim();
+    const zone = String(req.body?.zone || '').trim();
+    const notes = String(req.body?.notes || '').trim();
+    const payload = req.body?.payload && typeof req.body.payload === 'object' ? req.body.payload : {};
+    const loggedAt = String(req.body?.loggedAt || '').trim();
+
+    if (!title && !sessionType && !Number.isFinite(distanceKm) && !Number.isFinite(durationMin)) {
+      return res.status(400).json({ error: 'Informe ao menos título, tipo, distância ou duração' });
+    }
+
+    const workout = await validateAccessibleWorkout(workoutId, req.user.userId, 'running');
+    if (workoutId && !workout) {
+      return res.status(400).json({ error: 'workoutId inválido para esta conta' });
+    }
+
+    const inserted = await pool.query(
+      `INSERT INTO running_session_logs (user_id, workout_id, title, session_type, distance_km, duration_min, avg_pace, target_pace, zone, notes, payload, logged_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+       RETURNING *`,
+      [
+        req.user.userId,
+        workout?.id || null,
+        title || workout?.title || null,
+        sessionType || null,
+        Number.isFinite(distanceKm) ? distanceKm : null,
+        Number.isFinite(durationMin) ? durationMin : null,
+        avgPace || null,
+        targetPace || null,
+        zone || null,
+        notes || null,
+        payload,
+        loggedAt || new Date().toISOString(),
+      ],
+    );
+
+    const log = inserted.rows[0];
+    await pool.query(
+      `UPDATE running_session_logs
+       SET completion_state = $2,
+           source_label = $3
+       WHERE id = $1`,
+      [
+        log.id,
+        workout?.id ? 'completed_from_coach' : (completionState || 'manual'),
+        sourceLabel || workout?.title || null,
+      ],
+    );
+
+    const refreshed = await pool.query(
+      `SELECT *
+       FROM running_session_logs
+       WHERE id = $1`,
+      [log.id],
+    );
+
+    return res.json({ log: refreshed.rows[0] });
+  });
+
+  router.get('/athletes/me/running/history', authRequired, async (req, res) => {
+    const [logsRes, summaryRes] = await Promise.all([
+      pool.query(
+        `SELECT id, workout_id, title, session_type, distance_km, duration_min, avg_pace, target_pace, zone, notes, payload, completion_state, source_label, logged_at
+         FROM running_session_logs
+         WHERE user_id = $1
+         ORDER BY logged_at DESC
+         LIMIT 30`,
+        [req.user.userId],
+      ),
+      pool.query(
+        `SELECT
+          COUNT(*)::int AS total_sessions,
+          COALESCE(SUM(distance_km), 0)::numeric AS total_distance_km,
+          COALESCE(AVG(duration_min), 0)::numeric AS avg_duration_min
+         FROM running_session_logs
+         WHERE user_id = $1`,
+        [req.user.userId],
+      ),
+    ]);
+
+    return res.json({
+      summary: summaryRes.rows[0] || { total_sessions: 0, total_distance_km: 0, avg_duration_min: 0 },
+      logs: logsRes.rows,
+    });
+  });
+
+  router.post('/athletes/me/strength/logs', authRequired, async (req, res) => {
+    const workoutId = req.body?.workoutId !== undefined && req.body?.workoutId !== '' ? Number(req.body.workoutId) : null;
+    const completionState = String(req.body?.completionState || '').trim().toLowerCase();
+    const sourceLabel = String(req.body?.sourceLabel || '').trim();
+    const exercise = String(req.body?.exercise || '').trim();
+    const setsCount = req.body?.setsCount !== undefined && req.body?.setsCount !== '' ? Number(req.body.setsCount) : null;
+    const repsText = String(req.body?.repsText || '').trim();
+    const loadValue = req.body?.loadValue !== undefined && req.body?.loadValue !== '' ? Number(req.body.loadValue) : null;
+    const loadText = String(req.body?.loadText || '').trim();
+    const rir = req.body?.rir !== undefined && req.body?.rir !== '' ? Number(req.body.rir) : null;
+    const notes = String(req.body?.notes || '').trim();
+    const payload = req.body?.payload && typeof req.body.payload === 'object' ? req.body.payload : {};
+    const loggedAt = String(req.body?.loggedAt || '').trim();
+
+    if (!exercise) {
+      return res.status(400).json({ error: 'exercise é obrigatório' });
+    }
+
+    const workout = await validateAccessibleWorkout(workoutId, req.user.userId, 'strength');
+    if (workoutId && !workout) {
+      return res.status(400).json({ error: 'workoutId inválido para esta conta' });
+    }
+
+    const inserted = await pool.query(
+      `INSERT INTO strength_session_logs (user_id, workout_id, exercise, sets_count, reps_text, load_value, load_text, rir, notes, payload, logged_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+       RETURNING *`,
+      [
+        req.user.userId,
+        workout?.id || null,
+        exercise,
+        Number.isFinite(setsCount) ? setsCount : null,
+        repsText || null,
+        Number.isFinite(loadValue) ? loadValue : null,
+        loadText || null,
+        Number.isFinite(rir) ? rir : null,
+        notes || null,
+        payload,
+        loggedAt || new Date().toISOString(),
+      ],
+    );
+
+    const log = inserted.rows[0];
+    await pool.query(
+      `UPDATE strength_session_logs
+       SET completion_state = $2,
+           source_label = $3
+       WHERE id = $1`,
+      [
+        log.id,
+        workout?.id ? 'completed_from_coach' : (completionState || 'manual'),
+        sourceLabel || workout?.title || null,
+      ],
+    );
+
+    const refreshed = await pool.query(
+      `SELECT *
+       FROM strength_session_logs
+       WHERE id = $1`,
+      [log.id],
+    );
+
+    return res.json({ log: refreshed.rows[0] });
+  });
+
+  router.get('/athletes/me/strength/history', authRequired, async (req, res) => {
+    const [logsRes, bestsRes] = await Promise.all([
+      pool.query(
+        `SELECT id, workout_id, exercise, sets_count, reps_text, load_value, load_text, rir, notes, payload, completion_state, source_label, logged_at
+         FROM strength_session_logs
+         WHERE user_id = $1
+         ORDER BY logged_at DESC
+         LIMIT 40`,
+        [req.user.userId],
+      ),
+      pool.query(
+        `SELECT
+          exercise,
+          MAX(load_value) AS best_load,
+          COUNT(*)::int AS total_logs
+         FROM strength_session_logs
+         WHERE user_id = $1
+         GROUP BY exercise
+         ORDER BY exercise ASC`,
+        [req.user.userId],
+      ),
+    ]);
+
+    return res.json({
+      bests: bestsRes.rows,
+      logs: logsRes.rows,
     });
   });
 

@@ -8,6 +8,22 @@ const STORAGE_KEY = 'crossapp-runtime-config';
 const defaults = {
   apiBaseUrl: '/api',
   telemetryEnabled: true,
+  app: {
+    sport: 'cross',
+    appName: 'Cross',
+    appLabel: 'CrossApp Cross',
+    hubUrl: '/',
+    rollout: {
+      coreSports: ['cross'],
+      betaSports: ['running', 'strength'],
+      showBetaSports: false,
+    },
+    sports: {
+      cross: '/sports/cross/',
+      running: '/sports/running/',
+      strength: '/sports/strength/',
+    },
+  },
   auth: {
     googleClientId: '',
   },
@@ -20,8 +36,9 @@ const defaults = {
 
 export function getRuntimeConfig() {
   const fromWindow = safeWindowConfig();
+  const fromAppContext = safeAppContext();
   const fromStorage = safeStorageConfig();
-  return deepMerge(defaults, deepMerge(fromWindow, fromStorage));
+  return deepMerge(defaults, deepMerge(deepMerge(fromWindow, fromAppContext), fromStorage));
 }
 
 export function setRuntimeConfig(nextConfig) {
@@ -34,6 +51,16 @@ export function setRuntimeConfig(nextConfig) {
 function safeWindowConfig() {
   try {
     return window.__CROSSAPP_CONFIG__ || {};
+  } catch {
+    return {};
+  }
+}
+
+function safeAppContext() {
+  try {
+    const context = window.__CROSSAPP_APP_CONTEXT__ || {};
+    if (!context || typeof context !== 'object') return {};
+    return { app: context };
   } catch {
     return {};
   }

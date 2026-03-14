@@ -1,10 +1,18 @@
 import { pool } from '../db.js';
 import { migration as baseSchemaMigration } from './001_baseSchema.js';
 import { migration as seedBenchmarksMigration } from './002_seedBenchmarks.js';
+import { migration as sportTypesMigration } from './003_sport_types.js';
+import { migration as competitionSportTypesMigration } from './004_competition_sport_types.js';
+import { migration as sportHistoryMigration } from './005_sport_history.js';
+import { migration as logCompletionStateMigration } from './006_log_completion_state.js';
 
 const MIGRATIONS = [
   baseSchemaMigration,
   seedBenchmarksMigration,
+  sportTypesMigration,
+  competitionSportTypesMigration,
+  sportHistoryMigration,
+  logCompletionStateMigration,
 ];
 
 export async function runMigrations() {

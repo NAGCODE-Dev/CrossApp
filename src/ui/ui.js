@@ -62,11 +62,8 @@ export async function mountUI({ root }) {
 
     const view = renderAll(state);
 
-    setText(refs.subtitle, view.subtitle);
     setHTML(refs.headerAccount, view.headerAccountHtml);
-    setHTML(refs.weekChips, view.weekChipsHtml);
     setHTML(refs.main, view.mainHtml);
-    setHTML(refs.bottomTools, view.bottomToolsHtml);
     setHTML(refs.bottomNav, view.bottomNavHtml);
     setHTML(refs.modals, view.modalsHtml);
     await hydrateGoogleSignIn(uiState);
@@ -292,11 +289,8 @@ function workoutKey(state) {
 function getRefs(root) {
   const q = (sel) => root.querySelector(sel);
   return {
-    subtitle: q('#ui-subtitle'),
     headerAccount: q('#ui-headerAccount'),
-    weekChips: q('#ui-weekChips'),
     main: q('#ui-main'),
-    bottomTools: q('#ui-bottomTools'),
     bottomNav: q('#ui-bottomNav'),
     modals: q('#ui-modals'),
     prsCount: q('#ui-prsCount'),
