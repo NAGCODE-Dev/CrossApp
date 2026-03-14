@@ -1,9 +1,9 @@
 /**
  * Service Worker
- * Versão: 3.1.0
+ * Versão: 3.2.0
  */
 
-const CACHE_NAME = 'crossapp-v3-1';
+const CACHE_NAME = 'crossapp-v3-2';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -72,7 +72,13 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Arquivos estáticos: stale-while-revalidate
+  // Módulos/scripts devem priorizar rede para evitar mismatch entre imports ESM.
+  if (isScriptLikeAsset(request)) {
+    event.respondWith(networkFirst(request));
+    return;
+  }
+
+  // Estáticos restantes: stale-while-revalidate
   if (isStaticAsset(request)) {
     event.respondWith(staleWhileRevalidate(request));
     return;
@@ -97,11 +103,20 @@ self.addEventListener('message', (event) => {
 function isStaticAsset(request) {
   const destination = request.destination;
   return (
-    destination === 'script'
-    || destination === 'style'
+    destination === 'style'
     || destination === 'image'
     || destination === 'font'
     || destination === 'worker'
+  );
+}
+
+function isScriptLikeAsset(request) {
+  const destination = request.destination;
+  const pathname = new URL(request.url).pathname;
+  return (
+    destination === 'script'
+    || pathname.endsWith('.js')
+    || pathname.endsWith('.mjs')
   );
 }
 
