@@ -66,7 +66,6 @@ export async function mountUI({ root }) {
     setHTML(refs.main, view.mainHtml);
     setHTML(refs.bottomNav, view.bottomNavHtml);
     setHTML(refs.modals, view.modalsHtml);
-    await hydrateGoogleSignIn(uiState);
 
     // Contador de PR (se existir no shell)
     if (refs.prsCount) {
@@ -134,58 +133,6 @@ export async function mountUI({ root }) {
   };
 }
 
-async function hydrateGoogleSignIn(uiState, attempt = 0) {
-  if (uiState?.modal !== 'auth') return;
-  const mount = document.getElementById('ui-googleSignIn');
-  if (!mount) return;
-
-  const cfg = await import('../config/runtime.js').then((m) => m.getRuntimeConfig()).catch(() => ({}));
-  const clientId = cfg?.auth?.googleClientId || '';
-  if (!clientId) {
-    mount.innerHTML = '<div class="account-hint">Google Sign-In indisponível nesta configuração.</div>';
-    return;
-  }
-
-  if (!window.google?.accounts?.id) {
-    if (attempt < 8) {
-      window.setTimeout(() => hydrateGoogleSignIn(uiState, attempt + 1), 300);
-      return;
-    }
-    mount.innerHTML = '<div class="account-hint">Google Sign-In indisponível nesta configuração.</div>';
-    return;
-  }
-
-  mount.innerHTML = '';
-  try {
-    window.google.accounts.id.initialize({
-      client_id: clientId,
-      callback: async (response) => {
-        try {
-          const result = await window.__APP__?.signInWithGoogle?.({ credential: response.credential });
-          if (!result?.token && !result?.user) {
-            throw new Error('Falha ao autenticar com Google');
-          }
-          window.dispatchEvent(new CustomEvent('crossapp:auth-changed'));
-        } catch (error) {
-          console.error('Google Sign-In falhou:', error);
-        }
-      },
-      auto_select: false,
-      cancel_on_tap_outside: true,
-    });
-    window.google.accounts.id.renderButton(mount, {
-      theme: 'outline',
-      size: 'large',
-      shape: 'pill',
-      text: 'continue_with',
-      width: Math.min(360, mount.clientWidth || 320),
-    });
-  } catch (error) {
-    mount.innerHTML = '<div class="account-hint">Não foi possível carregar o botão Google.</div>';
-    console.error(error);
-  }
-}
-
 function normalizeUiState(s) {
   const next = { ...(s || {}) };
 
@@ -202,11 +149,10 @@ function normalizeUiState(s) {
   if (typeof next.settings.showObjectivesInWods !== 'boolean') next.settings.showObjectivesInWods = true;
   next.authMode = next.authMode === 'signup' ? 'signup' : 'signin';
   next.passwordReset = next.passwordReset && typeof next.passwordReset === 'object' ? next.passwordReset : {};
-  next.exerciseHelp = next.exerciseHelp && typeof next.exerciseHelp === 'object' ? next.exerciseHelp : null;
   next.admin = next.admin && typeof next.admin === 'object' ? next.admin : { overview: null };
   next.athleteOverview = next.athleteOverview && typeof next.athleteOverview === 'object'
     ? next.athleteOverview
-    : { stats: null, recentResults: [], upcomingCompetitions: [], recentWorkouts: [], gymAccess: [], athleteBenefits: null };
+    : { detailLevel: 'none', stats: null, recentResults: [], upcomingCompetitions: [], recentWorkouts: [], gymAccess: [], athleteBenefits: null };
   next.coachPortal = next.coachPortal && typeof next.coachPortal === 'object'
     ? next.coachPortal
     : {
@@ -214,30 +160,17 @@ function normalizeUiState(s) {
         entitlements: [],
         gymAccess: [],
         gyms: [],
-        benchmarks: [],
-        feed: [],
-        benchmarkQuery: '',
-        benchmarkCategory: '',
         selectedGymId: null,
-        members: [],
-        groups: [],
-        insights: null,
       };
+  if (typeof next.athleteOverview.detailLevel !== 'string') next.athleteOverview.detailLevel = 'none';
   if (!Array.isArray(next.athleteOverview.recentResults)) next.athleteOverview.recentResults = [];
   if (!Array.isArray(next.athleteOverview.upcomingCompetitions)) next.athleteOverview.upcomingCompetitions = [];
   if (!Array.isArray(next.athleteOverview.recentWorkouts)) next.athleteOverview.recentWorkouts = [];
   if (!Array.isArray(next.athleteOverview.gymAccess)) next.athleteOverview.gymAccess = [];
   if (!next.athleteOverview.athleteBenefits || typeof next.athleteOverview.athleteBenefits !== 'object') next.athleteOverview.athleteBenefits = null;
-  if (!Array.isArray(next.coachPortal.members)) next.coachPortal.members = [];
-  if (!Array.isArray(next.coachPortal.groups)) next.coachPortal.groups = [];
   if (!Array.isArray(next.coachPortal.gyms)) next.coachPortal.gyms = [];
-  if (!Array.isArray(next.coachPortal.benchmarks)) next.coachPortal.benchmarks = [];
-  if (!Array.isArray(next.coachPortal.feed)) next.coachPortal.feed = [];
   if (!Array.isArray(next.coachPortal.gymAccess)) next.coachPortal.gymAccess = [];
   if (!Array.isArray(next.coachPortal.entitlements)) next.coachPortal.entitlements = [];
-  if (!next.coachPortal.insights || typeof next.coachPortal.insights !== 'object') next.coachPortal.insights = null;
-  if (typeof next.coachPortal.benchmarkQuery !== 'string') next.coachPortal.benchmarkQuery = '';
-  if (typeof next.coachPortal.benchmarkCategory !== 'string') next.coachPortal.benchmarkCategory = '';
   if (typeof next.coachPortal.selectedGymId !== 'number') next.coachPortal.selectedGymId = next.coachPortal.selectedGymId || null;
 
   return next;
@@ -257,7 +190,6 @@ function buildUiForRender(state, uiState, uiBusy = false) {
     isBusy: uiBusy,
     settings: uiState.settings,
     authMode: uiState.authMode,
-    exerciseHelp: uiState.exerciseHelp,
     auth: {
       profile: safeGetProfile(),
     },

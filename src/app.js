@@ -85,6 +85,7 @@ const AUTO_SYNC_MUTE_AFTER_PULL_MS = 5000;
 
 let autoSyncTimeout = null;
 let autoSyncMutedUntil = 0;
+let authHydrationPromise = null;
 
 const remoteHandlers = createRemoteHandlers({
   getState,
@@ -1179,6 +1180,7 @@ async function applyImportedBackupData(backup, options = {}) {
 export const {
   handleGetProfile,
   handleGetAdminOverview,
+  handleActivateCoachSubscription,
   handleOpenCheckout,
   handleGetSubscriptionStatus,
   handleGetEntitlements,
@@ -1215,25 +1217,19 @@ export const {
 
 export async function handleSignUp(credentials) {
   const result = await remoteHandlers.handleSignUp(credentials);
-  await postAuthHydration();
+  triggerPostAuthHydration();
   return result;
 }
 
 export async function handleSignIn(credentials) {
   const result = await remoteHandlers.handleSignIn(credentials);
-  await postAuthHydration();
-  return result;
-}
-
-export async function handleSignInWithGoogle(payload) {
-  const result = await remoteHandlers.handleSignInWithGoogle(payload);
-  await postAuthHydration();
+  triggerPostAuthHydration();
   return result;
 }
 
 export async function handleRefreshSession() {
   const result = await remoteHandlers.handleRefreshSession();
-  await postAuthHydration();
+  triggerPostAuthHydration();
   return result;
 }
 
@@ -1271,6 +1267,19 @@ async function postAuthHydration() {
   } catch (error) {
     console.warn('Falha ao atualizar feed após autenticação:', error?.message || error);
   }
+}
+
+function triggerPostAuthHydration() {
+  if (authHydrationPromise) return authHydrationPromise;
+  authHydrationPromise = Promise.resolve()
+    .then(() => postAuthHydration())
+    .catch((error) => {
+      console.warn('Falha na hidratação pós-auth:', error?.message || error);
+    })
+    .finally(() => {
+      authHydrationPromise = null;
+    });
+  return authHydrationPromise;
 }
 
 
@@ -1524,13 +1533,13 @@ function exposeDebugAPIs() {
     importBackup: handleImportBackup,
     signUp: handleSignUp,
     signIn: handleSignIn,
-    signInWithGoogle: handleSignInWithGoogle,
     refreshSession: handleRefreshSession,
     requestPasswordReset: handleRequestPasswordReset,
     confirmPasswordReset: handleConfirmPasswordReset,
     signOut: handleSignOut,
     getProfile: handleGetProfile,
     getAdminOverview: handleGetAdminOverview,
+    activateCoachSubscription: handleActivateCoachSubscription,
     createGym: handleCreateGym,
     getMyGyms: handleGetMyGyms,
     addGymMember: handleAddGymMember,

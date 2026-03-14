@@ -81,54 +81,6 @@ function App() {
     }
   }, [token]);
 
-  useEffect(() => {
-    if (token) return;
-    const googleClientId = window.__CROSSAPP_CONFIG__?.auth?.googleClientId || '';
-    const mount = document.getElementById('coach-google-signin');
-    if (!googleClientId || !mount) return;
-
-    let attempt = 0;
-    const timer = window.setInterval(() => {
-      if (!window.google?.accounts?.id) {
-        attempt += 1;
-        if (attempt > 8) window.clearInterval(timer);
-        return;
-      }
-
-      window.clearInterval(timer);
-      mount.innerHTML = '';
-      window.google.accounts.id.initialize({
-        client_id: googleClientId,
-        callback: async (response) => {
-          try {
-            const result = await apiRequest('/auth/google', {
-              method: 'POST',
-              body: { credential: response.credential },
-            });
-            if (result?.token) writeToken(result.token);
-            if (result?.user) writeProfile(result.user);
-            setToken(result.token || '');
-            setProfile(result.user || null);
-            setMessage('Sessão iniciada com Google');
-          } catch (err) {
-            setError(err.message || 'Erro ao autenticar com Google');
-          }
-        },
-        auto_select: false,
-        cancel_on_tap_outside: true,
-      });
-      window.google.accounts.id.renderButton(mount, {
-        theme: 'outline',
-        size: 'large',
-        shape: 'pill',
-        text: 'continue_with',
-        width: 320,
-      });
-    }, 300);
-
-    return () => window.clearInterval(timer);
-  }, [token]);
-
   async function handleLogin(event) {
     event.preventDefault();
     setLoading(true);
@@ -608,10 +560,6 @@ function App() {
               onChange: (e) => setLogin((prev) => ({ ...prev, password: e.target.value })),
             }),
             React.createElement('button', { className: 'btn btn-primary', type: 'submit', disabled: loading }, loading ? 'Entrando...' : 'Entrar')
-          ),
-          React.createElement('div', { className: 'auth-google' },
-            React.createElement('div', { className: 'muted auth-dividerText' }, 'ou'),
-            React.createElement('div', { id: 'coach-google-signin' })
           ),
           React.createElement('a', { className: 'portal-link', href: '/' }, 'Abrir app do atleta')
         ),
@@ -1373,7 +1321,7 @@ function readRuntimeConfig() {
 
 function resolveBillingProvider() {
   const cfg = readRuntimeConfig();
-  return cfg?.billing?.provider || 'stripe';
+  return cfg?.billing?.provider || 'kiwify_link';
 }
 
 function resolveKiwifyCheckoutUrl(planId) {

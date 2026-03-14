@@ -21,7 +21,7 @@
 
 ## 4. Monetização
 - Definir plano gratuito vs pago com limites claros.
-- Integrar checkout/assinatura (Stripe, Mercado Pago, etc).
+- Fechar checkout/assinatura com o provider real escolhido.
 - Aplicar controle de licenças/assinatura no backend.
 
 ## 5. Operação comercial

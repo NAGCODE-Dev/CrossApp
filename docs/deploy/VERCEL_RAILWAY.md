@@ -9,7 +9,7 @@ Arquitetura recomendada para este projeto:
 ## Motivo
 
 - o frontend é estático e encaixa bem no Vercel
-- o backend precisa de processo Node persistente, webhook Stripe e conexão Postgres
+- o backend precisa de processo Node persistente e conexão Postgres
 - separar frontend e backend reduz acoplamento operacional
 
 ## Frontend no Vercel
@@ -36,9 +36,13 @@ Defina:
 ```env
 CROSSAPP_API_BASE_URL=https://your-backend.up.railway.app
 CROSSAPP_TELEMETRY_ENABLED=true
-CROSSAPP_BILLING_PROVIDER=stripe
+CROSSAPP_BILLING_PROVIDER=kiwify_link
 CROSSAPP_BILLING_SUCCESS_URL=https://your-frontend.vercel.app/coach/?billing=success
 CROSSAPP_BILLING_CANCEL_URL=https://your-frontend.vercel.app/coach/?billing=cancel
+CROSSAPP_KIWIFY_CHECKOUT_STARTER_URL=
+CROSSAPP_KIWIFY_CHECKOUT_PRO_URL=
+CROSSAPP_KIWIFY_CHECKOUT_COACH_URL=
+CROSSAPP_KIWIFY_CHECKOUT_PERFORMANCE_URL=
 ```
 
 ### Configuração do frontend
@@ -52,7 +56,7 @@ window.__CROSSAPP_CONFIG__ = {
   apiBaseUrl: 'https://your-backend.up.railway.app',
   telemetryEnabled: true,
   billing: {
-    provider: 'stripe',
+    provider: 'kiwify_link',
     successUrl: 'https://your-frontend.vercel.app/coach/?billing=success',
     cancelUrl: 'https://your-frontend.vercel.app/coach/?billing=cancel',
   },
@@ -87,11 +91,6 @@ SMTP_SECURE=false
 SMTP_USER=
 SMTP_PASS=
 SMTP_FROM=nagcode.contact@gmail.com
-STRIPE_SECRET_KEY=
-STRIPE_WEBHOOK_SECRET=
-STRIPE_PRICE_COACH=
-STRIPE_PRICE_PRO=
-STRIPE_PRICE_STARTER=
 ```
 
 ### Healthcheck
@@ -102,24 +101,9 @@ Depois do deploy:
 curl https://your-backend.up.railway.app/health
 ```
 
-## Stripe
+## Billing atual
 
-No Stripe, configurar:
-
-- `success_url`: `https://your-frontend.vercel.app/coach/?billing=success`
-- `cancel_url`: `https://your-frontend.vercel.app/coach/?billing=cancel`
-- webhook para:
-
-```text
-https://your-backend.up.railway.app/billing/webhook
-```
-
-Eventos mínimos:
-
-- `checkout.session.completed`
-- `customer.subscription.created`
-- `customer.subscription.updated`
-- `customer.subscription.deleted`
+Use links da Kiwify configurados nas envs do frontend. O backend não precisa de webhook de cobrança no estado atual.
 
 ## Pós-deploy
 
@@ -129,7 +113,7 @@ Checklist:
 2. abrir `https://your-frontend.vercel.app/coach/`
 3. criar conta
 4. criar gym
-5. ativar plano local ou Stripe
+5. ativar plano local ou abrir checkout Kiwify
 6. publicar treino
 7. validar `GET /health`
 8. validar login, benchmark, competição e rankings

@@ -14,12 +14,6 @@ export async function signIn(payload) {
   return res;
 }
 
-export async function signInWithGoogle(payload) {
-  const res = await apiRequest('/auth/google', { method: 'POST', body: payload });
-  handleAuthResponse(res);
-  return res;
-}
-
 export async function refreshSession() {
   const res = await apiRequest('/auth/refresh', { method: 'POST' });
   handleAuthResponse(res);

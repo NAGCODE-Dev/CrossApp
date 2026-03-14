@@ -25,10 +25,13 @@ Arquitetura recomendada para validar o produto sem custo imediato:
 ```env
 CROSSAPP_API_BASE_URL=https://your-backend.onrender.com
 CROSSAPP_TELEMETRY_ENABLED=true
-CROSSAPP_GOOGLE_CLIENT_ID=
-CROSSAPP_BILLING_PROVIDER=stripe
+CROSSAPP_BILLING_PROVIDER=kiwify_link
 CROSSAPP_BILLING_SUCCESS_URL=https://your-frontend.vercel.app/coach/?billing=success
 CROSSAPP_BILLING_CANCEL_URL=https://your-frontend.vercel.app/coach/?billing=cancel
+CROSSAPP_KIWIFY_CHECKOUT_STARTER_URL=
+CROSSAPP_KIWIFY_CHECKOUT_PRO_URL=
+CROSSAPP_KIWIFY_CHECKOUT_COACH_URL=
+CROSSAPP_KIWIFY_CHECKOUT_PERFORMANCE_URL=
 ```
 
 Arquivo de referência no repositório:
@@ -81,7 +84,6 @@ PORT=8787
 DATABASE_URL=<connection string do Supabase>
 JWT_SECRET=troque-isto
 FRONTEND_ORIGIN=https://your-frontend.vercel.app
-GOOGLE_CLIENT_ID=
 SUPPORT_EMAIL=nagcode.contact@gmail.com
 ADMIN_EMAILS=nagcode.contact@gmail.com
 DEV_EMAILS=nagcode.contact@gmail.com
@@ -92,11 +94,6 @@ SMTP_SECURE=false
 SMTP_USER=
 SMTP_PASS=
 SMTP_FROM=nagcode.contact@gmail.com
-STRIPE_SECRET_KEY=
-STRIPE_WEBHOOK_SECRET=
-STRIPE_PRICE_COACH=
-STRIPE_PRICE_PRO=
-STRIPE_PRICE_STARTER=
 ```
 
 ### Teste
@@ -115,17 +112,9 @@ Depois que o Render subir:
 2. configurar `CROSSAPP_API_BASE_URL` no Vercel
 3. redeploy do frontend
 
-## Stripe depois
+## Billing atual
 
-Quando você puder ativar cobrança real:
-
-- `success_url`: `https://your-frontend.vercel.app/coach/?billing=success`
-- `cancel_url`: `https://your-frontend.vercel.app/coach/?billing=cancel`
-- webhook:
-
-```text
-https://your-backend.onrender.com/billing/webhook
-```
+O projeto usa `kiwify_link` no frontend para abrir checkout externo por plano. O backend não depende de webhook de cobrança no estado atual.
 
 ## Limitação do plano gratuito
 

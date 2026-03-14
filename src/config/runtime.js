@@ -24,11 +24,8 @@ const defaults = {
       strength: '/sports/strength/',
     },
   },
-  auth: {
-    googleClientId: '',
-  },
   billing: {
-    provider: 'stripe', // stripe | mercadopago | kiwify_link
+    provider: 'kiwify_link',
     successUrl: '',
     cancelUrl: '',
     links: {

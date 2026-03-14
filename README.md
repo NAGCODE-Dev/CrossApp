@@ -16,19 +16,18 @@ PWA para importar programação de treino, calcular cargas, manter PRs, operar o
 - Cálculo automático de cargas a partir de PRs
 - Backup e restauração completos
 - Login, cadastro e sync remoto
-- Login com Google via Google Identity Services
 - Estrutura multi-tenant para `gym / coach / athlete`
 - Publicação de treinos do coach para atletas do gym
 - Reset de senha com código temporário
 - Painel admin básico para usuários/assinaturas
-- Billing Stripe com webhook e bloqueio automático do coach
+- Billing via link externo da Kiwify e ativação local de desenvolvimento
 - Grace period de assinatura com estados de acesso para coach/atleta
 - Biblioteca de benchmarks com seed expandido, filtros e feed enriquecido
 - Resultados de benchmark com leaderboard por slug/gym
 - Calendário de competições com eventos vinculados a benchmark
 - Ranking por evento e ranking agregado por competição
 - Telemetria com consentimento
-- Base pronta para billing via Stripe/Mercado Pago
+- Base pronta para billing via Kiwify link
 - Página pública de planos em `pricing.html`
 - `config.js` para apontar o frontend para backend externo em produção
 
@@ -173,11 +172,11 @@ SMTP_SECURE=false
 SMTP_USER=
 SMTP_PASS=
 SMTP_FROM=nagcode.contact@gmail.com
-STRIPE_SECRET_KEY=
-STRIPE_WEBHOOK_SECRET=
-STRIPE_PRICE_COACH=
-STRIPE_PRICE_PRO=
-STRIPE_PRICE_STARTER=
+CROSSAPP_BILLING_PROVIDER=kiwify_link
+CROSSAPP_KIWIFY_CHECKOUT_STARTER_URL=
+CROSSAPP_KIWIFY_CHECKOUT_PRO_URL=
+CROSSAPP_KIWIFY_CHECKOUT_COACH_URL=
+CROSSAPP_KIWIFY_CHECKOUT_PERFORMANCE_URL=
 ```
 
 ## Coach Portal

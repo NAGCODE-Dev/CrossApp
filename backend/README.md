@@ -2,13 +2,12 @@
 
 Backend Node + Postgres para:
 - autenticação
-- billing (mock pronto para plugar Stripe/Mercado Pago)
+- billing (Kiwify link no frontend + mock local de desenvolvimento)
 - sync entre dispositivos
 - telemetria
 - reset de senha por código
 - painel admin básico
 - gyms, memberships e feed de treinos
-- Stripe checkout e webhook
 - benchmark library
 
 ## Rodar com Docker (recomendado)
@@ -43,7 +42,7 @@ Se você quiser apontar para outro backend, use no console do app:
 __APP__.setRuntimeConfig({
   apiBaseUrl: 'https://sua-api.example.com',
   billing: {
-    provider: 'stripe'
+    provider: 'kiwify_link'
   }
 })
 ```
@@ -126,19 +125,10 @@ Seeds:
 - `backend/src/benchmarks/hero.js`
 - `backend/src/benchmarks/open.js`
 
-## Stripe
+## Billing atual
 
-Configuração por env:
-
-- `STRIPE_SECRET_KEY`
-- `STRIPE_WEBHOOK_SECRET`
-- `STRIPE_PRICE_COACH`
-- `STRIPE_PRICE_PRO`
-- `STRIPE_PRICE_STARTER`
-
-Rotas:
-
-- `POST /billing/checkout`
-- `POST /billing/webhook`
-
-Quando configurado, o checkout cria sessão real de assinatura e o webhook atualiza o status salvo no banco.
+- checkout externo por link da Kiwify no frontend
+- backend mantém:
+  - `GET /billing/status`
+  - `GET /billing/entitlements`
+  - `POST /billing/mock/activate` para desenvolvimento
