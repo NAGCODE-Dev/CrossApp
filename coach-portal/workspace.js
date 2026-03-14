@@ -7,9 +7,16 @@ const STORAGE_KEYS = {
   runtime: 'crossapp-runtime-config',
 };
 
+const SPORT_OPTIONS = [
+  { value: 'cross', label: 'Cross' },
+  { value: 'running', label: 'Running' },
+  { value: 'strength', label: 'Strength' },
+];
+
 export default function CoachWorkspace({ profile: initialProfile = null, onLogout = null } = {}) {
   const token = readToken();
   const profile = initialProfile || readProfile();
+  const availableSportOptions = getAvailableSportOptions(readRuntimeConfig());
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -28,6 +35,7 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
     members: [],
     groups: [],
     selectedGymId: null,
+    selectedSportType: 'cross',
     insights: null,
   });
   const [forms, setForms] = useState({
@@ -42,6 +50,18 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
     workoutDate: '',
     workoutBenchmarkSlug: '',
     workoutLines: '',
+    runningSessionType: 'easy',
+    runningDistanceKm: '',
+    runningDurationMin: '',
+    runningTargetPace: '',
+    runningZone: '',
+    runningNotes: '',
+    runningSegments: [{ label: '', distanceMeters: '', targetPace: '', restSeconds: '' }],
+    strengthFocus: '',
+    strengthLoadGuidance: '',
+    strengthRir: '',
+    strengthRestSeconds: '',
+    strengthExercises: [{ name: '', sets: '', reps: '', load: '', rir: '' }],
     workoutAudienceMode: 'all',
     targetMembershipIds: [],
     targetGroupIds: [],
@@ -76,17 +96,21 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
     }
   }, [token]);
 
-  async function loadDashboard(nextGymId = null) {
+  async function loadDashboard(nextGymId = null, nextSportType = null) {
     setLoading(true);
     setError('');
     try {
+      const preferredSportType = nextSportType || dashboard.selectedSportType || 'cross';
+      const selectedSportType = availableSportOptions.some((sport) => sport.value === preferredSportType)
+        ? preferredSportType
+        : (availableSportOptions[0]?.value || 'cross');
       const [subscription, entitlementsRes, gymsRes, feedRes, benchmarksRes, competitionsRes] = await Promise.all([
         apiRequest('/billing/status'),
         apiRequest('/billing/entitlements'),
         apiRequest('/gyms/me'),
-        apiRequest('/workouts/feed'),
+        apiRequest(`/workouts/feed?sportType=${encodeURIComponent(selectedSportType)}`),
         apiRequest('/benchmarks?limit=30&sort=year_desc'),
-        apiRequest('/competitions/calendar'),
+        apiRequest(`/competitions/calendar?sportType=${encodeURIComponent(selectedSportType)}`),
       ]);
 
       const gyms = gymsRes?.gyms || [];
@@ -97,8 +121,8 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
       if (selectedGymId) {
         const [membersRes, groupsRes, insightsRes] = await Promise.all([
           apiRequest(`/gyms/${selectedGymId}/memberships`),
-          apiRequest(`/gyms/${selectedGymId}/groups`),
-          apiRequest(`/gyms/${selectedGymId}/insights`),
+          apiRequest(`/gyms/${selectedGymId}/groups?sportType=${encodeURIComponent(selectedSportType)}`),
+          apiRequest(`/gyms/${selectedGymId}/insights?sportType=${encodeURIComponent(selectedSportType)}`),
         ]);
         members = membersRes?.memberships || [];
         groups = groupsRes?.groups || [];
@@ -120,6 +144,7 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
         members,
         groups,
         selectedGymId,
+        selectedSportType,
         insights,
       });
     } catch (err) {
@@ -140,7 +165,7 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
       });
       setForms((prev) => ({ ...prev, gymName: '', gymSlug: '' }));
       setMessage(`Gym criado: ${res?.gym?.name || ''}`);
-      await loadDashboard(res?.gym?.id || null);
+      await loadDashboard(res?.gym?.id || null, dashboard.selectedSportType);
     } catch (err) {
       setError(err.message || 'Erro ao criar gym');
     } finally {
@@ -149,7 +174,11 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
   }
 
   async function handleSelectGym(gymId) {
-    await loadDashboard(gymId);
+    await loadDashboard(gymId, dashboard.selectedSportType);
+  }
+
+  async function handleSelectSportType(sportType) {
+    await loadDashboard(dashboard.selectedGymId, sportType);
   }
 
   async function handleAddMember(event) {
@@ -167,7 +196,7 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
       });
       setForms((prev) => ({ ...prev, memberEmail: '', memberRole: 'athlete' }));
       setMessage('Membro adicionado');
-      await loadDashboard(dashboard.selectedGymId);
+      await loadDashboard(dashboard.selectedGymId, dashboard.selectedSportType);
     } catch (err) {
       setError(err.message || 'Erro ao adicionar membro');
     } finally {
@@ -186,6 +215,7 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
         body: {
           name: forms.groupName,
           description: forms.groupDescription,
+          sportType: dashboard.selectedSportType,
           memberIds: forms.selectedGroupMemberIds,
         },
       });
@@ -196,7 +226,7 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
         selectedGroupMemberIds: [],
       }));
       setMessage('Grupo criado');
-      await loadDashboard(dashboard.selectedGymId);
+      await loadDashboard(dashboard.selectedGymId, dashboard.selectedSportType);
     } catch (err) {
       setError(err.message || 'Erro ao criar grupo');
     } finally {
@@ -215,6 +245,32 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
     });
   }
 
+  function updateCollectionItem(key, index, field, value) {
+    setForms((prev) => {
+      const nextItems = Array.isArray(prev[key]) ? [...prev[key]] : [];
+      nextItems[index] = { ...(nextItems[index] || {}), [field]: value };
+      return { ...prev, [key]: nextItems };
+    });
+  }
+
+  function addCollectionItem(key, factory) {
+    setForms((prev) => ({
+      ...prev,
+      [key]: [...(Array.isArray(prev[key]) ? prev[key] : []), factory()],
+    }));
+  }
+
+  function removeCollectionItem(key, index) {
+    setForms((prev) => {
+      const current = Array.isArray(prev[key]) ? prev[key] : [];
+      if (current.length <= 1) return prev;
+      return {
+        ...prev,
+        [key]: current.filter((_, itemIndex) => itemIndex !== index),
+      };
+    });
+  }
+
   async function handlePublishWorkout(event) {
     event.preventDefault();
     if (!dashboard.selectedGymId) return;
@@ -226,18 +282,68 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
         .map((line) => line.trim())
         .filter(Boolean);
 
+      let payload;
+
+      if (dashboard.selectedSportType === 'running') {
+        const segments = (forms.runningSegments || [])
+          .map((segment) => ({
+            label: String(segment.label || '').trim(),
+            distanceMeters: segment.distanceMeters ? Number(segment.distanceMeters) : null,
+            targetPace: String(segment.targetPace || '').trim(),
+            restSeconds: segment.restSeconds ? Number(segment.restSeconds) : null,
+          }))
+          .filter((segment) => segment.label || segment.distanceMeters || segment.targetPace || segment.restSeconds);
+
+        payload = {
+          session: {
+            type: forms.runningSessionType || 'easy',
+            distanceKm: forms.runningDistanceKm ? Number(forms.runningDistanceKm) : null,
+            durationMin: forms.runningDurationMin ? Number(forms.runningDurationMin) : null,
+            targetPace: forms.runningTargetPace || '',
+            zone: forms.runningZone || '',
+            notes: forms.runningNotes || '',
+            segments,
+          },
+          blocks: lines.length ? [{ type: 'RUNNING', lines }] : [],
+        };
+      } else if (dashboard.selectedSportType === 'strength') {
+        const exercises = (forms.strengthExercises || [])
+          .map((exercise) => ({
+            name: String(exercise.name || '').trim(),
+            sets: exercise.sets ? Number(exercise.sets) : null,
+            reps: String(exercise.reps || '').trim(),
+            load: String(exercise.load || '').trim(),
+            rir: exercise.rir ? Number(exercise.rir) : null,
+          }))
+          .filter((exercise) => exercise.name);
+
+        payload = {
+          strength: {
+            focus: forms.strengthFocus || '',
+            loadGuidance: forms.strengthLoadGuidance || '',
+            rir: forms.strengthRir ? Number(forms.strengthRir) : null,
+            restSeconds: forms.strengthRestSeconds ? Number(forms.strengthRestSeconds) : null,
+            exercises,
+          },
+          blocks: lines.length ? [{ type: 'STRENGTH', lines }] : [],
+        };
+      } else {
+        payload = {
+          blocks: [{ type: 'PROGRAMMING', lines }],
+          ...(forms.workoutBenchmarkSlug ? { benchmarkSlug: forms.workoutBenchmarkSlug.trim() } : {}),
+        };
+      }
+
       await apiRequest(`/gyms/${dashboard.selectedGymId}/workouts`, {
         method: 'POST',
         body: {
+          sportType: dashboard.selectedSportType,
           title: forms.workoutTitle,
           scheduledDate: forms.workoutDate,
           audienceMode: forms.workoutAudienceMode,
           targetMembershipIds: forms.targetMembershipIds,
           targetGroupIds: forms.targetGroupIds,
-          payload: {
-            blocks: [{ type: 'PROGRAMMING', lines }],
-            ...(forms.workoutBenchmarkSlug ? { benchmarkSlug: forms.workoutBenchmarkSlug.trim() } : {}),
-          },
+          payload,
         },
       });
       setForms((prev) => ({
@@ -246,12 +352,24 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
         workoutDate: '',
         workoutBenchmarkSlug: '',
         workoutLines: '',
+        runningSessionType: 'easy',
+        runningDistanceKm: '',
+        runningDurationMin: '',
+        runningTargetPace: '',
+        runningZone: '',
+        runningNotes: '',
+        runningSegments: [{ label: '', distanceMeters: '', targetPace: '', restSeconds: '' }],
+        strengthFocus: '',
+        strengthLoadGuidance: '',
+        strengthRir: '',
+        strengthRestSeconds: '',
+        strengthExercises: [{ name: '', sets: '', reps: '', load: '', rir: '' }],
         workoutAudienceMode: 'all',
         targetMembershipIds: [],
         targetGroupIds: [],
       }));
       setMessage('Treino publicado');
-      await loadDashboard(dashboard.selectedGymId);
+      await loadDashboard(dashboard.selectedGymId, dashboard.selectedSportType);
     } catch (err) {
       setError(err.message || 'Erro ao publicar treino');
     } finally {
@@ -327,7 +445,7 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
         body: { planId: 'coach', provider: 'mock' },
       });
       setMessage('Plano Coach local ativado');
-      await loadDashboard(dashboard.selectedGymId);
+      await loadDashboard(dashboard.selectedGymId, dashboard.selectedSportType);
     } catch (err) {
       setError(err.message || 'Erro ao ativar plano local');
     } finally {
@@ -344,6 +462,7 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
       await apiRequest(`/gyms/${dashboard.selectedGymId}/competitions`, {
         method: 'POST',
         body: {
+          sportType: dashboard.selectedSportType,
           title: forms.competitionTitle,
           startsAt: forms.competitionDate,
           location: forms.competitionLocation,
@@ -352,7 +471,7 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
       });
       setForms((prev) => ({ ...prev, competitionTitle: '', competitionDate: '', competitionLocation: '', competitionVisibility: 'gym' }));
       setMessage('Competição criada');
-      await loadDashboard(dashboard.selectedGymId);
+      await loadDashboard(dashboard.selectedGymId, dashboard.selectedSportType);
     } catch (err) {
       setError(err.message || 'Erro ao criar competição');
     } finally {
@@ -375,7 +494,7 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
       });
       setForms((prev) => ({ ...prev, eventCompetitionId: '', eventTitle: '', eventDate: '', eventBenchmarkSlug: '' }));
       setMessage('Evento criado');
-      await loadDashboard(dashboard.selectedGymId);
+      await loadDashboard(dashboard.selectedGymId, dashboard.selectedSportType);
     } catch (err) {
       setError(err.message || 'Erro ao criar evento');
     } finally {
@@ -388,7 +507,7 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
     setLoading(true);
     setError('');
     try {
-      const search = new URLSearchParams({ limit: '20' });
+      const search = new URLSearchParams({ limit: '20', sportType: dashboard.selectedSportType || 'cross' });
       if (dashboard.selectedGymId) search.set('gymId', String(dashboard.selectedGymId));
       const res = await apiRequest(`/leaderboards/benchmarks/${forms.leaderboardSlug}?${search.toString()}`);
       setDashboard((prev) => ({
@@ -415,6 +534,7 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
         method: 'POST',
         body: {
           gymId: dashboard.selectedGymId || null,
+          sportType: dashboard.selectedSportType,
           scoreDisplay: forms.resultScore,
           notes: forms.resultNotes,
         },
@@ -490,6 +610,215 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
   const canUseDeveloperTools = String(profile?.email || '').toLowerCase() === 'nagcode.contact@gmail.com';
   const athleteMembers = dashboard.members.filter((member) => member.role === 'athlete' && member.status === 'active');
   const showSkeleton = loading && !dashboard.gyms.length && !dashboard.feed.length && !dashboard.benchmarks.length;
+  const isRunning = dashboard.selectedSportType === 'running';
+  const isStrength = dashboard.selectedSportType === 'strength';
+
+  function renderSportSpecificWorkoutFields() {
+    if (isRunning) {
+      return React.createElement(React.Fragment, null,
+        React.createElement('div', { className: 'grid dual-grid' },
+          React.createElement('select', {
+            className: 'field',
+            value: forms.runningSessionType,
+            onChange: (e) => setForms((prev) => ({ ...prev, runningSessionType: e.target.value })),
+          },
+            React.createElement('option', { value: 'easy' }, 'Easy run'),
+            React.createElement('option', { value: 'interval' }, 'Intervalado'),
+            React.createElement('option', { value: 'tempo' }, 'Tempo run'),
+            React.createElement('option', { value: 'long' }, 'Longão'),
+            React.createElement('option', { value: 'recovery' }, 'Recovery')
+          ),
+          React.createElement('input', {
+            className: 'field',
+            type: 'number',
+            min: '0',
+            step: '0.1',
+            placeholder: 'Distância (km)',
+            value: forms.runningDistanceKm,
+            onChange: (e) => setForms((prev) => ({ ...prev, runningDistanceKm: e.target.value })),
+          }),
+          React.createElement('input', {
+            className: 'field',
+            type: 'number',
+            min: '0',
+            step: '1',
+            placeholder: 'Duração (min)',
+            value: forms.runningDurationMin,
+            onChange: (e) => setForms((prev) => ({ ...prev, runningDurationMin: e.target.value })),
+          }),
+          React.createElement('input', {
+            className: 'field',
+            placeholder: 'Pace alvo (ex: 5:00/km)',
+            value: forms.runningTargetPace,
+            onChange: (e) => setForms((prev) => ({ ...prev, runningTargetPace: e.target.value })),
+          }),
+          React.createElement('input', {
+            className: 'field',
+            placeholder: 'Zona (ex: Z2, Threshold)',
+            value: forms.runningZone,
+            onChange: (e) => setForms((prev) => ({ ...prev, runningZone: e.target.value })),
+          }),
+          React.createElement('input', {
+            className: 'field',
+            placeholder: 'Notas rápidas',
+            value: forms.runningNotes,
+            onChange: (e) => setForms((prev) => ({ ...prev, runningNotes: e.target.value })),
+          }),
+        ),
+        React.createElement('div', { className: 'stack nested-card' },
+          React.createElement('div', { className: 'eyebrow' }, 'Segmentos / intervalos'),
+          (forms.runningSegments || []).map((segment, index) =>
+            React.createElement('div', { key: `seg-${index}`, className: 'grid dual-grid' },
+              React.createElement('input', {
+                className: 'field',
+                placeholder: 'Bloco (ex: 6x400m)',
+                value: segment.label,
+                onChange: (e) => updateCollectionItem('runningSegments', index, 'label', e.target.value),
+              }),
+              React.createElement('input', {
+                className: 'field',
+                type: 'number',
+                min: '0',
+                step: '50',
+                placeholder: 'Distância (m)',
+                value: segment.distanceMeters,
+                onChange: (e) => updateCollectionItem('runningSegments', index, 'distanceMeters', e.target.value),
+              }),
+              React.createElement('input', {
+                className: 'field',
+                placeholder: 'Pace alvo',
+                value: segment.targetPace,
+                onChange: (e) => updateCollectionItem('runningSegments', index, 'targetPace', e.target.value),
+              }),
+              React.createElement('div', { className: 'stack' },
+                React.createElement('input', {
+                  className: 'field',
+                  type: 'number',
+                  min: '0',
+                  step: '15',
+                  placeholder: 'Descanso (seg)',
+                  value: segment.restSeconds,
+                  onChange: (e) => updateCollectionItem('runningSegments', index, 'restSeconds', e.target.value),
+                }),
+                React.createElement('button', {
+                  type: 'button',
+                  className: 'btn btn-secondary',
+                  onClick: () => removeCollectionItem('runningSegments', index),
+                  disabled: (forms.runningSegments || []).length <= 1,
+                }, 'Remover segmento')
+              )
+            )
+          ),
+          React.createElement('button', {
+            type: 'button',
+            className: 'btn btn-secondary',
+            onClick: () => addCollectionItem('runningSegments', () => ({ label: '', distanceMeters: '', targetPace: '', restSeconds: '' })),
+          }, 'Adicionar segmento')
+        ),
+      );
+    }
+
+    if (isStrength) {
+      return React.createElement(React.Fragment, null,
+        React.createElement('div', { className: 'grid dual-grid' },
+          React.createElement('input', {
+            className: 'field',
+            placeholder: 'Foco (ex: Lower, Push, Pull)',
+            value: forms.strengthFocus,
+            onChange: (e) => setForms((prev) => ({ ...prev, strengthFocus: e.target.value })),
+          }),
+          React.createElement('input', {
+            className: 'field',
+            placeholder: 'Carga/guia (ex: 75-80% RM)',
+            value: forms.strengthLoadGuidance,
+            onChange: (e) => setForms((prev) => ({ ...prev, strengthLoadGuidance: e.target.value })),
+          }),
+          React.createElement('input', {
+            className: 'field',
+            type: 'number',
+            min: '0',
+            step: '0.5',
+            placeholder: 'RIR',
+            value: forms.strengthRir,
+            onChange: (e) => setForms((prev) => ({ ...prev, strengthRir: e.target.value })),
+          }),
+          React.createElement('input', {
+            className: 'field',
+            type: 'number',
+            min: '0',
+            step: '15',
+            placeholder: 'Descanso (seg)',
+            value: forms.strengthRestSeconds,
+            onChange: (e) => setForms((prev) => ({ ...prev, strengthRestSeconds: e.target.value })),
+          }),
+        ),
+        React.createElement('div', { className: 'stack nested-card' },
+          React.createElement('div', { className: 'eyebrow' }, 'Exercícios estruturados'),
+          (forms.strengthExercises || []).map((exercise, index) =>
+            React.createElement('div', { key: `ex-${index}`, className: 'grid dual-grid' },
+              React.createElement('input', {
+                className: 'field',
+                placeholder: 'Exercício',
+                value: exercise.name,
+                onChange: (e) => updateCollectionItem('strengthExercises', index, 'name', e.target.value),
+              }),
+              React.createElement('input', {
+                className: 'field',
+                type: 'number',
+                min: '1',
+                step: '1',
+                placeholder: 'Sets',
+                value: exercise.sets,
+                onChange: (e) => updateCollectionItem('strengthExercises', index, 'sets', e.target.value),
+              }),
+              React.createElement('input', {
+                className: 'field',
+                placeholder: 'Reps (ex: 5 ou 8-10)',
+                value: exercise.reps,
+                onChange: (e) => updateCollectionItem('strengthExercises', index, 'reps', e.target.value),
+              }),
+              React.createElement('input', {
+                className: 'field',
+                placeholder: 'Carga (ex: 100kg ou 75%)',
+                value: exercise.load,
+                onChange: (e) => updateCollectionItem('strengthExercises', index, 'load', e.target.value),
+              }),
+              React.createElement('input', {
+                className: 'field',
+                type: 'number',
+                min: '0',
+                step: '0.5',
+                placeholder: 'RIR',
+                value: exercise.rir,
+                onChange: (e) => updateCollectionItem('strengthExercises', index, 'rir', e.target.value),
+              }),
+              React.createElement('button', {
+                type: 'button',
+                className: 'btn btn-secondary',
+                onClick: () => removeCollectionItem('strengthExercises', index),
+                disabled: (forms.strengthExercises || []).length <= 1,
+              }, 'Remover exercício')
+            )
+          ),
+          React.createElement('button', {
+            type: 'button',
+            className: 'btn btn-secondary',
+            onClick: () => addCollectionItem('strengthExercises', () => ({ name: '', sets: '', reps: '', load: '', rir: '' })),
+          }, 'Adicionar exercício')
+        ),
+      );
+    }
+
+    return [
+      React.createElement('input', {
+        key: 'benchmark',
+        className: 'field',
+        placeholder: 'benchmark slug opcional (ex: fran)',
+        value: forms.workoutBenchmarkSlug,
+        onChange: (e) => setForms((prev) => ({ ...prev, workoutBenchmarkSlug: e.target.value })),
+      }),
+    ];
+  }
 
   return React.createElement('div', { className: 'portal-shell' },
     React.createElement('aside', { className: 'sidebar' },
@@ -510,7 +839,7 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
         )
       ),
       React.createElement('div', { className: 'stack' },
-        React.createElement('button', { className: 'btn btn-secondary', onClick: () => loadDashboard(dashboard.selectedGymId) }, 'Atualizar dados'),
+        React.createElement('button', { className: 'btn btn-secondary', onClick: () => loadDashboard(dashboard.selectedGymId, dashboard.selectedSportType) }, 'Atualizar dados'),
         React.createElement('button', { className: 'btn btn-secondary', onClick: handleLogout }, 'Sair'),
         React.createElement('a', { className: 'btn btn-link', href: '/' }, 'Voltar ao app do atleta')
       )
@@ -525,6 +854,22 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
         React.createElement('div', { className: 'hero-pills' },
           React.createElement('span', { className: `pill ${canCoachManage ? 'ok' : 'warn'}` }, canCoachManage ? 'Coach liberado' : 'Coach bloqueado'),
           React.createElement('span', { className: `pill ${canAthleteUseApp ? 'ok' : 'warn'}` }, canAthleteUseApp ? 'Atletas com acesso' : 'Atletas limitados')
+        )
+      ),
+      React.createElement('section', { className: 'card' },
+        React.createElement('div', { className: 'stack' },
+          React.createElement('div', { className: 'eyebrow' }, 'Modalidade ativa'),
+          React.createElement('strong', null, 'Troque o contexto do portal para publicar e gerenciar por esporte'),
+          React.createElement('div', { className: 'tabs' },
+            availableSportOptions.map((sport) =>
+              React.createElement('button', {
+                key: sport.value,
+                type: 'button',
+                className: `btn btn-chip ${dashboard.selectedSportType === sport.value ? 'is-active' : ''}`,
+                onClick: () => handleSelectSportType(sport.value),
+              }, sport.label)
+            )
+          )
         )
       ),
       error ? React.createElement('div', { className: 'notice error' }, error) : null,
@@ -556,6 +901,7 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
               statCard('Plano', planName),
               statCard('Status', planStatus),
               statCard('Gyms', String(dashboard.gyms.length)),
+              statCard('Modalidade', sportLabel(dashboard.selectedSportType)),
               statCard('Treinos no feed', String(dashboard.feed.length)),
               statCard('Atletas ativos', String(dashboard.insights?.stats?.athletes || 0)),
               statCard('Resultados', String(dashboard.insights?.stats?.results || 0)),
@@ -656,13 +1002,14 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
         ),
         React.createElement('div', { className: 'card' },
           React.createElement('h3', null, selectedGym ? `Grupos de ${selectedGym.name}` : 'Grupos'),
+          React.createElement('p', { className: 'muted' }, `Mostrando grupos de ${sportLabel(dashboard.selectedSportType)}.`),
           React.createElement('div', { className: 'stack list-block' },
             showSkeleton
               ? portalSkeletonList(2)
               : dashboard.groups.map((group) =>
               React.createElement('div', { key: group.id, className: 'list-item static' },
                 React.createElement('strong', null, group.name),
-                React.createElement('span', null, `${group.member_count || group.members?.length || 0} atleta(s)${group.description ? ` • ${group.description}` : ''}`)
+                React.createElement('span', null, `${group.member_count || group.members?.length || 0} atleta(s) • ${sportLabel(group.sport_type || dashboard.selectedSportType)}${group.description ? ` • ${group.description}` : ''}`)
               )
               ),
             dashboard.groups.length === 0 ? React.createElement('p', { className: 'muted' }, 'Crie grupos para blocos especiais e planilhas separadas.') : null
@@ -702,6 +1049,7 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
         ),
         React.createElement('div', { className: 'card' },
           React.createElement('h3', null, selectedGym ? `Insights de ${selectedGym.name}` : 'Insights do gym'),
+          React.createElement('p', { className: 'muted' }, `Métricas filtradas em ${sportLabel(dashboard.selectedSportType)}.`),
           showSkeleton
             ? React.createElement('div', { className: 'stack list-block' }, portalSkeletonList(4))
             : dashboard.insights
@@ -726,7 +1074,7 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
             : React.createElement('p', { className: 'muted' }, 'Selecione um gym para carregar métricas operacionais.')
         ),
         React.createElement('div', { className: 'card wide' },
-          React.createElement('h3', null, 'Publicar treino'),
+          React.createElement('h3', null, `Publicar treino • ${sportLabel(dashboard.selectedSportType)}`),
           React.createElement('form', { className: 'stack', onSubmit: handlePublishWorkout },
             React.createElement('input', {
               className: 'field',
@@ -740,15 +1088,14 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
               value: forms.workoutDate,
               onChange: (e) => setForms((prev) => ({ ...prev, workoutDate: e.target.value })),
             }),
-            React.createElement('input', {
-              className: 'field',
-              placeholder: 'benchmark slug opcional (ex: fran)',
-              value: forms.workoutBenchmarkSlug,
-              onChange: (e) => setForms((prev) => ({ ...prev, workoutBenchmarkSlug: e.target.value })),
-            }),
+            renderSportSpecificWorkoutFields(),
             React.createElement('textarea', {
               className: 'field textarea',
-              placeholder: 'Uma linha por exercício',
+              placeholder: isRunning
+                ? 'Uma linha por bloco/intervalo (ex: 6x400m @ 4:20/km / 1:30 trote)'
+                : isStrength
+                  ? 'Uma linha por exercício (ex: Back Squat | 5x5 | 100kg)'
+                  : 'Uma linha por exercício',
               value: forms.workoutLines,
               onChange: (e) => setForms((prev) => ({ ...prev, workoutLines: e.target.value })),
             }),
@@ -885,14 +1232,14 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
           )
         ),
         React.createElement('div', { className: 'card' },
-          React.createElement('h3', null, 'Feed do app'),
+          React.createElement('h3', null, `Feed do app • ${sportLabel(dashboard.selectedSportType)}`),
           React.createElement('div', { className: 'stack list-block' },
             showSkeleton
               ? portalSkeletonList(4)
               : dashboard.feed.map((item) =>
               React.createElement('div', { key: item.id, className: 'list-item static' },
                 React.createElement('strong', null, item.title),
-                React.createElement('span', null, `${item.gym_name || ''}${item.benchmark?.name ? ` • ${item.benchmark.name}` : ''}`)
+                React.createElement('span', null, `${item.gym_name || ''} • ${sportLabel(item.sport_type || dashboard.selectedSportType)}${item.benchmark?.name ? ` • ${item.benchmark.name}` : ''}`)
               )
               ),
             dashboard.feed.length === 0 ? React.createElement('p', { className: 'muted' }, 'Sem treinos publicados ainda.') : null
@@ -1151,6 +1498,17 @@ function formatDateLabel(dateValue) {
   return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
+function sportLabel(value) {
+  switch (String(value || 'cross').toLowerCase()) {
+    case 'running':
+      return 'Running';
+    case 'strength':
+      return 'Strength';
+    default:
+      return 'Cross';
+  }
+}
+
 async function apiRequest(path, options = {}) {
   const cfg = readRuntimeConfig();
   const base = cfg.apiBaseUrl || '/api';
@@ -1208,4 +1566,12 @@ function readRuntimeConfig() {
   } catch {
     return { apiBaseUrl: '/api' };
   }
+}
+
+function getAvailableSportOptions(config) {
+  const rollout = config?.app?.rollout || {};
+  const coreSports = Array.isArray(rollout.coreSports) && rollout.coreSports.length ? rollout.coreSports : ['cross'];
+  const betaSports = rollout.showBetaSports ? (Array.isArray(rollout.betaSports) ? rollout.betaSports : []) : [];
+  const allowed = new Set([...coreSports, ...betaSports]);
+  return SPORT_OPTIONS.filter((sport) => allowed.has(sport.value));
 }

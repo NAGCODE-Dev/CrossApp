@@ -13,6 +13,7 @@ import { injectSpeedInsights } from '@vercel/speed-insights';
 import { mountConsentBanner } from './ui/consent.js';
 import { flushTelemetry, trackError, trackEvent } from './core/services/telemetryService.js';
 import { isDeveloperProfile } from './core/utils/devAccess.js';
+import { getRuntimeConfig } from './config/runtime.js';
 
 if (window.__TREINO_BOOTSTRAPPED__) {
   // Evita double-boot caso o script seja incluído duas vezes acidentalmente.
@@ -23,6 +24,7 @@ if (window.__TREINO_BOOTSTRAPPED__) {
 }
 
 async function bootstrap() {
+  applyAppContext();
   setupVercelObservability();
   setupGlobalTelemetryHandlers();
   registerServiceWorker();
@@ -63,7 +65,7 @@ function registerServiceWorker() {
 
   window.addEventListener('load', () => {
     navigator.serviceWorker
-      .register('./sw.js')
+      .register('/sw.js')
       .then((reg) => {
         trackEvent('service_worker_registered', { scope: reg.scope });
       })
@@ -72,6 +74,15 @@ function registerServiceWorker() {
         console.error('Erro no Service Worker:', err);
       });
   });
+}
+
+function applyAppContext() {
+  const cfg = getRuntimeConfig();
+  const appLabel = cfg?.app?.appLabel || 'CrossApp';
+  const sport = cfg?.app?.sport || 'cross';
+
+  document.title = appLabel;
+  document.body.dataset.sport = sport;
 }
 
 async function mountUI() {

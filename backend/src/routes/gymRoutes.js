@@ -7,6 +7,11 @@ import { getAccessContextForGym, getAccessContextForUser, getMembershipForUser, 
 export function createGymRouter({ requireGymManager, slugify, enrichWorkoutWithBenchmark }) {
   const router = express.Router();
 
+  function normalizeSportType(value) {
+    const raw = String(value || 'cross').trim().toLowerCase();
+    return ['cross', 'running', 'strength'].includes(raw) ? raw : 'cross';
+  }
+
   async function resolveWorkoutAudience(gymId, audienceMode, targetMembershipIds, targetGroupIds) {
     if (audienceMode === 'all') {
       const members = await pool.query(
@@ -159,6 +164,7 @@ export function createGymRouter({ requireGymManager, slugify, enrichWorkoutWithB
 
   router.get('/gyms/:gymId/groups', authRequired, async (req, res) => {
     const gymId = Number(req.params.gymId);
+    const sportType = normalizeSportType(req.query?.sportType);
     const manager = await requireGymManager(gymId, req.user.userId);
     if (!manager.success) {
       return res.status(manager.code).json({ error: manager.error });
@@ -169,15 +175,17 @@ export function createGymRouter({ requireGymManager, slugify, enrichWorkoutWithB
          ag.id,
          ag.gym_id,
          ag.name,
+         ag.sport_type,
          ag.description,
          ag.created_at,
          COUNT(agm.id)::int AS member_count
        FROM athlete_groups ag
        LEFT JOIN athlete_group_memberships agm ON agm.group_id = ag.id
        WHERE ag.gym_id = $1
+         AND ag.sport_type = $2
        GROUP BY ag.id
        ORDER BY ag.created_at DESC`,
-      [gymId],
+      [gymId, sportType],
     );
 
     const members = await pool.query(
@@ -193,8 +201,9 @@ export function createGymRouter({ requireGymManager, slugify, enrichWorkoutWithB
        JOIN gym_memberships gm ON gm.id = agm.gym_membership_id
        LEFT JOIN users u ON u.id = gm.user_id
        WHERE ag.gym_id = $1
+         AND ag.sport_type = $2
        ORDER BY agm.created_at ASC`,
-      [gymId],
+      [gymId, sportType],
     );
 
     const memberMap = new Map();
@@ -219,6 +228,7 @@ export function createGymRouter({ requireGymManager, slugify, enrichWorkoutWithB
 
   router.post('/gyms/:gymId/groups', authRequired, async (req, res) => {
     const gymId = Number(req.params.gymId);
+    const sportType = normalizeSportType(req.body?.sportType);
     const name = String(req.body?.name || '').trim();
     const description = String(req.body?.description || '').trim();
     const memberIds = Array.isArray(req.body?.memberIds)
@@ -238,10 +248,10 @@ export function createGymRouter({ requireGymManager, slugify, enrichWorkoutWithB
     try {
       await client.query('BEGIN');
       const inserted = await client.query(
-        `INSERT INTO athlete_groups (gym_id, name, description, created_by_user_id)
-         VALUES ($1,$2,$3,$4)
+        `INSERT INTO athlete_groups (gym_id, name, description, sport_type, created_by_user_id)
+         VALUES ($1,$2,$3,$4,$5)
          RETURNING *`,
-        [gymId, name, description || null, req.user.userId],
+        [gymId, name, description || null, sportType, req.user.userId],
       );
       const group = inserted.rows[0];
 
@@ -278,6 +288,7 @@ export function createGymRouter({ requireGymManager, slugify, enrichWorkoutWithB
 
   router.post('/gyms/:gymId/workouts', authRequired, async (req, res) => {
     const gymId = Number(req.params.gymId);
+    const sportType = normalizeSportType(req.body?.sportType);
     const title = String(req.body?.title || '').trim();
     const description = String(req.body?.description || '').trim();
     const scheduledDate = String(req.body?.scheduledDate || '').trim();
@@ -318,10 +329,10 @@ export function createGymRouter({ requireGymManager, slugify, enrichWorkoutWithB
     }
 
     const inserted = await pool.query(
-      `INSERT INTO workouts (gym_id, created_by_user_id, title, description, scheduled_date, payload)
-       VALUES ($1,$2,$3,$4,$5,$6)
+      `INSERT INTO workouts (gym_id, created_by_user_id, title, description, scheduled_date, payload, sport_type)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)
        RETURNING *`,
-      [gymId, req.user.userId, title, description || null, scheduledDate, payload],
+      [gymId, req.user.userId, title, description || null, scheduledDate, payload, sportType],
     );
     const workout = inserted.rows[0];
 
@@ -339,6 +350,7 @@ export function createGymRouter({ requireGymManager, slugify, enrichWorkoutWithB
       workout,
       assigned: targetRows.length,
       audience: {
+        sportType,
         mode: audienceMode,
         membershipIds: audienceMode === 'selected' ? targetMembershipIds : [],
         groupIds: audienceMode === 'groups' ? targetGroupIds : [],
@@ -347,6 +359,7 @@ export function createGymRouter({ requireGymManager, slugify, enrichWorkoutWithB
   });
 
   router.get('/workouts/feed', authRequired, async (req, res) => {
+    const sportType = normalizeSportType(req.query?.sportType);
     const memberships = await getUserMemberships(req.user.userId);
     if (!memberships.length) {
       return res.json({ workouts: [] });
@@ -360,11 +373,12 @@ export function createGymRouter({ requireGymManager, slugify, enrichWorkoutWithB
        JOIN gyms g ON g.id = w.gym_id
        LEFT JOIN workout_assignments wa ON wa.workout_id = w.id
        WHERE w.gym_id = ANY($1::int[])
+         AND w.sport_type = $3
          AND w.scheduled_date >= CURRENT_DATE - INTERVAL '1 day'
          AND (wa.gym_membership_id IS NULL OR wa.gym_membership_id = ANY($2::int[]))
        ORDER BY w.scheduled_date DESC, w.created_at DESC
        LIMIT 100`,
-      [gymIds, membershipIds],
+      [gymIds, membershipIds, sportType],
     );
 
     const accessContexts = await Promise.all(rows.rows.map((workout) => getAccessContextForGym(workout.gym_id)));
@@ -376,6 +390,7 @@ export function createGymRouter({ requireGymManager, slugify, enrichWorkoutWithB
 
   router.get('/gyms/:gymId/insights', authRequired, async (req, res) => {
     const gymId = Number(req.params.gymId);
+    const sportType = normalizeSportType(req.query?.sportType);
     if (!Number.isFinite(gymId)) {
       return res.status(400).json({ error: 'gymId inválido' });
     }
@@ -398,8 +413,9 @@ export function createGymRouter({ requireGymManager, slugify, enrichWorkoutWithB
           COUNT(*)::int AS total,
           COUNT(*) FILTER (WHERE scheduled_date >= CURRENT_DATE AND scheduled_date <= CURRENT_DATE + INTERVAL '7 days')::int AS next_7_days
          FROM workouts
-         WHERE gym_id = $1`,
-        [gymId],
+         WHERE gym_id = $1
+           AND sport_type = $2`,
+        [gymId, sportType],
       ),
       pool.query(
         `SELECT
@@ -423,7 +439,7 @@ export function createGymRouter({ requireGymManager, slugify, enrichWorkoutWithB
          LIMIT 5`,
         [gymId],
       ),
-      pool.query(`SELECT COUNT(*)::int AS total FROM athlete_groups WHERE gym_id = $1`, [gymId]),
+      pool.query(`SELECT COUNT(*)::int AS total FROM athlete_groups WHERE gym_id = $1 AND sport_type = $2`, [gymId, sportType]),
     ]);
 
     const roleTotals = membersRes.rows.reduce((acc, row) => {
@@ -479,6 +495,7 @@ export function createGymRouter({ requireGymManager, slugify, enrichWorkoutWithB
         upcomingCompetitions: Number(competitionsRes.rows[0]?.upcoming || 0),
         results: Number(resultsRes.rows[0]?.total || 0),
         groups: Number(groupsRes.rows[0]?.total || 0),
+        sportType,
       },
       recentResults: recentResults.rows,
       upcomingCompetitions: upcomingCompetitions.rows,

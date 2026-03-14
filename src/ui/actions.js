@@ -182,6 +182,7 @@ export function setupActions({ root, toast, rerender, getUiState, setUiState, pa
       switch (action) {
         // ----- PDF / semana / treino -----
         case 'pdf:pick': {
+          await setUiState({ modal: null });
           const file = await pickPdfFile();
           if (!file) return;
           await window.__APP__.uploadMultiWeekPdf(file);
@@ -190,6 +191,7 @@ export function setupActions({ root, toast, rerender, getUiState, setUiState, pa
         }
 
         case 'media:pick': {
+          await setUiState({ modal: null });
           const file = await pickUniversalFile();
           if (!file) return;
 
@@ -278,6 +280,7 @@ export function setupActions({ root, toast, rerender, getUiState, setUiState, pa
         }
 
         case 'workout:export': {
+          await setUiState({ modal: null });
           const st = window.__APP__?.getState?.() || {};
           const blocks = st?.workoutOfDay?.blocks || st?.workout?.blocks || [];
           if (!blocks.length) {
@@ -293,6 +296,7 @@ export function setupActions({ root, toast, rerender, getUiState, setUiState, pa
         }
 
         case 'workout:import': {
+          await setUiState({ modal: null });
           const input = document.createElement('input');
           input.type = 'file';
           input.accept = '.json,application/json';

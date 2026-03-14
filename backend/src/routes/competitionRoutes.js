@@ -7,8 +7,14 @@ import { getMembershipForUser, getUserMemberships } from '../access.js';
 export function createCompetitionRouter({ requireGymManager, ensureCompetitionAccess, getBenchmarkBySlug, resolveLeaderboardOrder, parseBenchmarkScore }) {
   const router = express.Router();
 
+  function normalizeSportType(value) {
+    const raw = String(value || 'cross').trim().toLowerCase();
+    return ['cross', 'running', 'strength'].includes(raw) ? raw : 'cross';
+  }
+
   router.get('/competitions/calendar', authRequired, async (req, res) => {
     const gymId = Number(req.query.gymId || 0);
+    const sportType = normalizeSportType(req.query?.sportType);
     const memberships = await getUserMemberships(req.user.userId);
     const gymIds = gymId && Number.isFinite(gymId)
       ? [gymId]
@@ -28,6 +34,7 @@ export function createCompetitionRouter({ requireGymManager, ensureCompetitionAc
               'id', ce.id,
               'title', ce.title,
               'eventDate', ce.event_date,
+              'sportType', ce.sport_type,
               'benchmarkSlug', ce.benchmark_slug,
               'scoreType', ce.score_type,
               'notes', ce.notes
@@ -39,10 +46,11 @@ export function createCompetitionRouter({ requireGymManager, ensureCompetitionAc
        FROM competitions c
        LEFT JOIN gyms g ON g.id = c.gym_id
        LEFT JOIN competition_events ce ON ce.competition_id = c.id
-       WHERE c.gym_id = ANY($1::int[]) OR c.visibility = 'public'
+       WHERE (c.gym_id = ANY($1::int[]) OR c.visibility = 'public')
+         AND c.sport_type = $2
        GROUP BY c.id, g.name
        ORDER BY c.starts_at ASC`,
-      [gymIds],
+      [gymIds, sportType],
     );
 
     return res.json({ competitions: rows.rows });
@@ -50,6 +58,7 @@ export function createCompetitionRouter({ requireGymManager, ensureCompetitionAc
 
   router.post('/gyms/:gymId/competitions', authRequired, async (req, res) => {
     const gymId = Number(req.params.gymId);
+    const sportType = normalizeSportType(req.body?.sportType);
     const title = String(req.body?.title || '').trim();
     const description = String(req.body?.description || '').trim();
     const location = String(req.body?.location || '').trim();
@@ -75,10 +84,10 @@ export function createCompetitionRouter({ requireGymManager, ensureCompetitionAc
     }
 
     const inserted = await pool.query(
-      `INSERT INTO competitions (gym_id, created_by_user_id, title, description, location, starts_at, ends_at, visibility)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+      `INSERT INTO competitions (gym_id, created_by_user_id, title, description, location, starts_at, ends_at, visibility, sport_type)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
        RETURNING *`,
-      [gymId, req.user.userId, title, description || null, location || null, startsAt, endsAt || null, visibility],
+      [gymId, req.user.userId, title, description || null, location || null, startsAt, endsAt || null, visibility, sportType],
     );
 
     return res.json({ competition: inserted.rows[0] });
@@ -115,10 +124,10 @@ export function createCompetitionRouter({ requireGymManager, ensureCompetitionAc
     }
 
     const inserted = await pool.query(
-      `INSERT INTO competition_events (competition_id, benchmark_slug, title, event_date, score_type, notes)
-       VALUES ($1,$2,$3,$4,$5,$6)
+      `INSERT INTO competition_events (competition_id, benchmark_slug, title, event_date, score_type, notes, sport_type)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)
        RETURNING *`,
-      [competitionId, benchmark?.slug || null, title, eventDate, benchmark?.score_type || null, notes || null],
+      [competitionId, benchmark?.slug || null, title, eventDate, benchmark?.score_type || null, notes || null, competition.sport_type || 'cross'],
     );
 
     return res.json({ event: inserted.rows[0] });
@@ -130,6 +139,7 @@ export function createCompetitionRouter({ requireGymManager, ensureCompetitionAc
     const gymId = Number(req.body?.gymId || 0);
     const competitionEventId = req.body?.competitionEventId ? Number(req.body.competitionEventId) : null;
     const notes = String(req.body?.notes || '').trim();
+    const sportType = normalizeSportType(req.body?.sportType);
 
     if (!slug || !scoreDisplay) {
       return res.status(400).json({ error: 'slug e scoreDisplay são obrigatórios' });
@@ -149,10 +159,10 @@ export function createCompetitionRouter({ requireGymManager, ensureCompetitionAc
 
     const parsedScore = parseBenchmarkScore(scoreDisplay, benchmark.score_type);
     const inserted = await pool.query(
-      `INSERT INTO benchmark_results (benchmark_slug, user_id, gym_id, competition_event_id, score_display, score_value, tiebreak_seconds, notes)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+      `INSERT INTO benchmark_results (benchmark_slug, user_id, gym_id, competition_event_id, score_display, score_value, tiebreak_seconds, notes, sport_type)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
        RETURNING *`,
-      [slug, req.user.userId, gymId || null, competitionEventId, scoreDisplay, parsedScore.scoreValue, parsedScore.tiebreakSeconds, notes || null],
+      [slug, req.user.userId, gymId || null, competitionEventId, scoreDisplay, parsedScore.scoreValue, parsedScore.tiebreakSeconds, notes || null, sportType],
     );
 
     return res.json({ result: inserted.rows[0] });
@@ -161,6 +171,7 @@ export function createCompetitionRouter({ requireGymManager, ensureCompetitionAc
   router.get('/leaderboards/benchmarks/:slug', authRequired, async (req, res) => {
     const slug = String(req.params.slug || '').trim().toLowerCase();
     const gymId = Number(req.query.gymId || 0);
+    const sportType = normalizeSportType(req.query?.sportType);
     const limit = Math.min(Math.max(Number(req.query.limit) || 25, 1), 100);
 
     const benchmark = await getBenchmarkBySlug(slug);
@@ -168,8 +179,8 @@ export function createCompetitionRouter({ requireGymManager, ensureCompetitionAc
       return res.status(404).json({ error: 'Benchmark não encontrado' });
     }
 
-    const where = ['br.benchmark_slug = $1'];
-    const params = [slug];
+    const where = ['br.benchmark_slug = $1', 'br.sport_type = $2'];
+    const params = [slug, sportType];
 
     if (gymId) {
       params.push(gymId);
@@ -186,6 +197,7 @@ export function createCompetitionRouter({ requireGymManager, ensureCompetitionAc
         br.tiebreak_seconds,
         br.created_at,
         br.gym_id,
+        br.sport_type,
         u.name,
         u.email
        FROM benchmark_results br
@@ -212,7 +224,8 @@ export function createCompetitionRouter({ requireGymManager, ensureCompetitionAc
         c.id AS competition_id,
         c.title AS competition_title,
         c.visibility,
-        c.gym_id
+        c.gym_id,
+        c.sport_type AS competition_sport_type
        FROM competition_events ce
        JOIN competitions c ON c.id = ce.competition_id
        WHERE ce.id = $1
@@ -238,6 +251,7 @@ export function createCompetitionRouter({ requireGymManager, ensureCompetitionAc
         br.score_value,
         br.tiebreak_seconds,
         br.created_at,
+        br.sport_type,
         u.id AS user_id,
         u.name,
         u.email
@@ -255,6 +269,7 @@ export function createCompetitionRouter({ requireGymManager, ensureCompetitionAc
         title: eventRow.competition_title,
         visibility: eventRow.visibility,
         gymId: eventRow.gym_id,
+        sportType: eventRow.competition_sport_type || 'cross',
       },
       event: {
         id: eventRow.id,
@@ -262,6 +277,7 @@ export function createCompetitionRouter({ requireGymManager, ensureCompetitionAc
         eventDate: eventRow.event_date,
         scoreType: eventRow.score_type || benchmark?.score_type || null,
         benchmarkSlug: eventRow.benchmark_slug,
+        sportType: eventRow.sport_type || eventRow.competition_sport_type || 'cross',
       },
       benchmark,
       results: rows.rows.map((row, index) => ({ ...row, rank: index + 1 })),
@@ -307,6 +323,7 @@ export function createCompetitionRouter({ requireGymManager, ensureCompetitionAc
           br.score_value,
           br.tiebreak_seconds,
           br.created_at,
+          br.sport_type,
           u.id AS user_id,
           u.name,
           u.email

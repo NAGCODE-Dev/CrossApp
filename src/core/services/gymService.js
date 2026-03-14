@@ -16,8 +16,11 @@ export async function listGymMembers(gymId) {
   return apiRequest(`/gyms/${gymId}/memberships`, { method: 'GET' });
 }
 
-export async function listGymGroups(gymId) {
-  return apiRequest(`/gyms/${gymId}/groups`, { method: 'GET' });
+export async function listGymGroups(gymId, params = {}) {
+  const search = new URLSearchParams();
+  if (params?.sportType) search.set('sportType', params.sportType);
+  const suffix = search.toString() ? `?${search.toString()}` : '';
+  return apiRequest(`/gyms/${gymId}/groups${suffix}`, { method: 'GET' });
 }
 
 export async function createGymGroup(gymId, payload) {
@@ -28,20 +31,29 @@ export async function publishGymWorkout(gymId, payload) {
   return apiRequest(`/gyms/${gymId}/workouts`, { method: 'POST', body: payload });
 }
 
-export async function getWorkoutFeed() {
-  return apiRequest('/workouts/feed', { method: 'GET' });
+export async function getWorkoutFeed(params = {}) {
+  const search = new URLSearchParams();
+  if (params?.sportType) search.set('sportType', params.sportType);
+  const suffix = search.toString() ? `?${search.toString()}` : '';
+  return apiRequest(`/workouts/feed${suffix}`, { method: 'GET' });
 }
 
 export async function getAccessContext() {
   return apiRequest('/access/context', { method: 'GET' });
 }
 
-export async function getAthleteDashboard() {
-  return apiRequest('/athletes/me/dashboard', { method: 'GET' });
+export async function getAthleteDashboard(params = {}) {
+  const search = new URLSearchParams();
+  if (params?.sportType) search.set('sportType', params.sportType);
+  const suffix = search.toString() ? `?${search.toString()}` : '';
+  return apiRequest(`/athletes/me/dashboard${suffix}`, { method: 'GET' });
 }
 
-export async function getGymInsights(gymId) {
-  return apiRequest(`/gyms/${gymId}/insights`, { method: 'GET' });
+export async function getGymInsights(gymId, params = {}) {
+  const search = new URLSearchParams();
+  if (params?.sportType) search.set('sportType', params.sportType);
+  const suffix = search.toString() ? `?${search.toString()}` : '';
+  return apiRequest(`/gyms/${gymId}/insights${suffix}`, { method: 'GET' });
 }
 
 export async function logAthletePr(payload) {
@@ -50,4 +62,20 @@ export async function logAthletePr(payload) {
 
 export async function syncAthletePrSnapshot(prs) {
   return apiRequest('/athletes/me/prs/snapshot', { method: 'POST', body: { prs } });
+}
+
+export async function logRunningSession(payload) {
+  return apiRequest('/athletes/me/running/logs', { method: 'POST', body: payload });
+}
+
+export async function getRunningHistory() {
+  return apiRequest('/athletes/me/running/history', { method: 'GET' });
+}
+
+export async function logStrengthSession(payload) {
+  return apiRequest('/athletes/me/strength/logs', { method: 'POST', body: payload });
+}
+
+export async function getStrengthHistory() {
+  return apiRequest('/athletes/me/strength/history', { method: 'GET' });
 }
