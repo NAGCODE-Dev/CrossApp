@@ -408,6 +408,7 @@ export async function handleImportPRsFromCSV(csvString, merge = true) {
   }
   
   setState({ prs: finalPRs });
+  await reprocessActiveWeek();
   
   emit('prs:imported', {
     imported: parseResult.imported,
@@ -1338,7 +1339,7 @@ export function handleExportWorkout() {
  * @param {number} load - Carga máxima
  * @returns {Object}
  */
-export function handleAddPR(exerciseName, load) {
+export async function handleAddPR(exerciseName, load) {
   const state = getState();
   const result = addOrUpdatePR(state.prs, exerciseName, load);
 
@@ -1347,6 +1348,7 @@ export function handleAddPR(exerciseName, load) {
   }
 
   setState({ prs: result.data });
+  await reprocessActiveWeek();
 
   emit('pr:updated', {
     exercise: exerciseName,
@@ -1364,7 +1366,7 @@ export function handleAddPR(exerciseName, load) {
  * @param {string} exerciseName - Nome do exercício
  * @returns {Object}
  */
-export function handleRemovePR(exerciseName) {
+export async function handleRemovePR(exerciseName) {
   const state = getState();
   const result = removePR(state.prs, exerciseName);
 
@@ -1373,6 +1375,7 @@ export function handleRemovePR(exerciseName) {
   }
 
   setState({ prs: result.data });
+  await reprocessActiveWeek();
 
   emit('pr:removed', { exercise: exerciseName });
 
@@ -1416,7 +1419,7 @@ export function handleExportPRs() {
  * @param {string} jsonString - JSON de PRs
  * @returns {Object}
  */
-export function handleImportPRs(jsonString) {
+export async function handleImportPRs(jsonString) {
   const state = getState();
   const result = importPRs(jsonString, state.prs, {
     merge: true,
@@ -1428,6 +1431,7 @@ export function handleImportPRs(jsonString) {
   }
 
   setState({ prs: result.data });
+  await reprocessActiveWeek();
 
   emit('prs:imported', {
     imported: result.imported,
@@ -1460,6 +1464,7 @@ export async function loadDefaultPRs(merge = true) {
     }
     
     setState({ prs: finalPRs });
+    await reprocessActiveWeek();
     
     const added = Object.keys(finalPRs).length - Object.keys(state.prs).length;
     

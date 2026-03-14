@@ -76,10 +76,12 @@ function renderModals(state) {
   const prs = state?.prs || {};
   const settings = state?.__ui?.settings || {};
   const authMode = state?.__ui?.authMode || 'signin';
+  const exerciseHelp = state?.__ui?.exerciseHelp || null;
 
   if (modal === 'prs') return renderPrsModal(prs);
   if (modal === 'settings') return renderSettingsModal(settings);
   if (modal === 'import') return renderImportModal();
+  if (modal === 'exercise-help') return renderExerciseHelpModal(exerciseHelp);
   if (modal === 'auth') return renderAuthModal({
     auth: {
       ...(state?.__ui?.auth || {}),
@@ -459,6 +461,7 @@ function renderCompetitionsPage(state) {
 function renderAccountPage(state) {
   const profile = state?.__ui?.auth?.profile || null;
   const coachPortal = state?.__ui?.coachPortal || {};
+  const accessContext = coachPortal?.accessContext || {};
   const subscription = coachPortal?.subscription || null;
   const planName = subscription?.plan || subscription?.plan_id || 'free';
   const planStatus = subscription?.status || 'inactive';
@@ -467,6 +470,10 @@ function renderAccountPage(state) {
   const isBusy = !!state?.__ui?.isBusy;
   const athleteBenefits = normalizeAthleteBenefits(state?.__ui?.athleteOverview?.athleteBenefits || null);
   const importUsage = getAthleteImportUsage(athleteBenefits, 'pdf');
+  const accessEntitlements = accessContext?.entitlements || [];
+  const canCoachManage = accessEntitlements.includes('coach_portal');
+  const gyms = coachPortal?.gyms || [];
+  const athleteStats = state?.__ui?.athleteOverview?.stats || {};
 
   if (!profile?.email) {
     return `
@@ -474,9 +481,9 @@ function renderAccountPage(state) {
         ${renderPageHero({
           eyebrow: 'Conta',
           title: 'Sincronize seu treino com o coach',
-          subtitle: 'Use o app no modo solo ou conecte sua conta a um coach para receber treino, ganhar mais imports e liberar uma rotina mais forte.',
+          subtitle: 'Use o app sozinho ou conecte sua conta a um coach para receber treino e liberar mais recursos.',
           actions: `
-            <button class="btn-primary" data-action="modal:open" data-modal="auth" type="button">Entrar ou cadastrar</button>
+            <button class="btn-primary" data-action="modal:open" data-modal="auth" type="button">Entrar na conta</button>
           `,
         })}
 
@@ -489,7 +496,7 @@ function renderAccountPage(state) {
         <div class="coach-grid">
           ${renderPageFold({
             title: 'O que você libera',
-            subtitle: 'O valor prático da conta no uso diário.',
+            subtitle: 'Valor prático da conta no uso diário.',
             content: `
             <div class="coach-list coach-listCompact">
               <div class="coach-listItem static">
@@ -509,12 +516,12 @@ function renderAccountPage(state) {
           })}
           ${renderPageFold({
             title: 'Se você é coach',
-            subtitle: 'A conta é a mesma, a operação fica no portal separado.',
+            subtitle: 'Mesma conta, operação no portal separado.',
             content: `
             <p class="account-hint">Use a mesma conta para abrir o Coach Portal e publicar treinos para atletas, grupos e planilhas especiais.</p>
             <div class="page-actions">
               <button class="btn-secondary" data-action="modal:open" data-modal="auth" type="button">Entrar</button>
-              <a class="btn-secondary" href="/coach/" target="_blank" rel="noopener noreferrer">Abrir Coach Portal</a>
+              <a class="btn-secondary" href="/coach/" target="_blank" rel="noopener noreferrer">Abrir portal</a>
             </div>
             `,
           })}
@@ -528,9 +535,9 @@ function renderAccountPage(state) {
       ${renderPageHero({
         eyebrow: 'Conta',
         title: profile.name || 'Sua conta',
-        subtitle: 'Gerencie sessão, sincronização, plano do coach e acesso ao workspace do box.',
+        subtitle: 'Sessão, benefícios herdados e acesso ao portal do coach.',
         actions: `
-          <button class="btn-secondary" data-action="auth:refresh" type="button">Atualizar sessão</button>
+          <button class="btn-secondary" data-action="auth:refresh" type="button">Atualizar</button>
           <button class="btn-primary" data-action="auth:signout" type="button">Sair</button>
         `,
       })}
@@ -544,24 +551,39 @@ function renderAccountPage(state) {
 
       <div class="coach-grid">
         ${renderPageFold({
-          title: 'Sessão e identidade',
-          subtitle: 'Perfil e sincronização.',
+          title: 'Visão do atleta',
+          subtitle: 'Conta ativa, sync e acesso do atleta.',
           content: `
           ${isBusy ? renderAccountSkeleton() : `
             <div class="account-name">${escapeHtml(profile.name || 'Sem nome')}</div>
             <div class="account-email">${escapeHtml(profile.email || '')}</div>
           `}
+          <div class="coach-list coach-listCompact">
+            <div class="coach-listItem static">
+              <strong>Nível atual</strong>
+              <span>${escapeHtml(athleteBenefits.label)}${athleteBenefits.inherited ? ' • herdado do coach' : ' • modo base'}</span>
+            </div>
+            <div class="coach-listItem static">
+              <strong>Resultados e agenda</strong>
+              <span>${Number(athleteStats?.resultsLogged || 0)} resultado(s) • ${Number(athleteStats?.upcomingCompetitions || 0)} competição(ões)</span>
+            </div>
+            <div class="coach-listItem static">
+              <strong>Treinos vinculados</strong>
+              <span>${Number(athleteStats?.assignedWorkouts || 0)} treino(s) • ${Number(athleteStats?.activeGyms || 0)} gym(s) ativo(s)</span>
+            </div>
+          </div>
           <div class="page-actions">
             <button class="btn-secondary" data-action="auth:sync-push" type="button">Enviar sync</button>
             <button class="btn-secondary" data-action="auth:sync-pull" type="button">Baixar sync</button>
             <button class="btn-secondary" data-action="modal:open" data-modal="settings" type="button">Configurações</button>
+            <button class="btn-secondary" data-action="modal:open" data-modal="auth" type="button">Resumo completo</button>
           </div>
           `,
         })}
 
         ${renderPageFold({
-          title: 'Plano do coach',
-          subtitle: 'Libera operação do box e acesso dos atletas.',
+          title: 'Plano e benefícios',
+          subtitle: 'Plano do coach e impacto direto no app do atleta.',
           content: `
           ${isBusy ? renderAccountSkeleton() : `
             <div class="account-name">${escapeHtml(planName)}</div>
@@ -588,17 +610,31 @@ function renderAccountPage(state) {
           <div class="page-actions">
             <button class="btn-primary" data-action="billing:checkout" data-plan="coach" type="button">Assinar Coach</button>
             ${canUseDeveloperTools ? '<button class="btn-secondary" data-action="billing:activate-local" data-plan="coach" type="button">Ativar local</button>' : ''}
+            <a class="btn-secondary" href="/pricing.html" target="_blank" rel="noopener noreferrer">Ver planos</a>
           </div>
           `,
         })}
 
         ${renderPageFold({
-          title: 'Ferramentas da conta',
-          subtitle: 'Atalhos de operação e suporte.',
+          title: 'Portal do coach',
+          subtitle: canCoachManage || canUseDeveloperTools ? 'Portal separado para operação do box.' : 'Upgrade para operar box, atletas e grupos.',
           content: `
+          <div class="coach-list coach-listCompact">
+            <div class="coach-listItem static">
+              <strong>Status do coach</strong>
+              <span>${canCoachManage ? 'Liberado para gestão' : 'Bloqueado até ativar plano'}</span>
+            </div>
+            <div class="coach-listItem static">
+              <strong>Gyms vinculados</strong>
+              <span>${gyms.length} gym(s) visível(is) nesta conta</span>
+            </div>
+            <div class="coach-listItem static">
+              <strong>Como funciona</strong>
+              <span>No app principal você acompanha conta e benefícios. A operação do box fica no portal separado.</span>
+            </div>
+          </div>
           <div class="page-actions">
-            <button class="btn-secondary" data-action="modal:open" data-modal="auth" type="button">Abrir painel completo</button>
-            <a class="btn-secondary" href="/coach/" target="_blank" rel="noopener noreferrer">Coach Portal</a>
+            <a class="btn-secondary" href="/coach/" target="_blank" rel="noopener noreferrer">Abrir portal</a>
             <a class="btn-secondary" href="/pricing.html" target="_blank" rel="noopener noreferrer">Ver planos</a>
           </div>
           `,
@@ -720,6 +756,52 @@ function renderImportModal() {
   `;
 }
 
+function renderExerciseHelpModal(help = null) {
+  const label = help?.label || 'Exercício';
+  const sourceLine = help?.sourceLine || '';
+  const youtubeUrl = help?.youtubeUrl || buildSearchUrl('youtube', label);
+  const standardsUrl = help?.standardsUrl || buildSearchUrl('standards', label);
+  const googleUrl = help?.googleUrl || buildSearchUrl('google', label);
+
+  return `
+    <div class="modal-overlay isOpen">
+      <div class="modal-container">
+        <div class="modal-header">
+          <h2 class="modal-title">Execução do exercício</h2>
+          <button class="modal-close" data-action="modal:close" type="button">✕</button>
+        </div>
+        <div class="modal-body modal-body-auth">
+          <div class="auth-intro">
+            <div class="section-kicker">Movimento identificado</div>
+            <div class="account-name">${escapeHtml(label)}</div>
+            ${sourceLine ? `<p class="account-hint">Linha original: ${escapeHtml(sourceLine)}</p>` : ''}
+            <p class="account-hint">O app detecta o nome do exercício e monta buscas prontas para vídeos de execução, técnica e padrão do movimento.</p>
+          </div>
+          <div class="coach-list coach-listCompact">
+            <div class="coach-listItem static">
+              <strong>YouTube</strong>
+              <span>Busca principal por execução e tutorial.</span>
+            </div>
+            <div class="coach-listItem static">
+              <strong>Técnica</strong>
+              <span>Resultados com padrão do movimento e erros comuns.</span>
+            </div>
+            <div class="coach-listItem static">
+              <strong>Mais vídeos</strong>
+              <span>Busca ampla para comparar demonstrações.</span>
+            </div>
+          </div>
+          <div class="page-actions">
+            <a class="btn-primary" href="${escapeHtml(youtubeUrl)}" target="_blank" rel="noopener noreferrer">YouTube</a>
+            <a class="btn-secondary" href="${escapeHtml(standardsUrl)}" target="_blank" rel="noopener noreferrer">Técnica</a>
+            <a class="btn-secondary" href="${escapeHtml(googleUrl)}" target="_blank" rel="noopener noreferrer">Mais vídeos</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function renderListSkeletons(count = 3) {
   return Array.from({ length: count }, () => `
     <div class="coach-listItem static isSkeleton">
@@ -764,6 +846,109 @@ function renderSummaryTile(label, value, detail = '') {
   `;
 }
 
+const EXERCISE_VIDEO_LIBRARY = [
+  { label: 'Back Squat', query: 'back squat', aliases: ['back squat', 'backsquat', 'agachamento livre', 'agachamento costas'] },
+  { label: 'Front Squat', query: 'front squat', aliases: ['front squat', 'agachamento frontal'] },
+  { label: 'Deadlift', query: 'deadlift', aliases: ['deadlift', 'levantamento terra', 'terra'] },
+  { label: 'Romanian Deadlift', query: 'romanian deadlift', aliases: ['romanian deadlift', 'rdl', 'stiff'] },
+  { label: 'Bench Press', query: 'bench press', aliases: ['bench press', 'supino reto', 'supino'] },
+  { label: 'Overhead Press', query: 'overhead press', aliases: ['strict press', 'overhead press', 'shoulder press', 'desenvolvimento'] },
+  { label: 'Push Press', query: 'push press', aliases: ['push press'] },
+  { label: 'Push Jerk', query: 'push jerk', aliases: ['push jerk'] },
+  { label: 'Split Jerk', query: 'split jerk', aliases: ['split jerk', 'jerk'] },
+  { label: 'Thruster', query: 'thruster', aliases: ['thruster'] },
+  { label: 'Snatch', query: 'snatch', aliases: ['snatch', 'arranco'] },
+  { label: 'Power Snatch', query: 'power snatch', aliases: ['power snatch'] },
+  { label: 'Hang Power Snatch', query: 'hang power snatch', aliases: ['hang power snatch'] },
+  { label: 'Squat Snatch', query: 'squat snatch', aliases: ['squat snatch'] },
+  { label: 'Clean', query: 'clean', aliases: ['clean'] },
+  { label: 'Power Clean', query: 'power clean', aliases: ['power clean'] },
+  { label: 'Hang Power Clean', query: 'hang power clean', aliases: ['hang power clean'] },
+  { label: 'Squat Clean', query: 'squat clean', aliases: ['squat clean'] },
+  { label: 'Clean and Jerk', query: 'clean and jerk', aliases: ['clean and jerk'] },
+  { label: 'Overhead Squat', query: 'overhead squat', aliases: ['overhead squat', 'ohs'] },
+  { label: 'Wall Ball', query: 'wall ball', aliases: ['wall ball', 'wallball'] },
+  { label: 'Box Jump', query: 'box jump', aliases: ['box jump', 'box jump over'] },
+  { label: 'Walking Lunge', query: 'walking lunge', aliases: ['walking lunge', 'lunge walk', 'passada', 'afundo andando'] },
+  { label: 'Burpee', query: 'burpee', aliases: ['burpee'] },
+  { label: 'Pull-Up', query: 'pull up', aliases: ['pull up', 'pull-up'] },
+  { label: 'Chest to Bar', query: 'chest to bar pull up', aliases: ['chest to bar', 'c2b'] },
+  { label: 'Bar Muscle-Up', query: 'bar muscle up', aliases: ['bar muscle up', 'bmup'] },
+  { label: 'Ring Muscle-Up', query: 'ring muscle up', aliases: ['ring muscle up', 'rmu'] },
+  { label: 'Toes to Bar', query: 'toes to bar', aliases: ['toes to bar', 't2b'] },
+  { label: 'Handstand Push-Up', query: 'handstand push up', aliases: ['handstand push up', 'hspu', 'shspu'] },
+  { label: 'Handstand Walk', query: 'handstand walk', aliases: ['handstand walk', 'hs walk'] },
+  { label: 'Double Under', query: 'double under', aliases: ['double under', 'du'] },
+  { label: 'Row', query: 'rowing technique', aliases: ['row', 'rowing', 'remo'] },
+  { label: 'Bike Erg', query: 'bike erg technique', aliases: ['bike erg', 'bikeerg', 'assault bike'] },
+  { label: 'Rope Climb', query: 'rope climb', aliases: ['rope climb', 'subida na corda'] },
+  { label: 'Kettlebell Swing', query: 'kettlebell swing', aliases: ['kettlebell swing', 'kb swing'] },
+  { label: 'Goblet Squat', query: 'goblet squat', aliases: ['goblet squat'] },
+  { label: 'Dumbbell Snatch', query: 'dumbbell snatch', aliases: ['db snatch', 'dumbbell snatch'] },
+  { label: 'Dumbbell Clean and Jerk', query: 'dumbbell clean and jerk', aliases: ['db clean and jerk', 'dumbbell clean and jerk'] },
+];
+
+function inferExerciseHelp(rawText = '') {
+  const sourceLine = String(rawText || '').trim();
+  if (!sourceLine) return null;
+  const normalized = normalizeExerciseSearchText(sourceLine);
+  if (!normalized || normalized.length < 3) return null;
+
+  const matched = EXERCISE_VIDEO_LIBRARY
+    .flatMap((item) => item.aliases.map((alias) => ({ item, alias })))
+    .sort((a, b) => b.alias.length - a.alias.length)
+    .find(({ alias }) => normalized.includes(normalizeExerciseSearchText(alias)));
+
+  if (matched?.item) {
+    return buildExerciseHelpPayload(matched.item.label, matched.item.query, sourceLine);
+  }
+
+  const fallback = buildFallbackExerciseLabel(sourceLine);
+  if (!fallback) return null;
+  return buildExerciseHelpPayload(fallback, fallback, sourceLine);
+}
+
+function buildExerciseHelpPayload(label, query, sourceLine = '') {
+  return {
+    label,
+    query,
+    sourceLine,
+    youtubeUrl: buildSearchUrl('youtube', query),
+    standardsUrl: buildSearchUrl('standards', query),
+    googleUrl: buildSearchUrl('google', query),
+  };
+}
+
+function buildSearchUrl(kind, query) {
+  const q = encodeURIComponent(String(query || '').trim());
+  if (kind === 'standards') return `https://www.youtube.com/results?search_query=${q}%20movement%20standards%20tutorial`;
+  if (kind === 'google') return `https://www.google.com/search?tbm=vid&q=${q}%20execu%C3%A7%C3%A3o`;
+  return `https://www.youtube.com/results?search_query=${q}%20exercise%20tutorial`;
+}
+
+function buildFallbackExerciseLabel(rawText = '') {
+  const cleaned = String(rawText || '')
+    .replace(/\([^)]*\)/g, ' ')
+    .replace(/\b\d+\s*x\s*\d+\b/gi, ' ')
+    .replace(/\b\d+\s*(kg|kgs|lb|lbs|m|min|cal|reps?)\b/gi, ' ')
+    .replace(/@\s*\d+%/g, ' ')
+    .replace(/[+/,]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!cleaned) return '';
+  return cleaned.split(' ').slice(0, 5).join(' ');
+}
+
+function normalizeExerciseSearchText(value = '') {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function renderWorkoutBlock(block, blockIndex, ui) {
   const lines = block?.lines || [];
   return `
@@ -787,6 +972,7 @@ function renderWorkoutLine(line, lineId, ui) {
   const isRest = !!(typeof line === 'object' && line.isRest);
   
   const text = escapeHtml(rawText);
+  const exerciseHelp = inferExerciseHelp(rawText);
   
   // Filtro: Remove linhas indesejadas
   if (
@@ -848,12 +1034,29 @@ function renderWorkoutLine(line, lineId, ui) {
       ${escapeHtml(display)}
     </div>
   ` : '';
+  const helpActionHtml = exerciseHelp ? `
+    <button
+      class="exercise-helpBtn"
+      type="button"
+      data-action="exercise:help"
+      data-exercise="${escapeHtml(exerciseHelp.label)}"
+      data-query="${escapeHtml(exerciseHelp.query)}"
+      data-source-line="${escapeHtml(rawText)}"
+      title="Ver execução"
+      aria-label="Ver execução de ${escapeHtml(exerciseHelp.label)}"
+    >
+      Ver execução
+    </button>
+  ` : '';
   
   if (!trainingMode) {
     return `
       <div class="workout-line" data-line-id="${escapeHtml(lineId)}">
-        <div class="exercise-text">${text}</div>
-        ${loadHtml}
+        <div class="exercise-main">
+          <div class="exercise-text">${text}</div>
+          ${loadHtml}
+        </div>
+        ${helpActionHtml}
       </div>
     `;
   }
@@ -884,6 +1087,7 @@ function renderWorkoutLine(line, lineId, ui) {
         <div class="exercise-text">${text}</div>
         ${loadHtml}
       </button>
+      ${helpActionHtml}
     </div>
   `;
 }
@@ -1090,17 +1294,15 @@ function renderAuthModal({ auth = {}, authMode = 'signin' } = {}) {
     const athleteResults = athleteOverview?.recentResults || [];
     const athleteCompetitions = athleteOverview?.upcomingCompetitions || [];
     const athleteWorkouts = athleteOverview?.recentWorkouts || [];
-    const benchmarkHistory = athleteOverview?.benchmarkHistory || [];
-    const prHistory = athleteOverview?.prHistory || [];
     const planName = subscription?.plan || subscription?.plan_id || 'free';
-  const planStatus = subscription?.status || 'inactive';
-  const canUseDeveloperTools = isDeveloperEmail(profile?.email);
+    const planStatus = subscription?.status || 'inactive';
+    const canUseDeveloperTools = isDeveloperEmail(profile?.email);
     const renewAt = subscription?.renewAt || subscription?.renew_at || null;
     return `
       <div class="modal-overlay isOpen" id="ui-authModalBackdrop">
         <div class="modal-container modal-container-auth">
-          <div class="modal-header">
-            <h2 class="modal-title">👤 Sua conta</h2>
+        <div class="modal-header">
+          <h2 class="modal-title">👤 Sua conta</h2>
             <button class="modal-close" data-action="modal:close" type="button">✕</button>
           </div>
 
@@ -1114,7 +1316,7 @@ function renderAuthModal({ auth = {}, authMode = 'signin' } = {}) {
                 `}
               </div>
               <div class="account-planCard">
-                <span class="account-planLabel">Plano Coach</span>
+                <span class="account-planLabel">Plano do coach</span>
                 ${isBusy ? renderAccountSkeleton() : `
                   <strong class="account-planValue">${escapeHtml(planName)}</strong>
                   <span class="account-planMeta">${escapeHtml(planStatus)}${renewAt ? ` • renova em ${escapeHtml(formatDateShort(renewAt))}` : ''}</span>
@@ -1130,7 +1332,7 @@ function renderAuthModal({ auth = {}, authMode = 'signin' } = {}) {
                 </div>
               `).join('') : `
               <div class="summary-tile">
-                <span class="summary-label">Coach</span>
+                  <span class="summary-label">Coach</span>
                 <strong class="summary-value">${canCoachManage ? 'Liberado' : 'Bloqueado'}</strong>
               </div>
               <div class="summary-tile">
@@ -1142,342 +1344,133 @@ function renderAuthModal({ auth = {}, authMode = 'signin' } = {}) {
                 <strong class="summary-value">${gyms.length}</strong>
               </div>
               <div class="summary-tile">
-                <span class="summary-label">Treinos</span>
-                <strong class="summary-value">${feed.length}</strong>
-              </div>
+                  <span class="summary-label">Treinos</span>
+                  <strong class="summary-value">${feed.length}</strong>
+                </div>
               `}
             </div>
 
-            <section class="account-section athlete-overview">
-              <div class="account-sectionHead">
-                <div>
-                  <div class="section-kicker">Athlete View</div>
-                  <strong>Resultado, agenda e treino recente</strong>
-                </div>
-              </div>
-
-              <div class="account-summaryGrid account-summaryGrid-compact">
-                <div class="summary-tile">
-                  <span class="summary-label">Resultados</span>
-                  <strong class="summary-value">${Number(athleteStats?.resultsLogged || 0)}</strong>
-                </div>
-                <div class="summary-tile">
-                  <span class="summary-label">Competições</span>
-                  <strong class="summary-value">${Number(athleteStats?.upcomingCompetitions || 0)}</strong>
-                </div>
-                <div class="summary-tile">
-                  <span class="summary-label">Treinos</span>
-                  <strong class="summary-value">${Number(athleteStats?.assignedWorkouts || 0)}</strong>
-                </div>
-                <div class="summary-tile">
-                  <span class="summary-label">Gyms ativos</span>
-                  <strong class="summary-value">${Number(athleteStats?.activeGyms || 0)}</strong>
-                </div>
-              </div>
-
-              <div class="coach-grid">
-                <div class="coach-card">
-                  <h3 class="coach-cardTitle">Resultados recentes</h3>
-                  <div class="coach-list">
-                    ${isBusy ? renderListSkeletons(3) : athleteResults.length ? athleteResults.map((item) => `
-                      <div class="coach-listItem static">
-                        <strong>${escapeHtml(item.benchmark_name || item.benchmark_slug || 'Benchmark')}</strong>
-                        <span>${escapeHtml(item.score_display || '')} • ${escapeHtml(item.gym_name || 'Sem gym')} • ${escapeHtml(formatDateShort(item.created_at))}</span>
-                      </div>
-                    `).join('') : '<p class="account-hint">Nenhum resultado registrado ainda.</p>'}
+            <details class="account-fold" open>
+              <summary class="account-foldSummary">
+                <span>
+                  <span class="section-kicker">Atleta</span>
+                  <strong>Resumo rápido da conta</strong>
+                </span>
+                <span class="account-foldMeta">${Number(athleteStats?.resultsLogged || 0)} resultados • ${Number(athleteStats?.upcomingCompetitions || 0)} competições • ${Number(athleteStats?.assignedWorkouts || 0)} treinos</span>
+              </summary>
+              <div class="account-foldBody">
+                <div class="account-summaryGrid account-summaryGrid-compact">
+                  <div class="summary-tile">
+                    <span class="summary-label">Resultados</span>
+                    <strong class="summary-value">${Number(athleteStats?.resultsLogged || 0)}</strong>
+                  </div>
+                  <div class="summary-tile">
+                    <span class="summary-label">Competições</span>
+                    <strong class="summary-value">${Number(athleteStats?.upcomingCompetitions || 0)}</strong>
+                  </div>
+                  <div class="summary-tile">
+                    <span class="summary-label">Treinos</span>
+                    <strong class="summary-value">${Number(athleteStats?.assignedWorkouts || 0)}</strong>
+                  </div>
+                  <div class="summary-tile">
+                    <span class="summary-label">Gyms ativos</span>
+                    <strong class="summary-value">${Number(athleteStats?.activeGyms || 0)}</strong>
                   </div>
                 </div>
 
-                <div class="coach-card">
-                  <h3 class="coach-cardTitle">Próximas competições</h3>
-                  <div class="coach-list">
-                    ${isBusy ? renderListSkeletons(3) : athleteCompetitions.length ? athleteCompetitions.map((item) => `
-                      <div class="coach-listItem static">
-                        <strong>${escapeHtml(item.title || 'Competição')}</strong>
-                        <span>${escapeHtml(item.gym_name || '')} • ${escapeHtml(formatDateShort(item.starts_at))}${item.location ? ` • ${escapeHtml(item.location)}` : ''}</span>
-                      </div>
-                    `).join('') : '<p class="account-hint">Nenhuma competição próxima para seus gyms.</p>'}
+                <div class="coach-list coach-listCompact">
+                  <div class="coach-listItem static">
+                    <strong>Resultados recentes</strong>
+                    <span>${athleteResults.length ? `${athleteResults.length} registro(s) recente(s)` : 'Nenhum resultado registrado ainda.'}</span>
+                  </div>
+                  <div class="coach-listItem static">
+                    <strong>Próximas competições</strong>
+                    <span>${athleteCompetitions.length ? `${athleteCompetitions.length} competição(ões) no radar` : 'Nenhuma competição próxima para seus gyms.'}</span>
+                  </div>
+                  <div class="coach-listItem static">
+                    <strong>Treinos do box</strong>
+                    <span>${athleteWorkouts.length ? `${athleteWorkouts.length} treino(s) recente(s) liberado(s)` : 'Nenhum treino recente liberado para sua conta.'}</span>
                   </div>
                 </div>
-
-                <div class="coach-card coach-cardWide">
-                  <h3 class="coach-cardTitle">Treinos recentes do box</h3>
-                  <div class="coach-list">
-                    ${isBusy ? renderListSkeletons(3) : athleteWorkouts.length ? athleteWorkouts.map((item) => `
-                      <div class="coach-listItem static">
-                        <strong>${escapeHtml(item.title || 'Treino')}</strong>
-                        <span>${escapeHtml(item.gym_name || '')} • ${escapeHtml(formatDateShort(item.scheduled_date || item.published_at))}</span>
-                      </div>
-                    `).join('') : '<p class="account-hint">Nenhum treino recente liberado para sua conta.</p>'}
-                  </div>
-                </div>
-
               </div>
-            </section>
+            </details>
 
             <div class="settings-actions account-actions">
-              <button class="btn-secondary" data-action="auth:sync-push" type="button">☁️ Enviar sync</button>
-              <button class="btn-secondary" data-action="auth:sync-pull" type="button">📥 Baixar sync</button>
-              <button class="btn-secondary" data-action="auth:refresh" type="button">🔄 Atualizar sessão</button>
-              <a class="btn-secondary" href="/coach/" target="_blank" rel="noopener noreferrer" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">Coach Portal</a>
+              <button class="btn-secondary" data-action="auth:sync-push" type="button">Enviar sync</button>
+              <button class="btn-secondary" data-action="auth:sync-pull" type="button">Baixar sync</button>
+              <button class="btn-secondary" data-action="auth:refresh" type="button">Atualizar</button>
+              <a class="btn-secondary" href="/sports/cross/#account" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">Ir para Conta</a>
             </div>
 
-            <section class="account-section coach-portal">
-              <div class="account-sectionHead">
+            <details class="account-fold ${canCoachManage || canUseDeveloperTools ? '' : 'isCompact'}">
+              <summary class="account-foldSummary">
                 <div>
-                  <div class="section-kicker">Coach Workspace</div>
-                  <strong>Gestão de box, atletas e programação</strong>
+                  <div class="section-kicker">Coach</div>
+                  <strong>Status do portal do coach</strong>
                 </div>
-                <button class="btn-secondary" data-action="coach:refresh" type="button">Atualizar</button>
-              </div>
+                <span class="account-foldMeta">${escapeHtml(planName)} • ${escapeHtml(planStatus)} • ${Number(coachInsights?.stats?.athletes || 0)} atletas</span>
+              </summary>
+              <div class="account-foldBody">
+                <div class="admin-stats">
+                  <div class="admin-statCard">
+                    <span class="admin-statLabel">Plano</span>
+                    <span class="admin-statValue">${escapeHtml(planName)}</span>
+                  </div>
+                  <div class="admin-statCard">
+                    <span class="admin-statLabel">Status</span>
+                    <span class="admin-statValue">${escapeHtml(planStatus)}</span>
+                  </div>
+                  <div class="admin-statCard">
+                    <span class="admin-statLabel">Gyms</span>
+                    <span class="admin-statValue">${gyms.length}</span>
+                  </div>
+                  <div class="admin-statCard">
+                    <span class="admin-statLabel">Atletas</span>
+                    <span class="admin-statValue">${Number(coachInsights?.stats?.athletes || 0)}</span>
+                  </div>
+                </div>
 
-              <div class="admin-stats">
-                <div class="admin-statCard">
-                  <span class="admin-statLabel">Plano</span>
-                  <span class="admin-statValue">${escapeHtml(planName)}</span>
+                <div class="coach-pillRow">
+                  <span class="coach-pill ${canCoachManage ? 'isGood' : 'isWarn'}">${canCoachManage ? 'Coach liberado' : 'Coach bloqueado'}</span>
+                  <span class="coach-pill ${canAthleteUseApp ? 'isGood' : 'isWarn'}">${canAthleteUseApp ? 'Atletas com acesso' : 'Atletas limitados'}</span>
                 </div>
-                <div class="admin-statCard">
-                  <span class="admin-statLabel">Status</span>
-                  <span class="admin-statValue">${escapeHtml(planStatus)}</span>
-                </div>
-                <div class="admin-statCard">
-                  <span class="admin-statLabel">Atletas</span>
-                  <span class="admin-statValue">${Number(coachInsights?.stats?.athletes || 0)}</span>
-                </div>
-                <div class="admin-statCard">
-                  <span class="admin-statLabel">Resultados</span>
-                  <span class="admin-statValue">${Number(coachInsights?.stats?.results || 0)}</span>
-                </div>
-              </div>
 
-              <div class="coach-pillRow">
-                <span class="coach-pill ${canCoachManage ? 'isGood' : 'isWarn'}">${canCoachManage ? 'Coach liberado' : 'Coach bloqueado'}</span>
-                <span class="coach-pill ${canAthleteUseApp ? 'isGood' : 'isWarn'}">${canAthleteUseApp ? 'Atletas com acesso' : 'Atletas limitados'}</span>
-              </div>
-
-              ${!canCoachManage ? `
-                <div class="reset-codePreview">
-                  Assinatura inativa. Renove para continuar gerenciando box, atletas e treinos.
+                <div class="coach-list coach-listCompact">
+                  <div class="coach-listItem static">
+                    <strong>Portal do coach</strong>
+                    <span>${canCoachManage || canUseDeveloperTools ? 'Use o portal separado para gyms, grupos e publicação.' : 'Ative um plano para abrir a operação completa do box.'}</span>
+                  </div>
+                  <div class="coach-listItem static">
+                    <strong>Feed e benchmarks</strong>
+                    <span>${feed.length} treino(s) publicado(s) • ${benchmarks.length} benchmark(s) carregado(s)</span>
+                  </div>
+                  <div class="coach-listItem static">
+                    <strong>Acesso dos gyms</strong>
+                    <span>${gymAccess.length ? `${gymAccess.length} gym(s) com vínculo visível` : 'Nenhum gym vinculado nesta conta.'}</span>
+                  </div>
                 </div>
+
                 <div class="settings-actions coach-billingActions">
-                  <button class="btn-primary" data-action="billing:checkout" data-plan="coach" type="button">Assinar Coach</button>
-                  ${canUseDeveloperTools ? '<button class="btn-secondary" data-action="billing:activate-local" data-plan="coach" type="button">Ativar local</button>' : ''}
-                </div>
-              ` : ''}
-
-              <div class="coach-grid">
-                <div class="coach-card">
-                  <h3 class="coach-cardTitle">Gyms</h3>
-                  <div class="coach-list">
-                    ${gyms.length ? gyms.map((gym) => `
-                      <button class="coach-listItem" data-action="coach:select-gym" data-gym-id="${gym.id}" type="button">
-                        <strong>${escapeHtml(gym.name)}</strong>
-                        <span>${escapeHtml(gym.role)} • ${gym.access?.warning ? escapeHtml(gym.access.warning) : 'ok'}</span>
-                      </button>
-                    `).join('') : '<p class="account-hint">Nenhum gym criado ainda.</p>'}
-                  </div>
-                  <div class="auth-form">
-                    <input class="add-input" id="coach-gym-name" type="text" placeholder="Nome do gym" />
-                    <input class="add-input" id="coach-gym-slug" type="text" placeholder="slug-do-gym" />
-                    <button class="btn-secondary" data-action="coach:create-gym" type="button">Criar gym</button>
-                  </div>
-                </div>
-
-                <div class="coach-card">
-                  <h3 class="coach-cardTitle">Membros</h3>
-                  <div class="coach-list">
-                    ${(coachPortal?.members || []).length ? (coachPortal.members || []).map((member) => `
-                      <div class="coach-listItem static">
-                        <strong>${escapeHtml(member.name || member.email || member.pending_email || 'Convidado')}</strong>
-                        <span>${escapeHtml(member.role)} • ${escapeHtml(member.status)}</span>
-                      </div>
-                    `).join('') : '<p class="account-hint">Selecione um gym para ver membros.</p>'}
-                  </div>
-                  <div class="auth-form">
-                    <input class="add-input" id="coach-member-email" type="email" placeholder="Email do membro" />
-                    <select class="add-input" id="coach-member-role">
-                      <option value="athlete">athlete</option>
-                      <option value="coach">coach</option>
-                    </select>
-                    <button class="btn-secondary" data-action="coach:add-member" type="button">Adicionar membro</button>
-                  </div>
-                </div>
-
-                <div class="coach-card">
-                  <h3 class="coach-cardTitle">Grupos de atletas</h3>
-                  <div class="coach-list">
-                    ${groups.length ? groups.map((group) => `
-                      <div class="coach-listItem static">
-                        <strong>${escapeHtml(group.name)}</strong>
-                        <span>${Number(group.member_count || group.members?.length || 0)} atleta(s)${group.description ? ` • ${escapeHtml(group.description)}` : ''}</span>
-                      </div>
-                    `).join('') : '<p class="account-hint">Crie grupos para programações especiais, planilhas e blocos separados.</p>'}
-                  </div>
-                  <div class="auth-form">
-                    <input class="add-input" id="coach-group-name" type="text" placeholder="Nome do grupo" />
-                    <input class="add-input" id="coach-group-description" type="text" placeholder="Descrição curta opcional" />
-                    <div class="coach-selectionGrid">
-                      ${athleteMembers.length ? athleteMembers.map((member) => `
-                        <label class="coach-checkRow">
-                          <input type="checkbox" name="coach-group-members" value="${member.id}" />
-                          <span>
-                            <strong>${escapeHtml(member.name || member.email || member.pending_email || 'Atleta')}</strong>
-                            <small>${escapeHtml(member.email || member.pending_email || '')}</small>
-                          </span>
-                        </label>
-                      `).join('') : '<p class="account-hint">Adicione atletas ativos para montar grupos.</p>'}
-                    </div>
-                    <button class="btn-secondary" data-action="coach:create-group" type="button">Criar grupo</button>
-                  </div>
-                </div>
-
-                <div class="coach-card coach-cardWide">
-                  <h3 class="coach-cardTitle">Publicar treino</h3>
-                  <div class="auth-form">
-                    <input class="add-input" id="coach-workout-title" type="text" placeholder="Título do treino" />
-                    <input class="add-input" id="coach-workout-date" type="date" />
-                    <input class="add-input" id="coach-workout-benchmark" type="text" placeholder="benchmark slug opcional (ex: fran)" />
-                    <textarea class="add-input coach-textarea" id="coach-workout-lines" placeholder="Uma linha por exercício ou bloco&#10;BACK SQUAT&#10;5x5 @80"></textarea>
-                    <div class="coach-audienceBlock">
-                      <div class="coach-audienceHead">
-                        <strong>Audiência</strong>
-                        <span>Envie para todos, atletas específicos ou grupos.</span>
-                      </div>
-                      <div class="coach-pillRow coach-pillRow-inline">
-                        <label class="coach-radioPill">
-                          <input type="radio" name="coach-audience-mode" value="all" checked />
-                          <span>Todos os atletas</span>
-                        </label>
-                        <label class="coach-radioPill">
-                          <input type="radio" name="coach-audience-mode" value="selected" />
-                          <span>Atletas específicos</span>
-                        </label>
-                        <label class="coach-radioPill">
-                          <input type="radio" name="coach-audience-mode" value="groups" />
-                          <span>Grupos</span>
-                        </label>
-                      </div>
-                      <div class="coach-selectionPanels">
-                        <div class="coach-selectionPanel">
-                          <div class="coach-selectionTitle">Atletas</div>
-                          <div class="coach-selectionGrid">
-                            ${athleteMembers.length ? athleteMembers.map((member) => `
-                              <label class="coach-checkRow">
-                                <input type="checkbox" name="coach-target-members" value="${member.id}" />
-                                <span>
-                                  <strong>${escapeHtml(member.name || member.email || member.pending_email || 'Atleta')}</strong>
-                                  <small>${escapeHtml(member.email || member.pending_email || '')}</small>
-                                </span>
-                              </label>
-                            `).join('') : '<p class="account-hint">Nenhum atleta ativo neste gym.</p>'}
-                          </div>
-                        </div>
-                        <div class="coach-selectionPanel">
-                          <div class="coach-selectionTitle">Grupos</div>
-                          <div class="coach-selectionGrid">
-                            ${groups.length ? groups.map((group) => `
-                              <label class="coach-checkRow">
-                                <input type="checkbox" name="coach-target-groups" value="${group.id}" />
-                                <span>
-                                  <strong>${escapeHtml(group.name)}</strong>
-                                  <small>${Number(group.member_count || group.members?.length || 0)} atleta(s)</small>
-                                </span>
-                              </label>
-                            `).join('') : '<p class="account-hint">Crie pelo menos um grupo para usar envios segmentados.</p>'}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <button class="btn-primary" data-action="coach:publish-workout" type="button">Publicar treino</button>
-                  </div>
-                </div>
-
-                <div class="coach-card">
-                  <h3 class="coach-cardTitle">Benchmark Library</h3>
-                  <div class="admin-toolbar">
-                    <input class="add-input" id="coach-benchmark-query" type="text" placeholder="Buscar benchmark" value="${escapeHtml(coachPortal?.benchmarkQuery || '')}" />
-                    <button class="btn-secondary" data-action="benchmarks:refresh" type="button">Buscar</button>
-                  </div>
-                  <div class="coach-tabs">
-                    <button class="btn-secondary" data-action="benchmarks:filter" data-category="" type="button">Todos</button>
-                    <button class="btn-secondary" data-action="benchmarks:filter" data-category="girls" type="button">Girls</button>
-                    <button class="btn-secondary" data-action="benchmarks:filter" data-category="hero" type="button">Hero</button>
-                    <button class="btn-secondary" data-action="benchmarks:filter" data-category="open" type="button">Open</button>
-                  </div>
-                  <div class="coach-list">
-                    ${benchmarks.length ? benchmarks.map((item) => `
-                      <div class="coach-listItem static">
-                        <strong>${escapeHtml(item.name)}</strong>
-                        <span>${escapeHtml(item.category)}${item.year ? ` • ${item.year}` : ''}${item.slug ? ` • ${escapeHtml(item.slug)}` : ''}</span>
-                      </div>
-                    `).join('') : '<p class="account-hint">Nenhum benchmark carregado.</p>'}
-                  </div>
-                </div>
-
-                <div class="coach-card">
-                  <h3 class="coach-cardTitle">Feed do app</h3>
-                  <div class="coach-list">
-                    ${feed.length ? feed.map((item) => `
-                      <div class="coach-listItem static">
-                        <strong>${escapeHtml(item.title)}</strong>
-                        <span>${escapeHtml(item.gym_name || '')}${item.benchmark?.name ? ` • ${escapeHtml(item.benchmark.name)}` : ''}</span>
-                      </div>
-                    `).join('') : '<p class="account-hint">Sem treinos publicados ainda.</p>'}
-                  </div>
-                </div>
-
-                <div class="coach-card">
-                  <h3 class="coach-cardTitle">Insights do gym</h3>
-                  <div class="coach-list">
-                    <div class="coach-listItem static">
-                      <strong>Próximos 7 dias</strong>
-                      <span>${Number(coachInsights?.stats?.workoutsNext7Days || 0)} treino(s) agendado(s)</span>
-                    </div>
-                    <div class="coach-listItem static">
-                      <strong>Competições</strong>
-                      <span>${Number(coachInsights?.stats?.upcomingCompetitions || 0)} próxima(s) • ${Number(coachInsights?.stats?.competitions || 0)} no total</span>
-                    </div>
-                    <div class="coach-listItem static">
-                      <strong>Equipe técnica</strong>
-                      <span>${Number(coachInsights?.stats?.coaches || 0)} coach(es) / owner(s)</span>
-                    </div>
-                    <div class="coach-listItem static">
-                      <strong>Grupos ativos</strong>
-                      <span>${Number(coachInsights?.stats?.groups || 0)} grupo(s) criado(s)</span>
-                    </div>
-                    ${(coachInsights?.topBenchmarks || []).map((item) => `
-                      <div class="coach-listItem static">
-                        <strong>${escapeHtml(item.name || item.slug || 'Benchmark')}</strong>
-                        <span>${Number(item.total || 0)} resultado(s) registrados</span>
-                      </div>
-                    `).join('')}
-                    ${!(coachInsights?.topBenchmarks || []).length ? '<p class="account-hint">Ainda não há volume suficiente para gerar insights por benchmark.</p>' : ''}
-                  </div>
+                  ${!canCoachManage ? '<button class="btn-primary" data-action="billing:checkout" data-plan="coach" type="button">Assinar Coach</button>' : ''}
+                  ${!canCoachManage && canUseDeveloperTools ? '<button class="btn-secondary" data-action="billing:activate-local" data-plan="coach" type="button">Ativar local</button>' : ''}
+                  <a class="btn-secondary" href="/coach/" target="_blank" rel="noopener noreferrer">Abrir portal</a>
+                  <a class="btn-secondary" href="/pricing.html" target="_blank" rel="noopener noreferrer">Ver planos</a>
                 </div>
               </div>
-
-              ${gymAccess.length ? `
-                <div class="coach-card coach-cardWide">
-                  <h3 class="coach-cardTitle">Acesso dos gyms</h3>
-                  <div class="coach-list">
-                    ${gymAccess.map((item) => `
-                      <div class="coach-listItem static">
-                        <strong>${escapeHtml(item.gymName || `Gym ${item.gymId}`)}</strong>
-                        <span>${escapeHtml(item.role)} • ${item.warning ? escapeHtml(item.warning) : 'Acesso ativo'}</span>
-                      </div>
-                    `).join('')}
-                  </div>
-                </div>
-              ` : ''}
-            </section>
+            </details>
 
             ${isAdmin ? `
-              <section class="account-section account-section-admin">
-                <div class="account-sectionHead">
+              <details class="account-fold account-section-admin">
+                <summary class="account-foldSummary">
                   <div>
                     <div class="section-kicker">Admin</div>
                     <strong>Painel administrativo</strong>
                   </div>
+                  <span class="account-foldMeta">${Number(overview?.stats?.users || 0)} usuários • ${Number(overview?.stats?.activeSubscriptions || 0)} assinaturas</span>
+                </summary>
+                <div class="account-foldBody">
+                <div class="account-sectionHead">
+                  <div></div>
                   <button class="btn-secondary" data-action="admin:refresh" type="button">Atualizar</button>
                 </div>
                 <div class="admin-toolbar">
@@ -1509,7 +1502,8 @@ function renderAuthModal({ auth = {}, authMode = 'signin' } = {}) {
                 ` : `
                   <p class="account-hint">Carregue os dados do painel para ver os últimos usuários.</p>
                 `}
-              </section>
+                </div>
+              </details>
             ` : ''}
 
             <div class="settings-actions">

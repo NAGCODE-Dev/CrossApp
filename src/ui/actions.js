@@ -427,7 +427,26 @@ export function setupActions({ root, toast, rerender, getUiState, setUiState, pa
         }
 
         case 'modal:close': {
-          await setUiState({ modal: null });
+          await setUiState({ modal: null, exerciseHelp: null });
+          await rerender();
+          return;
+        }
+
+        case 'exercise:help': {
+          const label = String(el.dataset.exercise || '').trim();
+          const query = String(el.dataset.query || label).trim();
+          const sourceLine = String(el.dataset.sourceLine || '').trim();
+          await setUiState({
+            modal: 'exercise-help',
+            exerciseHelp: {
+              label,
+              query,
+              sourceLine,
+              youtubeUrl: `https://www.youtube.com/results?search_query=${encodeURIComponent(`${query} exercise tutorial`)}`,
+              standardsUrl: `https://www.youtube.com/results?search_query=${encodeURIComponent(`${query} movement standards tutorial`)}`,
+              googleUrl: `https://www.google.com/search?tbm=vid&q=${encodeURIComponent(`${query} execução`)}`,
+            },
+          });
           await rerender();
           return;
         }
@@ -496,7 +515,7 @@ export function setupActions({ root, toast, rerender, getUiState, setUiState, pa
           const password = String(root.querySelector('#auth-password')?.value || '');
 
           if (!email) throw new Error('Informe seu email');
-          if (!password || password.length < 6) throw new Error('Use uma senha com pelo menos 6 caracteres');
+          if (!password || password.length < 8) throw new Error('Use uma senha com pelo menos 8 caracteres');
           if (mode === 'signup' && !name) throw new Error('Informe seu nome');
 
           const result = mode === 'signup'
@@ -918,7 +937,7 @@ export function setupActions({ root, toast, rerender, getUiState, setUiState, pa
           if (!Number.isFinite(value) || value <= 0) throw new Error('Informe um PR válido');
 
           const exercise = rawName.toUpperCase();
-          const result = window.__APP__.addPR(exercise, value);
+          const result = await window.__APP__.addPR(exercise, value);
           if (!result?.success) throw new Error(result?.error || 'Falha ao adicionar PR');
           await syncAthletePrIfAuthenticated(exercise, value);
 
@@ -941,7 +960,7 @@ export function setupActions({ root, toast, rerender, getUiState, setUiState, pa
 
           if (!Number.isFinite(value) || value <= 0) throw new Error('PR inválido');
 
-          const result = window.__APP__.addPR(ex, value);
+          const result = await window.__APP__.addPR(ex, value);
           if (!result?.success) throw new Error(result?.error || 'Falha ao salvar PR');
           await syncAthletePrIfAuthenticated(ex, value);
 
@@ -957,8 +976,14 @@ export function setupActions({ root, toast, rerender, getUiState, setUiState, pa
           const ok = confirm(`Remover PR de "${ex}"?`);
           if (!ok) return;
 
-          const result = window.__APP__.removePR(ex);
+          const result = await window.__APP__.removePR(ex);
           if (!result?.success) throw new Error(result?.error || 'Falha ao remover PR');
+          const currentPrs = window.__APP__?.getState?.()?.prs || {};
+          if (window.__APP__?.getProfile?.()?.data) {
+            await window.__APP__?.syncAthletePrSnapshot?.(currentPrs);
+            const athleteOverview = await loadAthleteOverview();
+            await patchUiState((s) => ({ ...s, athleteOverview }));
+          }
 
           toast('PR removido');
           await rerender();

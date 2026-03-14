@@ -213,7 +213,7 @@
 
 .workout-line {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: auto 1fr auto;
   gap: 12px;
   padding: 14px 16px;
   margin-bottom: 10px;
@@ -246,6 +246,25 @@
   gap: 6px;
 }
 
+.exercise-main {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.exercise-helpBtn {
+  align-self: start;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--bg-soft);
+  color: var(--text-secondary);
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .exercise-text,
 .rest-content,
 .workout-note {
@@ -261,6 +280,18 @@
 
 .load-warning {
   color: var(--warn);
+}
+
+@media (max-width: 640px) {
+  .workout-line {
+    grid-template-columns: auto 1fr;
+  }
+
+  .exercise-helpBtn {
+    grid-column: 2;
+    justify-self: start;
+    margin-top: -2px;
+  }
 }
 
 .wod-toolbar {
