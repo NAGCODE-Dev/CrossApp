@@ -81,10 +81,6 @@
   background: var(--line);
 }
 
-.google-signinMount {
-  min-height: 42px;
-}
-
 .auth-resetBox {
   padding: 14px 16px;
   border-radius: 18px;

@@ -90,6 +90,7 @@ export function createAthleteRouter({ buildBenchmarkTrendSeries, buildPrTrendSer
 
   router.get('/athletes/me/dashboard', authRequired, async (req, res) => {
     const sportType = normalizeSportType(req.query?.sportType);
+    const isLite = String(req.query?.lite || '').trim() === '1';
     const memberships = await getUserMemberships(req.user.userId);
     const gymIds = memberships.map((membership) => membership.gym_id);
     const contexts = await getAccessContextForUser(req.user.userId);
@@ -153,7 +154,7 @@ export function createAthleteRouter({ buildBenchmarkTrendSeries, buildPrTrendSer
             [allowedGymIds, sportType],
           )
         : Promise.resolve({ rows: [] }),
-      pool.query(
+      !isLite ? pool.query(
         `SELECT
           br.benchmark_slug,
           b.name AS benchmark_name,
@@ -168,15 +169,15 @@ export function createAthleteRouter({ buildBenchmarkTrendSeries, buildPrTrendSer
          ORDER BY br.created_at DESC
          LIMIT 60`,
         [req.user.userId, sportType],
-      ),
-      pool.query(
+      ) : Promise.resolve({ rows: [] }),
+      !isLite ? pool.query(
         `SELECT exercise, value, unit, source, created_at
          FROM athlete_pr_records
          WHERE user_id = $1
          ORDER BY created_at DESC
          LIMIT 80`,
         [req.user.userId],
-      ),
+      ) : Promise.resolve({ rows: [] }),
       pool.query(`SELECT COUNT(*)::int AS total FROM benchmark_results WHERE user_id = $1 AND sport_type = $2`, [req.user.userId, sportType]),
       allowedGymIds.length
         ? pool.query(`SELECT COUNT(*)::int AS total FROM competitions WHERE gym_id = ANY($1::int[]) AND sport_type = $2 AND starts_at >= NOW() - INTERVAL '1 day'`, [allowedGymIds, sportType])
@@ -184,7 +185,7 @@ export function createAthleteRouter({ buildBenchmarkTrendSeries, buildPrTrendSer
       allowedGymIds.length
         ? pool.query(`SELECT COUNT(*)::int AS total FROM workouts WHERE gym_id = ANY($1::int[]) AND sport_type = $2`, [allowedGymIds, sportType])
         : Promise.resolve({ rows: [{ total: 0 }] }),
-      sportType === 'running'
+      !isLite && sportType === 'running'
         ? pool.query(
             `SELECT id, workout_id, title, session_type, distance_km, duration_min, avg_pace, target_pace, zone, notes, logged_at
              FROM running_session_logs
@@ -194,7 +195,7 @@ export function createAthleteRouter({ buildBenchmarkTrendSeries, buildPrTrendSer
             [req.user.userId],
           )
         : Promise.resolve({ rows: [] }),
-      sportType === 'strength'
+      !isLite && sportType === 'strength'
         ? pool.query(
             `SELECT id, workout_id, exercise, sets_count, reps_text, load_value, load_text, rir, notes, logged_at
              FROM strength_session_logs
@@ -217,21 +218,25 @@ export function createAthleteRouter({ buildBenchmarkTrendSeries, buildPrTrendSer
       return timestamp >= cutoffTime;
     };
 
-    const benchmarkHistory = buildBenchmarkTrendSeries(benchmarkTrendRes.rows)
-      .map((item) => ({
-        ...item,
-        points: (item.points || []).filter((point) => withinHistoryWindow(point.createdAt || point.date)),
-      }))
-      .filter((item) => item.points.length);
-
-    const prHistory = sportType === 'cross'
-      ? buildPrTrendSeries(prTrendRes.rows)
+    const benchmarkHistory = isLite
+      ? []
+      : buildBenchmarkTrendSeries(benchmarkTrendRes.rows)
         .map((item) => ({
           ...item,
           points: (item.points || []).filter((point) => withinHistoryWindow(point.createdAt || point.date)),
         }))
-        .filter((item) => item.points.length)
-      : [];
+        .filter((item) => item.points.length);
+
+    const prHistory = isLite
+      ? []
+      : (sportType === 'cross'
+        ? buildPrTrendSeries(prTrendRes.rows)
+          .map((item) => ({
+            ...item,
+            points: (item.points || []).filter((point) => withinHistoryWindow(point.createdAt || point.date)),
+          }))
+          .filter((item) => item.points.length)
+        : []);
     const prCurrent = prHistory.reduce((acc, item) => {
       acc[item.exercise] = item.latestValue;
       return acc;
@@ -256,8 +261,8 @@ export function createAthleteRouter({ buildBenchmarkTrendSeries, buildPrTrendSer
       benchmarkHistory,
       prHistory,
       prCurrent,
-      runningHistory: runningHistoryRes.rows.filter((row) => withinHistoryWindow(row.logged_at)),
-      strengthHistory: strengthHistoryRes.rows.filter((row) => withinHistoryWindow(row.logged_at)),
+      runningHistory: isLite ? [] : runningHistoryRes.rows.filter((row) => withinHistoryWindow(row.logged_at)),
+      strengthHistory: isLite ? [] : strengthHistoryRes.rows.filter((row) => withinHistoryWindow(row.logged_at)),
       gymAccess: contexts.map((ctx) => ({
         gymId: ctx.membership.gym_id,
         gymName: ctx.membership.gym_name,

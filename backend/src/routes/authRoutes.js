@@ -2,7 +2,7 @@ import express from 'express';
 import bcrypt from 'bcryptjs';
 
 import { pool } from '../db.js';
-import { ADMIN_EMAILS, EXPOSE_RESET_CODE, GOOGLE_CLIENT_ID, SUPPORT_EMAIL } from '../config.js';
+import { ADMIN_EMAILS, EXPOSE_RESET_CODE, SUPPORT_EMAIL } from '../config.js';
 import { isDeveloperEmail, normalizeEmail } from '../devAccess.js';
 import { authRequired, signToken } from '../auth.js';
 import { sendPasswordResetEmail } from '../mailer.js';
@@ -25,25 +25,6 @@ async function withUserBootstrap(normalizedEmail, factory) {
   } finally {
     client.release();
   }
-}
-
-async function verifyGoogleCredential(credential) {
-  const response = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`);
-  const data = await response.json().catch(() => null);
-
-  if (!response.ok || !data) {
-    throw new Error(data?.error_description || data?.error || 'Token Google inválido');
-  }
-
-  if (data.aud !== GOOGLE_CLIENT_ID) {
-    throw new Error('Google client_id incompatível');
-  }
-
-  if (String(data.email_verified) !== 'true') {
-    throw new Error('Conta Google sem email verificado');
-  }
-
-  return data;
 }
 
 export function createAuthRouter({ authRateLimit, resetRateLimit }) {
@@ -99,10 +80,6 @@ export function createAuthRouter({ authRateLimit, resetRateLimit }) {
       return res.status(401).json({ error: 'Credenciais inválidas' });
     }
 
-    if (!String(user.password_hash || '').startsWith('$2')) {
-      return res.status(401).json({ error: 'Esta conta usa login social. Entre com Google.' });
-    }
-
     const valid = await bcrypt.compare(String(password), user.password_hash);
     if (!valid) {
       return res.status(401).json({ error: 'Credenciais inválidas' });
@@ -112,57 +89,6 @@ export function createAuthRouter({ authRateLimit, resetRateLimit }) {
     await attachPendingMembershipsToUser(user.id, user.email);
     const token = signToken(safeUser);
     return res.json({ token, user: safeUser });
-  });
-
-  router.post('/google', authRateLimit, async (req, res) => {
-    const credential = String(req.body?.credential || '').trim();
-    if (!credential) {
-      return res.status(400).json({ error: 'credential é obrigatório' });
-    }
-
-    if (!GOOGLE_CLIENT_ID) {
-      return res.status(503).json({ error: 'Google Sign-In não configurado no backend' });
-    }
-
-    let googleUser;
-    try {
-      googleUser = await verifyGoogleCredential(credential);
-    } catch (error) {
-      return res.status(401).json({ error: error?.message || 'Falha ao validar conta Google' });
-    }
-
-    const normalizedEmail = normalizeEmail(googleUser.email);
-    if (!normalizedEmail) {
-      return res.status(400).json({ error: 'Conta Google sem email válido' });
-    }
-
-    const found = await pool.query(
-      `SELECT id, email, name, is_admin FROM users WHERE email = $1 LIMIT 1`,
-      [normalizedEmail],
-    );
-
-    let user = found.rows[0] || null;
-    if (!user) {
-      const inserted = await withUserBootstrap(normalizedEmail, async (client, shouldBeAdmin) => {
-        return client.query(
-          `INSERT INTO users (email, password_hash, name, is_admin)
-           VALUES ($1,$2,$3,$4)
-           RETURNING id, email, name, is_admin`,
-          [normalizedEmail, `google:${googleUser.sub}`, googleUser.name || null, shouldBeAdmin],
-        );
-      });
-      user = inserted.rows[0];
-    } else if (!user.name && googleUser.name) {
-      const updated = await pool.query(
-        `UPDATE users SET name = $2 WHERE id = $1 RETURNING id, email, name, is_admin`,
-        [user.id, googleUser.name],
-      );
-      user = updated.rows[0];
-    }
-
-    await attachPendingMembershipsToUser(user.id, user.email);
-    const token = signToken(user);
-    return res.json({ token, user });
   });
 
   router.post('/refresh', authRequired, async (req, res) => {

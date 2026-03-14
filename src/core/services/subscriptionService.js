@@ -2,7 +2,7 @@ import { apiRequest } from './apiClient.js';
 import { getRuntimeConfig } from '../../config/runtime.js';
 
 /**
- * Billing orchestration (Stripe / Mercado Pago) via backend.
+ * Billing orchestration for Kiwify link checkout and local mock activation.
  */
 export async function getSubscriptionStatus() {
   return apiRequest('/billing/status', { method: 'GET' });
@@ -10,7 +10,7 @@ export async function getSubscriptionStatus() {
 
 export async function createCheckoutSession(planId) {
   const cfg = getRuntimeConfig();
-  if ((cfg.billing?.provider || 'stripe') === 'kiwify_link') {
+  if ((cfg.billing?.provider || 'kiwify_link') === 'kiwify_link') {
     const checkoutUrl = resolveKiwifyCheckoutUrl(planId, cfg);
     if (!checkoutUrl) {
       throw new Error('Link da Kiwify não configurado para este plano');
@@ -23,7 +23,7 @@ export async function createCheckoutSession(planId) {
 
   const payload = {
     planId,
-    provider: cfg.billing?.provider || 'stripe',
+    provider: cfg.billing?.provider || 'kiwify_link',
     successUrl: cfg.billing?.successUrl || window.location.href,
     cancelUrl: cfg.billing?.cancelUrl || window.location.href,
   };

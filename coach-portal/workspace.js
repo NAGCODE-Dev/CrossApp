@@ -1590,7 +1590,7 @@ function readRuntimeConfig() {
 
 function resolveBillingProvider() {
   const cfg = readRuntimeConfig();
-  return cfg?.billing?.provider || 'stripe';
+  return cfg?.billing?.provider || 'kiwify_link';
 }
 
 function resolveKiwifyCheckoutUrl(planId) {

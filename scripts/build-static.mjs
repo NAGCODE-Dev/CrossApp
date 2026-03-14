@@ -23,11 +23,8 @@ const dirsToCopy = [
 const runtimeConfig = {
   apiBaseUrl: process.env.CROSSAPP_API_BASE_URL || '/api',
   telemetryEnabled: process.env.CROSSAPP_TELEMETRY_ENABLED !== 'false',
-  auth: {
-    googleClientId: process.env.CROSSAPP_GOOGLE_CLIENT_ID || '',
-  },
   billing: {
-    provider: process.env.CROSSAPP_BILLING_PROVIDER || 'stripe',
+    provider: process.env.CROSSAPP_BILLING_PROVIDER || 'kiwify_link',
     successUrl: process.env.CROSSAPP_BILLING_SUCCESS_URL || '',
     cancelUrl: process.env.CROSSAPP_BILLING_CANCEL_URL || '',
     links: {

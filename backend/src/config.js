@@ -37,7 +37,6 @@ export const DEV_EMAILS = Array.from(new Set([
   SUPPORT_EMAIL,
 ]));
 export const EXPOSE_RESET_CODE = String(process.env.EXPOSE_RESET_CODE || 'false').trim().toLowerCase() === 'true';
-export const GOOGLE_CLIENT_ID = String(process.env.GOOGLE_CLIENT_ID || '').trim();
 export const TRUST_PROXY = parseTrustProxy(process.env.TRUST_PROXY, IS_PRODUCTION);
 export const DEFAULT_BILLING_SUCCESS_URL = String(process.env.BILLING_SUCCESS_URL || FRONTEND_ORIGIN || 'http://localhost:8000').trim();
 export const DEFAULT_BILLING_CANCEL_URL = String(process.env.BILLING_CANCEL_URL || FRONTEND_ORIGIN || 'http://localhost:8000').trim();

@@ -1,6 +1,5 @@
 import {
   signIn,
-  signInWithGoogle,
   signOut,
   signUp,
   refreshSession,
@@ -8,7 +7,7 @@ import {
   confirmPasswordReset,
   getStoredProfile,
 } from '../core/services/authService.js';
-import { getAdminOverview } from '../core/services/adminService.js';
+import { activateCoachSubscription, getAdminOverview } from '../core/services/adminService.js';
 import { openCheckout, getSubscriptionStatus, getEntitlements, activateMockSubscription } from '../core/services/subscriptionService.js';
 import { pullLatestBackupPayload, pushBackupPayload, listSyncSnapshots } from '../core/services/syncService.js';
 import {
@@ -64,10 +63,6 @@ export function createRemoteHandlers({
       return signIn(credentials);
     },
 
-    async handleSignInWithGoogle(payload) {
-      return signInWithGoogle(payload);
-    },
-
     async handleRefreshSession() {
       return refreshSession();
     },
@@ -92,6 +87,11 @@ export function createRemoteHandlers({
 
     async handleGetAdminOverview(params) {
       const data = await getAdminOverview(params);
+      return { success: true, data };
+    },
+
+    async handleActivateCoachSubscription(userId, planId, renewDays = 30) {
+      const data = await activateCoachSubscription(userId, planId, renewDays);
       return { success: true, data };
     },
 

@@ -14,7 +14,7 @@ import {
   isAllowedOrigin,
 } from './config.js';
 import { createAuthRouter } from './routes/authRoutes.js';
-import { createBillingRouter, createBillingWebhookRouter } from './routes/billingRoutes.js';
+import { createBillingRouter } from './routes/billingRoutes.js';
 import { createTelemetryRouter } from './routes/telemetryRoutes.js';
 import { createBenchmarkRouter } from './routes/benchmarkRoutes.js';
 import { createGymRouter } from './routes/gymRoutes.js';
@@ -39,7 +39,6 @@ app.use(cors({
 app.use(attachRequestMeta);
 app.use(attachRequestLogger);
 app.use(applySecurityHeaders);
-app.use('/billing', createBillingWebhookRouter());
 app.use(express.json({ limit: '2mb' }));
 app.use('/auth', createAuthRouter({ authRateLimit: AUTH_RATE_LIMIT, resetRateLimit: RESET_RATE_LIMIT }));
 app.use('/billing', createBillingRouter());

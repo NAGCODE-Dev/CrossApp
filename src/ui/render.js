@@ -76,12 +76,10 @@ function renderModals(state) {
   const prs = state?.prs || {};
   const settings = state?.__ui?.settings || {};
   const authMode = state?.__ui?.authMode || 'signin';
-  const exerciseHelp = state?.__ui?.exerciseHelp || null;
 
   if (modal === 'prs') return renderPrsModal(prs);
   if (modal === 'settings') return renderSettingsModal(settings);
   if (modal === 'import') return renderImportModal();
-  if (modal === 'exercise-help') return renderExerciseHelpModal(exerciseHelp);
   if (modal === 'auth') return renderAuthModal({
     auth: {
       ...(state?.__ui?.auth || {}),
@@ -324,9 +322,11 @@ function renderEmptyState(state) {
 
 function renderHistoryPage(state) {
   const athleteOverview = state?.__ui?.athleteOverview || {};
+  const isAuthenticated = !!state?.__ui?.auth?.profile?.email;
   const benchmarkHistory = athleteOverview?.benchmarkHistory || [];
   const prHistory = athleteOverview?.prHistory || [];
   const isBusy = !!state?.__ui?.isBusy;
+  const isDetailLoading = isAuthenticated && athleteOverview?.detailLevel !== 'full';
   const benchmarkPoints = benchmarkHistory.reduce((sum, item) => sum + Number(item?.points?.length || 0), 0);
   const prPoints = prHistory.reduce((sum, item) => sum + Number(item?.points?.length || 0), 0);
 
@@ -343,9 +343,9 @@ function renderHistoryPage(state) {
       })}
 
       <div class="summary-strip summary-strip-3">
-        ${renderSummaryTile('Benchmarks', isBusy ? '...' : String(benchmarkHistory.length), 'modalidades com histórico')}
-        ${renderSummaryTile('PRs', isBusy ? '...' : String(prHistory.length), 'movimentos acompanhados')}
-        ${renderSummaryTile('Registros', isBusy ? '...' : String(benchmarkPoints + prPoints), 'entradas acumuladas')}
+        ${renderSummaryTile('Benchmarks', isBusy || isDetailLoading ? '...' : String(benchmarkHistory.length), 'modalidades com histórico')}
+        ${renderSummaryTile('PRs', isBusy || isDetailLoading ? '...' : String(prHistory.length), 'movimentos acompanhados')}
+        ${renderSummaryTile('Registros', isBusy || isDetailLoading ? '...' : String(benchmarkPoints + prPoints), 'entradas acumuladas')}
       </div>
 
       ${renderPageFold({
@@ -353,7 +353,7 @@ function renderHistoryPage(state) {
         subtitle: 'Progressão dos benchmarks mais registrados.',
         content: `
         <div class="trend-grid">
-          ${isBusy ? renderTrendSkeletons(4) : benchmarkHistory.length ? benchmarkHistory.map((item) => `
+          ${isBusy || isDetailLoading ? renderTrendSkeletons(4) : benchmarkHistory.length ? benchmarkHistory.map((item) => `
             <div class="trend-card">
               <div class="trend-cardHead">
                 <strong>${escapeHtml(item.name || item.slug || 'Benchmark')}</strong>
@@ -378,7 +378,7 @@ function renderHistoryPage(state) {
           <button class="btn-secondary" data-action="modal:open" data-modal="prs" type="button">Gerenciar PRs</button>
         </div>
         <div class="trend-grid">
-          ${isBusy ? renderTrendSkeletons(3) : prHistory.length ? prHistory.map((item) => `
+          ${isBusy || isDetailLoading ? renderTrendSkeletons(3) : prHistory.length ? prHistory.map((item) => `
             <div class="trend-card">
               <div class="trend-cardHead">
                 <strong>${escapeHtml(item.exercise)}</strong>
@@ -461,7 +461,6 @@ function renderCompetitionsPage(state) {
 function renderAccountPage(state) {
   const profile = state?.__ui?.auth?.profile || null;
   const coachPortal = state?.__ui?.coachPortal || {};
-  const accessContext = coachPortal?.accessContext || {};
   const subscription = coachPortal?.subscription || null;
   const planName = subscription?.plan || subscription?.plan_id || 'free';
   const planStatus = subscription?.status || 'inactive';
@@ -470,7 +469,7 @@ function renderAccountPage(state) {
   const isBusy = !!state?.__ui?.isBusy;
   const athleteBenefits = normalizeAthleteBenefits(state?.__ui?.athleteOverview?.athleteBenefits || null);
   const importUsage = getAthleteImportUsage(athleteBenefits, 'pdf');
-  const accessEntitlements = accessContext?.entitlements || [];
+  const accessEntitlements = coachPortal?.entitlements || [];
   const canCoachManage = accessEntitlements.includes('coach_portal');
   const gyms = coachPortal?.gyms || [];
   const athleteStats = state?.__ui?.athleteOverview?.stats || {};
@@ -608,7 +607,7 @@ function renderAccountPage(state) {
             </div>
           </div>
           <div class="page-actions">
-            <button class="btn-primary" data-action="billing:checkout" data-plan="coach" type="button">Assinar Coach</button>
+            ${!canCoachManage ? '<button class="btn-primary" data-action="billing:checkout" data-plan="coach" type="button">Assinar Coach</button>' : ''}
             ${canUseDeveloperTools ? '<button class="btn-secondary" data-action="billing:activate-local" data-plan="coach" type="button">Ativar local</button>' : ''}
             <a class="btn-secondary" href="/pricing.html" target="_blank" rel="noopener noreferrer">Ver planos</a>
           </div>
@@ -756,52 +755,6 @@ function renderImportModal() {
   `;
 }
 
-function renderExerciseHelpModal(help = null) {
-  const label = help?.label || 'Exercício';
-  const sourceLine = help?.sourceLine || '';
-  const youtubeUrl = help?.youtubeUrl || buildSearchUrl('youtube', label);
-  const standardsUrl = help?.standardsUrl || buildSearchUrl('standards', label);
-  const googleUrl = help?.googleUrl || buildSearchUrl('google', label);
-
-  return `
-    <div class="modal-overlay isOpen">
-      <div class="modal-container">
-        <div class="modal-header">
-          <h2 class="modal-title">Execução do exercício</h2>
-          <button class="modal-close" data-action="modal:close" type="button">✕</button>
-        </div>
-        <div class="modal-body modal-body-auth">
-          <div class="auth-intro">
-            <div class="section-kicker">Movimento identificado</div>
-            <div class="account-name">${escapeHtml(label)}</div>
-            ${sourceLine ? `<p class="account-hint">Linha original: ${escapeHtml(sourceLine)}</p>` : ''}
-            <p class="account-hint">O app detecta o nome do exercício e monta buscas prontas para vídeos de execução, técnica e padrão do movimento.</p>
-          </div>
-          <div class="coach-list coach-listCompact">
-            <div class="coach-listItem static">
-              <strong>YouTube</strong>
-              <span>Busca principal por execução e tutorial.</span>
-            </div>
-            <div class="coach-listItem static">
-              <strong>Técnica</strong>
-              <span>Resultados com padrão do movimento e erros comuns.</span>
-            </div>
-            <div class="coach-listItem static">
-              <strong>Mais vídeos</strong>
-              <span>Busca ampla para comparar demonstrações.</span>
-            </div>
-          </div>
-          <div class="page-actions">
-            <a class="btn-primary" href="${escapeHtml(youtubeUrl)}" target="_blank" rel="noopener noreferrer">YouTube</a>
-            <a class="btn-secondary" href="${escapeHtml(standardsUrl)}" target="_blank" rel="noopener noreferrer">Técnica</a>
-            <a class="btn-secondary" href="${escapeHtml(googleUrl)}" target="_blank" rel="noopener noreferrer">Mais vídeos</a>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
 function renderListSkeletons(count = 3) {
   return Array.from({ length: count }, () => `
     <div class="coach-listItem static isSkeleton">
@@ -893,6 +846,7 @@ function inferExerciseHelp(rawText = '') {
   if (!sourceLine) return null;
   const normalized = normalizeExerciseSearchText(sourceLine);
   if (!normalized || normalized.length < 3) return null;
+  if (isProbablyLoadPrescription(sourceLine, normalized)) return null;
 
   const matched = EXERCISE_VIDEO_LIBRARY
     .flatMap((item) => item.aliases.map((alias) => ({ item, alias })))
@@ -903,9 +857,7 @@ function inferExerciseHelp(rawText = '') {
     return buildExerciseHelpPayload(matched.item.label, matched.item.query, sourceLine);
   }
 
-  const fallback = buildFallbackExerciseLabel(sourceLine);
-  if (!fallback) return null;
-  return buildExerciseHelpPayload(fallback, fallback, sourceLine);
+  return null;
 }
 
 function buildExerciseHelpPayload(label, query, sourceLine = '') {
@@ -913,30 +865,13 @@ function buildExerciseHelpPayload(label, query, sourceLine = '') {
     label,
     query,
     sourceLine,
-    youtubeUrl: buildSearchUrl('youtube', query),
-    standardsUrl: buildSearchUrl('standards', query),
-    googleUrl: buildSearchUrl('google', query),
+    youtubeUrl: buildSearchUrl(query),
   };
 }
 
-function buildSearchUrl(kind, query) {
+function buildSearchUrl(query) {
   const q = encodeURIComponent(String(query || '').trim());
-  if (kind === 'standards') return `https://www.youtube.com/results?search_query=${q}%20movement%20standards%20tutorial`;
-  if (kind === 'google') return `https://www.google.com/search?tbm=vid&q=${q}%20execu%C3%A7%C3%A3o`;
   return `https://www.youtube.com/results?search_query=${q}%20exercise%20tutorial`;
-}
-
-function buildFallbackExerciseLabel(rawText = '') {
-  const cleaned = String(rawText || '')
-    .replace(/\([^)]*\)/g, ' ')
-    .replace(/\b\d+\s*x\s*\d+\b/gi, ' ')
-    .replace(/\b\d+\s*(kg|kgs|lb|lbs|m|min|cal|reps?)\b/gi, ' ')
-    .replace(/@\s*\d+%/g, ' ')
-    .replace(/[+/,]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-  if (!cleaned) return '';
-  return cleaned.split(' ').slice(0, 5).join(' ');
 }
 
 function normalizeExerciseSearchText(value = '') {
@@ -947,6 +882,20 @@ function normalizeExerciseSearchText(value = '') {
     .replace(/[^a-z0-9\s-]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function isProbablyLoadPrescription(rawText = '', normalized = '') {
+  if (!rawText || !normalized) return true;
+  if (/@\s*\d+%/.test(rawText)) return true;
+  if (/^\s*\d+[\d+x+@%/\-() ]*$/.test(rawText)) return true;
+
+  const tokens = normalized.split(' ').filter(Boolean);
+  if (!tokens.length) return true;
+  const alphaTokens = tokens.filter((token) => /[a-z]/.test(token));
+  if (!alphaTokens.length) return true;
+  const numberTokens = tokens.filter((token) => /\d/.test(token));
+
+  return numberTokens.length > alphaTokens.length && alphaTokens.length <= 2;
 }
 
 function renderWorkoutBlock(block, blockIndex, ui) {
@@ -972,7 +921,7 @@ function renderWorkoutLine(line, lineId, ui) {
   const isRest = !!(typeof line === 'object' && line.isRest);
   
   const text = escapeHtml(rawText);
-  const exerciseHelp = inferExerciseHelp(rawText);
+  const exerciseHelp = !hasLoad ? inferExerciseHelp(rawText) : null;
   
   // Filtro: Remove linhas indesejadas
   if (
@@ -1040,8 +989,7 @@ function renderWorkoutLine(line, lineId, ui) {
       type="button"
       data-action="exercise:help"
       data-exercise="${escapeHtml(exerciseHelp.label)}"
-      data-query="${escapeHtml(exerciseHelp.query)}"
-      data-source-line="${escapeHtml(rawText)}"
+      data-url="${escapeHtml(exerciseHelp.youtubeUrl)}"
       title="Ver execução"
       aria-label="Ver execução de ${escapeHtml(exerciseHelp.label)}"
     >
@@ -1284,12 +1232,7 @@ function renderAuthModal({ auth = {}, authMode = 'signin' } = {}) {
     const canAthleteUseApp = entitlements.includes('athlete_app');
     const subscription = coachPortal?.subscription || null;
     const gyms = coachPortal?.gyms || [];
-    const benchmarks = coachPortal?.benchmarks || [];
-    const feed = coachPortal?.feed || [];
     const gymAccess = coachPortal?.gymAccess || [];
-    const coachInsights = coachPortal?.insights || null;
-    const groups = coachPortal?.groups || [];
-    const athleteMembers = (coachPortal?.members || []).filter((member) => member.role === 'athlete' && member.status === 'active');
     const athleteStats = athleteOverview?.stats || {};
     const athleteResults = athleteOverview?.recentResults || [];
     const athleteCompetitions = athleteOverview?.upcomingCompetitions || [];
@@ -1345,7 +1288,7 @@ function renderAuthModal({ auth = {}, authMode = 'signin' } = {}) {
               </div>
               <div class="summary-tile">
                   <span class="summary-label">Treinos</span>
-                  <strong class="summary-value">${feed.length}</strong>
+                  <strong class="summary-value">${Number(athleteStats?.assignedWorkouts || 0)}</strong>
                 </div>
               `}
             </div>
@@ -1402,62 +1345,23 @@ function renderAuthModal({ auth = {}, authMode = 'signin' } = {}) {
               <a class="btn-secondary" href="/sports/cross/#account" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">Ir para Conta</a>
             </div>
 
-            <details class="account-fold ${canCoachManage || canUseDeveloperTools ? '' : 'isCompact'}">
-              <summary class="account-foldSummary">
-                <div>
-                  <div class="section-kicker">Coach</div>
-                  <strong>Status do portal do coach</strong>
-                </div>
-                <span class="account-foldMeta">${escapeHtml(planName)} • ${escapeHtml(planStatus)} • ${Number(coachInsights?.stats?.athletes || 0)} atletas</span>
-              </summary>
-              <div class="account-foldBody">
-                <div class="admin-stats">
-                  <div class="admin-statCard">
-                    <span class="admin-statLabel">Plano</span>
-                    <span class="admin-statValue">${escapeHtml(planName)}</span>
-                  </div>
-                  <div class="admin-statCard">
-                    <span class="admin-statLabel">Status</span>
-                    <span class="admin-statValue">${escapeHtml(planStatus)}</span>
-                  </div>
-                  <div class="admin-statCard">
-                    <span class="admin-statLabel">Gyms</span>
-                    <span class="admin-statValue">${gyms.length}</span>
-                  </div>
-                  <div class="admin-statCard">
-                    <span class="admin-statLabel">Atletas</span>
-                    <span class="admin-statValue">${Number(coachInsights?.stats?.athletes || 0)}</span>
-                  </div>
-                </div>
-
-                <div class="coach-pillRow">
-                  <span class="coach-pill ${canCoachManage ? 'isGood' : 'isWarn'}">${canCoachManage ? 'Coach liberado' : 'Coach bloqueado'}</span>
-                  <span class="coach-pill ${canAthleteUseApp ? 'isGood' : 'isWarn'}">${canAthleteUseApp ? 'Atletas com acesso' : 'Atletas limitados'}</span>
-                </div>
-
-                <div class="coach-list coach-listCompact">
-                  <div class="coach-listItem static">
-                    <strong>Portal do coach</strong>
-                    <span>${canCoachManage || canUseDeveloperTools ? 'Use o portal separado para gyms, grupos e publicação.' : 'Ative um plano para abrir a operação completa do box.'}</span>
-                  </div>
-                  <div class="coach-listItem static">
-                    <strong>Feed e benchmarks</strong>
-                    <span>${feed.length} treino(s) publicado(s) • ${benchmarks.length} benchmark(s) carregado(s)</span>
-                  </div>
-                  <div class="coach-listItem static">
-                    <strong>Acesso dos gyms</strong>
-                    <span>${gymAccess.length ? `${gymAccess.length} gym(s) com vínculo visível` : 'Nenhum gym vinculado nesta conta.'}</span>
-                  </div>
-                </div>
-
-                <div class="settings-actions coach-billingActions">
-                  ${!canCoachManage ? '<button class="btn-primary" data-action="billing:checkout" data-plan="coach" type="button">Assinar Coach</button>' : ''}
-                  ${!canCoachManage && canUseDeveloperTools ? '<button class="btn-secondary" data-action="billing:activate-local" data-plan="coach" type="button">Ativar local</button>' : ''}
-                  <a class="btn-secondary" href="/coach/" target="_blank" rel="noopener noreferrer">Abrir portal</a>
-                  <a class="btn-secondary" href="/pricing.html" target="_blank" rel="noopener noreferrer">Ver planos</a>
-                </div>
+            <div class="auth-intro">
+              <div class="section-kicker">Coach</div>
+              <p class="account-hint">${canCoachManage || canUseDeveloperTools
+                ? 'O portal do coach continua separado do app do atleta. Use sua mesma conta para abrir o workspace do box.'
+                : 'Seu acesso de coach está bloqueado. Ative um plano quando quiser operar box, atletas e grupos no portal separado.'}</p>
+              <div class="coach-pillRow">
+                <span class="coach-pill ${canCoachManage ? 'isGood' : 'isWarn'}">${canCoachManage ? 'Coach liberado' : 'Coach bloqueado'}</span>
+                <span class="coach-pill ${canAthleteUseApp ? 'isGood' : 'isWarn'}">${canAthleteUseApp ? 'Atleta com acesso' : 'Atleta limitado'}</span>
+                <span class="coach-pill">${gyms.length} gym(s)</span>
               </div>
-            </details>
+              <div class="settings-actions coach-billingActions">
+                ${!canCoachManage ? '<button class="btn-primary" data-action="billing:checkout" data-plan="coach" type="button">Assinar Coach</button>' : ''}
+                ${!canCoachManage && canUseDeveloperTools ? '<button class="btn-secondary" data-action="billing:activate-local" data-plan="coach" type="button">Ativar local</button>' : ''}
+                <a class="btn-secondary" href="/coach/" target="_blank" rel="noopener noreferrer">Abrir portal</a>
+                <a class="btn-secondary" href="/pricing.html" target="_blank" rel="noopener noreferrer">Ver planos</a>
+              </div>
+            </div>
 
             ${isAdmin ? `
               <details class="account-fold account-section-admin">
@@ -1494,8 +1398,19 @@ function renderAuthModal({ auth = {}, authMode = 'signin' } = {}) {
                         <div>
                           <div class="admin-userName">${escapeHtml(user.name || 'Sem nome')}</div>
                           <div class="admin-userEmail">${escapeHtml(user.email || '')}</div>
+                          <div class="account-hint">
+                            Plano: ${escapeHtml(user.subscription_plan || 'free')} • ${escapeHtml(user.subscription_status || 'inactive')}
+                            ${user.subscription_renew_at ? ` • renova em ${escapeHtml(formatDateShort(user.subscription_renew_at))}` : ''}
+                          </div>
                         </div>
-                        <div class="admin-userMeta">${user.is_admin ? 'Admin' : 'User'}</div>
+                        <div class="admin-userControls">
+                          <div class="admin-userMeta">${user.is_admin ? 'Admin' : 'User'}</div>
+                          <div class="admin-userActions">
+                            <button class="btn-secondary" data-action="admin:activate-plan" data-user-id="${Number(user.id)}" data-plan-id="starter" type="button">Starter</button>
+                            <button class="btn-secondary" data-action="admin:activate-plan" data-user-id="${Number(user.id)}" data-plan-id="pro" type="button">Pro</button>
+                            <button class="btn-secondary" data-action="admin:activate-plan" data-user-id="${Number(user.id)}" data-plan-id="performance" type="button">Performance</button>
+                          </div>
+                        </div>
                       </div>
                     `).join('')}
                   </div>
@@ -1541,12 +1456,6 @@ function renderAuthModal({ auth = {}, authMode = 'signin' } = {}) {
               ${isSignup ? 'Criar conta' : 'Entrar'}
             </button>
           </form>
-
-          <div class="auth-divider"><span>ou</span></div>
-          <div class="google-signinBlock">
-            <div class="google-signinMount" id="ui-googleSignIn"></div>
-            <p class="account-hint google-signinHint">Entre com Google para criar ou acessar sua conta mais rápido.</p>
-          </div>
 
           ${!isSignup ? `
             <div class="auth-resetBox">

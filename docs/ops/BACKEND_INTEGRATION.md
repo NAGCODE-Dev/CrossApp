@@ -11,7 +11,7 @@
   - response: `{ token, user }`
 - `POST /auth/signout`
 
-## Billing (Stripe / Mercado Pago)
+## Billing
 - `GET /billing/status`
   - response: `{ plan, status, renewAt, provider }`
 - `POST /billing/checkout`
@@ -36,5 +36,5 @@
 
 ## Security Notes
 - JWT com expiração curta + refresh token rotativo.
-- Webhooks de cobrança obrigatórios para status real de assinatura.
+- Billing externo via Kiwify link não depende de webhook no backend atual.
 - Idempotência nos endpoints de checkout e sync.

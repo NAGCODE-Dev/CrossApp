@@ -17,9 +17,6 @@ export const migration = {
         plan_id TEXT NOT NULL,
         status TEXT NOT NULL DEFAULT 'pending',
         provider TEXT NOT NULL DEFAULT 'mock',
-        stripe_customer_id TEXT,
-        stripe_subscription_id TEXT,
-        stripe_price_id TEXT,
         renew_at TIMESTAMPTZ,
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );

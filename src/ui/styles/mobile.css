@@ -136,6 +136,14 @@
     padding: 0;
   }
 
+  .admin-userControls {
+    justify-items: start;
+  }
+
+  .admin-userActions {
+    justify-content: flex-start;
+  }
+
   .app-main {
     padding: 14px 12px calc(var(--nav-height) + 18px + var(--safe-bottom));
   }

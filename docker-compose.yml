@@ -33,11 +33,6 @@ services:
       DEV_EMAILS: nagcode.contact@gmail.com
       EXPOSE_RESET_CODE: "false"
       SMTP_FROM: nagcode.contact@gmail.com
-      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
-      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
-      STRIPE_PRICE_COACH: ${STRIPE_PRICE_COACH:-}
-      STRIPE_PRICE_PRO: ${STRIPE_PRICE_PRO:-}
-      STRIPE_PRICE_STARTER: ${STRIPE_PRICE_STARTER:-}
     ports:
       - "8787:8787"
     restart: unless-stopped

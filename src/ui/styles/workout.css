@@ -253,6 +253,12 @@
 }
 
 .exercise-helpBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: end;
+  width: max-content;
+  max-width: 100%;
   align-self: start;
   min-height: 34px;
   padding: 0 12px;
@@ -290,6 +296,7 @@
   .exercise-helpBtn {
     grid-column: 2;
     justify-self: start;
+    width: auto;
     margin-top: -2px;
   }
 }
@@ -351,7 +358,6 @@
 .settings-group,
 .auth-form,
 .pr-add,
-.google-signinBlock,
 .auth-resetForm,
 .modal-body-auth,
 .trend-grid,
@@ -416,6 +422,24 @@
 .admin-userMeta {
   color: var(--text-secondary);
   font-size: 0.82rem;
+}
+
+.admin-userControls {
+  display: grid;
+  gap: 10px;
+  justify-items: end;
+}
+
+.admin-userActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.admin-userActions .btn-secondary {
+  min-height: 38px;
+  padding-inline: 12px;
 }
 
 .pr-remove {

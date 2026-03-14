@@ -45,6 +45,7 @@ export async function getAccessContext() {
 export async function getAthleteDashboard(params = {}) {
   const search = new URLSearchParams();
   if (params?.sportType) search.set('sportType', params.sportType);
+  if (params?.lite) search.set('lite', '1');
   const suffix = search.toString() ? `?${search.toString()}` : '';
   return apiRequest(`/athletes/me/dashboard${suffix}`, { method: 'GET' });
 }

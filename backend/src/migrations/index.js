@@ -5,7 +5,6 @@ import { migration as sportTypesMigration } from './003_sport_types.js';
 import { migration as competitionSportTypesMigration } from './004_competition_sport_types.js';
 import { migration as sportHistoryMigration } from './005_sport_history.js';
 import { migration as logCompletionStateMigration } from './006_log_completion_state.js';
-import { migration as mercadopagoBillingMigration } from './007_mercadopago_billing.js';
 
 const MIGRATIONS = [
   baseSchemaMigration,
@@ -14,7 +13,6 @@ const MIGRATIONS = [
   competitionSportTypesMigration,
   sportHistoryMigration,
   logCompletionStateMigration,
-  mercadopagoBillingMigration,
 ];
 
 export async function runMigrations() {

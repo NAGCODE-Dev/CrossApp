@@ -14,17 +14,11 @@ export function setupActions({ root, toast, rerender, getUiState, setUiState, pa
     entitlements: [],
     gymAccess: [],
     gyms: [],
-    benchmarks: [],
-    benchmarkQuery: '',
-    benchmarkCategory: '',
-    feed: [],
     selectedGymId: null,
-    members: [],
-    groups: [],
-    insights: null,
   });
 
   const emptyAthleteOverview = () => ({
+    detailLevel: 'none',
     stats: null,
     recentResults: [],
     upcomingCompetitions: [],
@@ -38,6 +32,29 @@ export function setupActions({ root, toast, rerender, getUiState, setUiState, pa
     const accessBenefits = accessContext?.data?.athleteBenefits || accessContext?.athleteBenefits || null;
     return normalizeAthleteBenefits(overviewBenefits || accessBenefits || null);
   }
+
+  function mergeAthleteOverviewSnapshot(nextOverview, currentOverview) {
+    const next = nextOverview && typeof nextOverview === 'object' ? nextOverview : emptyAthleteOverview();
+    const current = currentOverview && typeof currentOverview === 'object' ? currentOverview : emptyAthleteOverview();
+    if (current?.detailLevel !== 'full' || next?.detailLevel === 'full') {
+      return next;
+    }
+
+    return {
+      ...next,
+      detailLevel: 'full',
+      benchmarkHistory: Array.isArray(current?.benchmarkHistory) ? current.benchmarkHistory : [],
+      prHistory: Array.isArray(current?.prHistory) ? current.prHistory : [],
+      prCurrent: current?.prCurrent && typeof current.prCurrent === 'object' ? current.prCurrent : {},
+      runningHistory: Array.isArray(current?.runningHistory) ? current.runningHistory : [],
+      strengthHistory: Array.isArray(current?.strengthHistory) ? current.strengthHistory : [],
+    };
+  }
+
+  let accountSnapshotTask = null;
+  let lastAccountSnapshotKey = '';
+  let lastAccountSnapshotAt = 0;
+  let athleteOverviewFullTask = null;
 
   async function guardAthleteImport(kind, uiState) {
     const profile = window.__APP__?.getProfile?.()?.data || null;
@@ -56,52 +73,78 @@ export function setupActions({ root, toast, rerender, getUiState, setUiState, pa
     return { benefits, usage };
   }
 
+  function recordPerfMetric(name, durationMs, meta = {}) {
+    try {
+      const current = window.__CROSSAPP_UI_METRICS__ || { recent: [], summary: {} };
+      const recent = [...(current.recent || []), { name, durationMs, at: new Date().toISOString(), ...meta }].slice(-30);
+      const previous = current.summary?.[name] || { count: 0, maxMs: 0, avgMs: 0, lastMs: 0 };
+      const count = previous.count + 1;
+      const summary = {
+        ...(current.summary || {}),
+        [name]: {
+          count,
+          maxMs: Math.max(previous.maxMs || 0, durationMs),
+          avgMs: Number((((previous.avgMs || 0) * previous.count + durationMs) / count).toFixed(1)),
+          lastMs: durationMs,
+          ...meta,
+        },
+      };
+      window.__CROSSAPP_UI_METRICS__ = { recent, summary };
+      if (durationMs >= 800) {
+        console.warn('[ui:slow]', name, `${durationMs}ms`, meta);
+      }
+    } catch {
+      // no-op
+    }
+  }
+
+  async function measureAsync(name, fn, meta = {}) {
+    const startedAt = performance.now();
+    try {
+      return await fn();
+    } finally {
+      recordPerfMetric(name, Number((performance.now() - startedAt).toFixed(1)), meta);
+    }
+  }
+
   async function loadCoachPortalSnapshot(selectedGymId) {
     try {
-      const [subscriptionResult, entitlementsResult, accessResult, gymsResult, benchmarksResult, feedResult] = await Promise.all([
-        window.__APP__?.getSubscriptionStatus?.(),
-        window.__APP__?.getEntitlements?.(),
-        window.__APP__?.getAccessContext?.(),
-        window.__APP__?.getMyGyms?.(),
-        window.__APP__?.getBenchmarks?.({ limit: 20 }),
-        window.__APP__?.getWorkoutFeed?.(),
+      const [subscriptionResult, entitlementsResult, gymsResult] = await Promise.all([
+        measureAsync('account.subscription', () => window.__APP__?.getSubscriptionStatus?.()),
+        measureAsync('account.entitlements', () => window.__APP__?.getEntitlements?.()),
+        measureAsync('account.gyms', () => window.__APP__?.getMyGyms?.()),
       ]);
 
       const gyms = gymsResult?.data?.gyms || [];
       const resolvedGymId = selectedGymId || gyms[0]?.id || null;
-      const [membersResult, groupsResult, insightsResult] = resolvedGymId
-        ? await Promise.all([
-            window.__APP__?.listGymMembers?.(resolvedGymId),
-            window.__APP__?.listGymGroups?.(resolvedGymId),
-            window.__APP__?.getGymInsights?.(resolvedGymId),
-          ])
-        : [null, null, null];
+      const entitlements = entitlementsResult?.data?.entitlements || [];
+      const gymAccess = entitlementsResult?.data?.gymAccess || [];
 
       return {
         subscription: subscriptionResult?.data || null,
-        entitlements: entitlementsResult?.data?.entitlements || [],
-        gymAccess: entitlementsResult?.data?.gymAccess || accessResult?.data?.gyms || [],
+        entitlements,
+        gymAccess,
         gyms,
-        benchmarks: benchmarksResult?.data?.benchmarks || [],
-        benchmarkQuery: '',
-        benchmarkCategory: '',
-        feed: feedResult?.data?.workouts || [],
         selectedGymId: resolvedGymId,
-        members: membersResult?.data?.memberships || [],
-        groups: groupsResult?.data?.groups || [],
-        insights: insightsResult?.data || null,
       };
     } catch {
       return emptyCoachPortal();
     }
   }
 
-  async function loadAthleteOverview() {
+  async function loadAthleteOverview({ lite = false } = {}) {
     try {
-      const result = await window.__APP__?.getAthleteDashboard?.();
-      return result?.data || emptyAthleteOverview();
+      const result = await measureAsync('account.athlete-dashboard', () => window.__APP__?.getAthleteDashboard?.({ lite }));
+      return {
+        ...emptyAthleteOverview(),
+        ...(result?.data || {}),
+        detailLevel: lite ? 'lite' : 'full',
+      };
     } catch {
-      return emptyAthleteOverview();
+      return {
+        ...emptyAthleteOverview(),
+        detailLevel: lite ? 'lite' : 'full',
+      };
     }
   }
 
@@ -116,31 +159,65 @@ export function setupActions({ root, toast, rerender, getUiState, setUiState, pa
       return nextState;
     }
 
-    try {
-      const currentPrs = window.__APP__?.getState?.()?.prs || {};
-      if (currentPrs && Object.keys(currentPrs).length) {
-        await window.__APP__?.syncAthletePrSnapshot?.(currentPrs);
-      }
-    } catch {}
-
     const [coachPortal, athleteOverview] = await Promise.all([
-      loadCoachPortalSnapshot(selectedGymId),
-      loadAthleteOverview(),
+      measureAsync('account.snapshot.coach', () => loadCoachPortalSnapshot(selectedGymId)),
+      measureAsync('account.snapshot.athlete', () => loadAthleteOverview({ lite: true })),
     ]);
 
     nextState.coachPortal = coachPortal;
     nextState.athleteOverview = athleteOverview;
-
-    if (profile?.is_admin || profile?.isAdmin) {
-      try {
-        const adminResult = await window.__APP__?.getAdminOverview?.({ limit: 25 });
-        nextState.admin = { overview: adminResult?.data || null, query: '' };
-      } catch {
-        nextState.admin = { overview: null, query: '' };
-      }
-    }
+    nextState.admin = { overview: null, query: '' };
 
     return nextState;
+  }
+
+  async function hydrateAccountSnapshotInBackground(profile, selectedGymId = null) {
+    try {
+      if (!profile?.email) return;
+
+      const snapshotKey = `${String(profile.email || '').toLowerCase()}::${selectedGymId || 'default'}`;
+      const isFresh = accountSnapshotTask && lastAccountSnapshotKey === snapshotKey && (Date.now() - lastAccountSnapshotAt) < 15000;
+      if (!isFresh) {
+        lastAccountSnapshotKey = snapshotKey;
+        lastAccountSnapshotAt = Date.now();
+        accountSnapshotTask = measureAsync('account.snapshot.total', () => loadAccountSnapshot(profile, selectedGymId));
+      }
+
+      const snapshot = await accountSnapshotTask;
+      await patchUiState((s) => ({
+        ...s,
+        ...snapshot,
+        athleteOverview: mergeAthleteOverviewSnapshot(snapshot?.athleteOverview, s?.athleteOverview),
+      }));
+      await rerender();
+      if ((getUiState?.()?.currentPage || 'today') === 'history') {
+        hydrateAthleteOverviewFullInBackground();
+      }
+    } catch (error) {
+      console.warn('Falha ao carregar snapshot da conta:', error?.message || error);
+    } finally {
+      accountSnapshotTask = null;
+    }
+  }
+
+  async function hydrateAthleteOverviewFullInBackground() {
+    try {
+      const profile = window.__APP__?.getProfile?.()?.data || null;
+      if (!profile?.email) return;
+
+      const ui = getUiState?.() || {};
+      if (ui?.athleteOverview?.detailLevel === 'full') return;
+      if (!athleteOverviewFullTask) {
+        athleteOverviewFullTask = measureAsync('athlete.dashboard.full', () => loadAthleteOverview({ lite: false }));
+      }
+      const athleteOverview = await athleteOverviewFullTask;
+      await patchUiState((s) => ({ ...s, athleteOverview: mergeAthleteOverviewSnapshot(athleteOverview, s?.athleteOverview) }));
+      await rerender();
+    } catch (error) {
+      console.warn('Falha ao carregar histórico completo do atleta:', error?.message || error);
+    } finally {
+      athleteOverviewFullTask = null;
+    }
   }
 
   async function syncAthletePrIfAuthenticated(exercise, value) {
@@ -162,19 +239,6 @@ export function setupActions({ root, toast, rerender, getUiState, setUiState, pa
     }
   }
 
-  window.addEventListener('crossapp:auth-changed', async () => {
-    try {
-      const profile = window.__APP__?.getProfile?.()?.data || null;
-      const ui = getUiState?.() || {};
-      const snapshot = await loadAccountSnapshot(profile, ui?.coachPortal?.selectedGymId || null);
-      await setUiState({ modal: null, authMode: 'signin', ...snapshot });
-      toast('Login com Google concluído');
-      await rerender();
-    } catch (error) {
-      console.error('Falha ao sincronizar auth Google:', error);
-    }
-  });
-  
   // Busca de PRs (filtra em tempo real)
   root.addEventListener('input', (e) => {
     const t = e.target;
@@ -414,8 +478,11 @@ export function setupActions({ root, toast, rerender, getUiState, setUiState, pa
           const modal = el.dataset.modal || null;
           if (modal === 'auth') {
             const profile = window.__APP__?.getProfile?.()?.data || null;
-            const snapshot = await loadAccountSnapshot(profile);
-            await setUiState({ modal, ...snapshot });
+            await setUiState({ modal });
+            await rerender();
+            hydrateAccountSnapshotInBackground(profile);
+            if (modal === 'auth') root.querySelector('#auth-email')?.focus();
+            return;
           } else {
             await setUiState({ modal });
           }
@@ -427,27 +494,24 @@ export function setupActions({ root, toast, rerender, getUiState, setUiState, pa
         }
 
         case 'modal:close': {
-          await setUiState({ modal: null, exerciseHelp: null });
+          await setUiState({ modal: null });
           await rerender();
           return;
         }
 
         case 'exercise:help': {
           const label = String(el.dataset.exercise || '').trim();
-          const query = String(el.dataset.query || label).trim();
-          const sourceLine = String(el.dataset.sourceLine || '').trim();
-          await setUiState({
-            modal: 'exercise-help',
-            exerciseHelp: {
-              label,
-              query,
-              sourceLine,
-              youtubeUrl: `https://www.youtube.com/results?search_query=${encodeURIComponent(`${query} exercise tutorial`)}`,
-              standardsUrl: `https://www.youtube.com/results?search_query=${encodeURIComponent(`${query} movement standards tutorial`)}`,
-              googleUrl: `https://www.google.com/search?tbm=vid&q=${encodeURIComponent(`${query} execução`)}`,
-            },
-          });
-          await rerender();
+          const directUrl = String(el.dataset.url || '').trim();
+          const fallbackUrl = label
+            ? `https://www.youtube.com/results?search_query=${encodeURIComponent(`${label} exercise tutorial`)}` 
+            : '';
+          const url = directUrl || fallbackUrl;
+          if (!url) throw new Error('Vídeo de execução indisponível para este movimento');
+
+          const popup = window.open(url, '_blank', 'noopener,noreferrer');
+          if (!popup) {
+            window.location.href = url;
+          }
           return;
         }
 
@@ -455,6 +519,9 @@ export function setupActions({ root, toast, rerender, getUiState, setUiState, pa
           const page = String(el.dataset.page || 'today');
           await patchUiState((s) => ({ ...s, currentPage: page }));
           await rerender();
+          if (page === 'history') {
+            hydrateAthleteOverviewFullInBackground();
+          }
           return;
         }
 
@@ -527,10 +594,10 @@ export function setupActions({ root, toast, rerender, getUiState, setUiState, pa
           }
 
           const profile = result?.user || window.__APP__?.getProfile?.()?.data || null;
-          const snapshot = await loadAccountSnapshot(profile);
-          await setUiState({ modal: null, authMode: 'signin', ...snapshot });
+          await setUiState({ modal: null, authMode: 'signin' });
           toast(mode === 'signup' ? 'Conta criada' : 'Login efetuado');
           await rerender();
+          hydrateAccountSnapshotInBackground(profile);
           return;
         }
 
@@ -597,10 +664,9 @@ export function setupActions({ root, toast, rerender, getUiState, setUiState, pa
           }
           const profile = result?.user || window.__APP__?.getProfile?.()?.data || null;
           const ui = getUiState?.() || {};
-          const snapshot = await loadAccountSnapshot(profile, ui?.coachPortal?.selectedGymId || null);
-          await patchUiState((s) => ({ ...s, ...snapshot }));
           toast('Sessão atualizada');
           await rerender();
+          hydrateAccountSnapshotInBackground(profile, ui?.coachPortal?.selectedGymId || null);
           return;
         }
 
@@ -620,194 +686,12 @@ export function setupActions({ root, toast, rerender, getUiState, setUiState, pa
           await window.__APP__.activateMockSubscription(plan);
           const ui = getUiState?.() || {};
           const snapshot = await loadAccountSnapshot(profile, ui?.coachPortal?.selectedGymId || null);
-          await patchUiState((s) => ({ ...s, ...snapshot }));
+          await patchUiState((s) => ({
+            ...s,
+            ...snapshot,
+            athleteOverview: mergeAthleteOverviewSnapshot(snapshot?.athleteOverview, s?.athleteOverview),
+          }));
           toast('Plano Coach local ativado');
-          await rerender();
-          return;
-        }
-
-        case 'coach:refresh': {
-          const profile = window.__APP__?.getProfile?.()?.data || null;
-          const ui = getUiState?.() || {};
-          const snapshot = await loadAccountSnapshot(profile, ui?.coachPortal?.selectedGymId || null);
-          await patchUiState((s) => ({ ...s, ...snapshot }));
-          toast('Coach Portal atualizado');
-          await rerender();
-          return;
-        }
-
-        case 'coach:select-gym': {
-          const gymId = Number(el.dataset.gymId);
-          if (!Number.isFinite(gymId)) return;
-          const [membersResult, groupsResult, insightsResult] = await Promise.all([
-            window.__APP__.listGymMembers(gymId),
-            window.__APP__?.listGymGroups?.(gymId),
-            window.__APP__?.getGymInsights?.(gymId),
-          ]);
-          await patchUiState((s) => ({
-            ...s,
-            coachPortal: {
-              ...(s.coachPortal || {}),
-              selectedGymId: gymId,
-              members: membersResult?.data?.memberships || [],
-              groups: groupsResult?.data?.groups || [],
-              insights: insightsResult?.data || null,
-            },
-          }));
-          await rerender();
-          return;
-        }
-
-        case 'coach:create-gym': {
-          const name = String(root.querySelector('#coach-gym-name')?.value || '').trim();
-          const slug = String(root.querySelector('#coach-gym-slug')?.value || '').trim();
-          if (!name || !slug) throw new Error('Informe nome e slug do gym');
-          const result = await window.__APP__.createGym({ name, slug });
-          const snapshot = await loadCoachPortalSnapshot(result?.data?.gym?.id || null);
-          await patchUiState((s) => ({
-            ...s,
-            coachPortal: snapshot,
-          }));
-          toast('Gym criado');
-          await rerender();
-          return;
-        }
-
-        case 'coach:add-member': {
-          const ui = getUiState?.() || {};
-          const gymId = Number(ui?.coachPortal?.selectedGymId);
-          if (!Number.isFinite(gymId)) throw new Error('Selecione um gym');
-          const email = String(root.querySelector('#coach-member-email')?.value || '').trim().toLowerCase();
-          const role = String(root.querySelector('#coach-member-role')?.value || 'athlete');
-          if (!email) throw new Error('Informe o email do membro');
-          await window.__APP__.addGymMember(gymId, { email, role });
-          const [membersResult, groupsResult, insightsResult] = await Promise.all([
-            window.__APP__.listGymMembers(gymId),
-            window.__APP__?.listGymGroups?.(gymId),
-            window.__APP__?.getGymInsights?.(gymId),
-          ]);
-          await patchUiState((s) => ({
-            ...s,
-            coachPortal: {
-              ...(s.coachPortal || {}),
-              members: membersResult?.data?.memberships || [],
-              groups: groupsResult?.data?.groups || [],
-              insights: insightsResult?.data || null,
-            },
-          }));
-          toast('Membro adicionado');
-          await rerender();
-          return;
-        }
-
-        case 'coach:create-group': {
-          const ui = getUiState?.() || {};
-          const gymId = Number(ui?.coachPortal?.selectedGymId);
-          if (!Number.isFinite(gymId)) throw new Error('Selecione um gym');
-          const name = String(root.querySelector('#coach-group-name')?.value || '').trim();
-          const description = String(root.querySelector('#coach-group-description')?.value || '').trim();
-          const memberIds = Array.from(root.querySelectorAll('input[name="coach-group-members"]:checked'))
-            .map((input) => Number(input.value))
-            .filter(Number.isFinite);
-          if (!name) throw new Error('Informe o nome do grupo');
-          await window.__APP__.createGymGroup(gymId, { name, description, memberIds });
-          const [groupsResult, insightsResult] = await Promise.all([
-            window.__APP__?.listGymGroups?.(gymId),
-            window.__APP__?.getGymInsights?.(gymId),
-          ]);
-          await patchUiState((s) => ({
-            ...s,
-            coachPortal: {
-              ...(s.coachPortal || {}),
-              groups: groupsResult?.data?.groups || [],
-              insights: insightsResult?.data || null,
-            },
-          }));
-          toast('Grupo criado');
-          await rerender();
-          return;
-        }
-
-        case 'coach:publish-workout': {
-          const ui = getUiState?.() || {};
-          const gymId = Number(ui?.coachPortal?.selectedGymId);
-          if (!Number.isFinite(gymId)) throw new Error('Selecione um gym');
-          const title = String(root.querySelector('#coach-workout-title')?.value || '').trim();
-          const scheduledDate = String(root.querySelector('#coach-workout-date')?.value || '').trim();
-          const benchmarkSlug = String(root.querySelector('#coach-workout-benchmark')?.value || '').trim();
-          const rawLines = String(root.querySelector('#coach-workout-lines')?.value || '').trim();
-          const audienceMode = String(root.querySelector('input[name="coach-audience-mode"]:checked')?.value || 'all');
-          const targetMembershipIds = Array.from(root.querySelectorAll('input[name="coach-target-members"]:checked'))
-            .map((input) => Number(input.value))
-            .filter(Number.isFinite);
-          const targetGroupIds = Array.from(root.querySelectorAll('input[name="coach-target-groups"]:checked'))
-            .map((input) => Number(input.value))
-            .filter(Number.isFinite);
-          if (!title || !scheduledDate || !rawLines) throw new Error('Informe título, data e conteúdo do treino');
-          const lines = rawLines.split('\n').map((line) => line.trim()).filter(Boolean);
-          const payload = {
-            blocks: [{ type: 'PROGRAMMING', lines }],
-            ...(benchmarkSlug ? { benchmarkSlug } : {}),
-          };
-          await window.__APP__.publishGymWorkout(gymId, {
-            title,
-            scheduledDate,
-            payload,
-            audienceMode,
-            targetMembershipIds,
-            targetGroupIds,
-          });
-          const [feedResult, groupsResult, insightsResult, athleteOverview] = await Promise.all([
-            window.__APP__.getWorkoutFeed(),
-            window.__APP__?.listGymGroups?.(gymId),
-            window.__APP__?.getGymInsights?.(gymId),
-            window.__APP__?.getAthleteDashboard?.(),
-          ]);
-          await patchUiState((s) => ({
-            ...s,
-            athleteOverview: athleteOverview?.data || s.athleteOverview,
-            coachPortal: {
-              ...(s.coachPortal || {}),
-              feed: feedResult?.data?.workouts || [],
-              groups: groupsResult?.data?.groups || s?.coachPortal?.groups || [],
-              insights: insightsResult?.data || null,
-            },
-          }));
-          toast('Treino publicado');
-          await rerender();
-          return;
-        }
-
-        case 'benchmarks:refresh': {
-          const ui = getUiState?.() || {};
-          const q = String(root.querySelector('#coach-benchmark-query')?.value || '').trim();
-          const category = String(ui?.coachPortal?.benchmarkCategory || '').trim();
-          const result = await window.__APP__.getBenchmarks({ q, category, limit: 30 });
-          await patchUiState((s) => ({
-            ...s,
-            coachPortal: {
-              ...(s.coachPortal || {}),
-              benchmarks: result?.data?.benchmarks || [],
-              benchmarkQuery: q,
-            },
-          }));
-          await rerender();
-          return;
-        }
-
-        case 'benchmarks:filter': {
-          const category = String(el.dataset.category || '');
-          const q = String(root.querySelector('#coach-benchmark-query')?.value || '').trim();
-          const result = await window.__APP__.getBenchmarks({ q, category, limit: 30 });
-          await patchUiState((s) => ({
-            ...s,
-            coachPortal: {
-              ...(s.coachPortal || {}),
-              benchmarks: result?.data?.benchmarks || [],
-              benchmarkQuery: q,
-              benchmarkCategory: category,
-            },
-          }));
           await rerender();
           return;
         }
@@ -841,6 +725,28 @@ export function setupActions({ root, toast, rerender, getUiState, setUiState, pa
           const result = await window.__APP__.getAdminOverview({ q: query, limit: 25 });
           await setUiState({ admin: { overview: result?.data || null, query } });
           toast('Painel admin atualizado');
+          await rerender();
+          return;
+        }
+
+        case 'admin:activate-plan': {
+          const userId = Number(el.dataset.userId);
+          const planId = String(el.dataset.planId || '').trim().toLowerCase();
+          if (!Number.isFinite(userId) || userId <= 0) {
+            throw new Error('Usuário inválido');
+          }
+          if (!['starter', 'pro', 'performance'].includes(planId)) {
+            throw new Error('Plano inválido');
+          }
+
+          const confirmed = confirm(`Ativar plano ${planId} para este coach por 30 dias?`);
+          if (!confirmed) return;
+
+          await window.__APP__.activateCoachSubscription(userId, planId, 30);
+          const query = String(root.querySelector('#admin-search')?.value || '').trim();
+          const result = await window.__APP__.getAdminOverview({ q: query, limit: 25 });
+          await setUiState({ admin: { overview: result?.data || null, query } });
+          toast(`Plano ${planId} ativado`);
           await rerender();
           return;
         }
