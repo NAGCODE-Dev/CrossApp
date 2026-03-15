@@ -8,6 +8,7 @@ import { authRequired, signToken } from '../auth.js';
 import { sendPasswordResetEmail } from '../mailer.js';
 import { generateResetCode, hashResetCode, isResetCodeExpired } from '../passwordReset.js';
 import { attachPendingMembershipsToUser } from '../utils/gymUtils.js';
+import { attachPendingBillingClaimsToUser } from '../utils/subscriptionBilling.js';
 
 async function withUserBootstrap(normalizedEmail, factory) {
   const client = await pool.connect();
@@ -54,6 +55,7 @@ export function createAuthRouter({ authRateLimit, resetRateLimit }) {
 
       const user = inserted.rows[0];
       await attachPendingMembershipsToUser(user.id, user.email);
+      await attachPendingBillingClaimsToUser(user.id, user.email);
       const token = signToken(user);
       return res.json({ token, user });
     } catch (error) {
@@ -87,6 +89,7 @@ export function createAuthRouter({ authRateLimit, resetRateLimit }) {
 
     const safeUser = { id: user.id, email: user.email, name: user.name, is_admin: user.is_admin };
     await attachPendingMembershipsToUser(user.id, user.email);
+    await attachPendingBillingClaimsToUser(user.id, user.email);
     const token = signToken(safeUser);
     return res.json({ token, user: safeUser });
   });
@@ -95,6 +98,7 @@ export function createAuthRouter({ authRateLimit, resetRateLimit }) {
     const found = await pool.query(`SELECT id, email, name, is_admin FROM users WHERE id = $1`, [req.user.userId]);
     const user = found.rows[0];
     if (!user) return res.status(401).json({ error: 'Usuário não encontrado' });
+    await attachPendingBillingClaimsToUser(user.id, user.email);
     return res.json({ token: signToken(user), user });
   });
 

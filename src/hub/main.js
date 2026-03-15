@@ -59,7 +59,7 @@ function renderHub({ sports, availableSports, lastSport, lastSportUrl }) {
         <div class="hub-kicker">CrossApp Hub</div>
         <h1>Use sozinho ou conectado ao seu coach, sem complicar a rotina.</h1>
         <p class="hub-lead">
-          O CrossApp funciona de dois jeitos: como app diário do atleta no modo solo, ou como experiência ampliada quando você está vinculado a um coach que publica treino, organiza grupos e libera mais recursos.
+          O CrossApp funciona de dois jeitos: como app diário do atleta no modo solo, ou conectado a um coach que publica treino e organiza a operação do box no portal separado.
         </p>
         <div class="hub-actions">
           <a class="hub-primaryAction" href="${escapeHtml(lastSportUrl)}" data-hub-primary data-sport-link="${escapeHtml(selectedSport)}">
@@ -68,15 +68,15 @@ function renderHub({ sports, availableSports, lastSport, lastSportUrl }) {
           <a class="hub-secondaryAction" href="/coach/">Abrir Coach Portal</a>
         </div>
         <div class="hub-meta">
-          <span>Use solo com 5 imports/mês</span>
-          <span>Coach ativo libera mais recursos</span>
+          <span>Use solo com app liberado</span>
+          <span>Imports e histórico completos</span>
           <span>${hasBeta ? 'Beta disponível para modalidades extras' : 'Fluxo principal focado em Cross'}</span>
         </div>
       </section>
 
       <section class="hub-grid hub-grid-onboarding">
         ${renderGuideCard('1. Escolha sua rotina', 'Entre direto no app da modalidade que faz sentido para o seu dia. Hoje o fluxo principal está em Cross.')}
-        ${renderGuideCard('2. Use sozinho ou com coach', 'Sozinho você já importa planilha, registra treino e acompanha histórico. Com coach ativo, o app libera mais imports e treino enviado pelo box.')}
+        ${renderGuideCard('2. Use sozinho ou com coach', 'Sozinho você já importa planilha, registra treino e acompanha histórico. Com coach ativo, você recebe treino do box sem perder a simplicidade do app do atleta.')}
         ${renderGuideCard('3. Coach opera no portal', 'A parte operacional fica separada no Coach Portal: grupos, atletas, publicação e rotina do box.')}
       </section>
 

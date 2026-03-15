@@ -40,6 +40,7 @@ app.use(attachRequestMeta);
 app.use(attachRequestLogger);
 app.use(applySecurityHeaders);
 app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 app.use('/auth', createAuthRouter({ authRateLimit: AUTH_RATE_LIMIT, resetRateLimit: RESET_RATE_LIMIT }));
 app.use('/billing', createBillingRouter());
 app.use('/telemetry', createTelemetryRouter({ telemetryRateLimit: TELEMETRY_RATE_LIMIT }));

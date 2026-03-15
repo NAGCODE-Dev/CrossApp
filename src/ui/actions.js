@@ -5,6 +5,12 @@ import {
   getAthleteImportUsage,
   normalizeAthleteBenefits,
 } from '../core/services/athleteBenefitUsage.js';
+import {
+  consumeCheckoutIntent,
+  hasCheckoutAuth,
+  peekCheckoutIntent,
+  queueCheckoutIntent,
+} from '../core/services/subscriptionService.js';
 
 export function setupActions({ root, toast, rerender, getUiState, setUiState, patchUiState }) {
   if (!root) throw new Error('setupActions: root é obrigatório');
@@ -55,6 +61,61 @@ export function setupActions({ root, toast, rerender, getUiState, setUiState, pa
   let lastAccountSnapshotKey = '';
   let lastAccountSnapshotAt = 0;
   let athleteOverviewFullTask = null;
+
+  function normalizeCheckoutPlan(planId) {
+    const normalized = String(planId || '').trim().toLowerCase();
+    return ['athlete_plus', 'starter', 'pro', 'coach', 'performance'].includes(normalized)
+      ? normalized
+      : '';
+  }
+
+  function stripCheckoutParamsFromUrl() {
+    try {
+      const url = new URL(window.location.href);
+      if (!url.searchParams.has('checkoutPlan') && !url.searchParams.has('returnTo')) return;
+      url.searchParams.delete('checkoutPlan');
+      url.searchParams.delete('returnTo');
+      window.history.replaceState({}, '', url.toString());
+    } catch {
+      // no-op
+    }
+  }
+
+  async function maybeResumePendingCheckout() {
+    const pending = consumeCheckoutIntent();
+    if (!pending?.planId || !hasCheckoutAuth()) return false;
+    try {
+      toast('Continuando para o checkout...');
+      await window.__APP__?.openCheckout?.(pending.planId);
+      return true;
+    } catch (error) {
+      queueCheckoutIntent(pending.planId, pending);
+      throw error;
+    }
+  }
+
+  async function maybePrimeCheckoutIntentFromUrl() {
+    try {
+      const url = new URL(window.location.href);
+      const planId = normalizeCheckoutPlan(url.searchParams.get('checkoutPlan'));
+      const returnTo = String(url.searchParams.get('returnTo') || '').trim();
+      if (!planId) return;
+
+      queueCheckoutIntent(planId, { source: 'pricing', returnTo });
+      stripCheckoutParamsFromUrl();
+
+      if (hasCheckoutAuth() && window.__APP__?.getProfile?.()?.data?.email) {
+        await maybeResumePendingCheckout();
+        return;
+      }
+
+      await patchUiState((s) => ({ ...s, modal: 'auth', authMode: 'signin' }));
+      toast('Entre para continuar no checkout');
+      await rerender();
+    } catch (error) {
+      console.warn('Falha ao preparar checkout autenticado:', error?.message || error);
+    }
+  }
 
   async function guardAthleteImport(kind, uiState) {
     const profile = window.__APP__?.getProfile?.()?.data || null;
@@ -598,6 +659,7 @@ export function setupActions({ root, toast, rerender, getUiState, setUiState, pa
           toast(mode === 'signup' ? 'Conta criada' : 'Login efetuado');
           await rerender();
           hydrateAccountSnapshotInBackground(profile);
+          if (await maybeResumePendingCheckout()) return;
           return;
         }
 
@@ -667,11 +729,23 @@ export function setupActions({ root, toast, rerender, getUiState, setUiState, pa
           toast('Sessão atualizada');
           await rerender();
           hydrateAccountSnapshotInBackground(profile, ui?.coachPortal?.selectedGymId || null);
+          if (await maybeResumePendingCheckout()) return;
           return;
         }
 
         case 'billing:checkout': {
-          const plan = el.dataset.plan || 'coach';
+          const plan = normalizeCheckoutPlan(el.dataset.plan || 'coach') || 'coach';
+          const profile = window.__APP__?.getProfile?.()?.data || null;
+          if (!profile?.email || !hasCheckoutAuth()) {
+            queueCheckoutIntent(plan, {
+              source: 'app',
+              returnTo: `${window.location.pathname}${window.location.search}${window.location.hash}`,
+            });
+            await patchUiState((s) => ({ ...s, modal: 'auth', authMode: 'signin' }));
+            toast('Entre para continuar no checkout');
+            await rerender();
+            return;
+          }
           await window.__APP__.openCheckout(plan);
           return;
         }
@@ -735,11 +809,11 @@ export function setupActions({ root, toast, rerender, getUiState, setUiState, pa
           if (!Number.isFinite(userId) || userId <= 0) {
             throw new Error('Usuário inválido');
           }
-          if (!['starter', 'pro', 'performance'].includes(planId)) {
+          if (!['athlete_plus', 'starter', 'pro', 'performance'].includes(planId)) {
             throw new Error('Plano inválido');
           }
 
-          const confirmed = confirm(`Ativar plano ${planId} para este coach por 30 dias?`);
+          const confirmed = confirm(`Ativar plano ${planId} para este usuário por 30 dias?`);
           if (!confirmed) return;
 
           await window.__APP__.activateCoachSubscription(userId, planId, 30);
@@ -980,6 +1054,17 @@ export function setupActions({ root, toast, rerender, getUiState, setUiState, pa
     } catch (err) {
       toast(err?.message || 'Erro');
       console.error(err);
+    }
+  });
+
+  queueMicrotask(async () => {
+    try {
+      await maybePrimeCheckoutIntentFromUrl();
+      if (peekCheckoutIntent() && hasCheckoutAuth() && window.__APP__?.getProfile?.()?.data?.email) {
+        await maybeResumePendingCheckout();
+      }
+    } catch (error) {
+      console.warn('Falha ao preparar checkout pendente:', error?.message || error);
     }
   });
 

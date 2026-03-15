@@ -2,7 +2,7 @@ import express from 'express';
 
 import { pool } from '../db.js';
 import { authRequired } from '../auth.js';
-import { getAccessContextForUser, getUserMemberships } from '../access.js';
+import { getAccessContextForUser, getActiveSubscriptionForUser, getUserMemberships } from '../access.js';
 import { selectEffectiveAthleteBenefits } from '../accessPolicy.js';
 
 export function createAthleteRouter({ buildBenchmarkTrendSeries, buildPrTrendSeries }) {
@@ -93,8 +93,11 @@ export function createAthleteRouter({ buildBenchmarkTrendSeries, buildPrTrendSer
     const isLite = String(req.query?.lite || '').trim() === '1';
     const memberships = await getUserMemberships(req.user.userId);
     const gymIds = memberships.map((membership) => membership.gym_id);
-    const contexts = await getAccessContextForUser(req.user.userId);
-    const athleteBenefits = selectEffectiveAthleteBenefits(contexts);
+    const [contexts, personalSubscription] = await Promise.all([
+      getAccessContextForUser(req.user.userId),
+      getActiveSubscriptionForUser(req.user.userId),
+    ]);
+    const athleteBenefits = selectEffectiveAthleteBenefits({ gymContexts: contexts, personalSubscription });
     const allowedGymIds = contexts
       .filter((ctx) => ctx?.access?.gymAccess?.canAthletesUseApp)
       .map((ctx) => ctx.membership.gym_id);
@@ -255,6 +258,7 @@ export function createAthleteRouter({ buildBenchmarkTrendSeries, buildPrTrendSer
         athleteTier: athleteBenefits?.tier || 'base',
       },
       athleteBenefits,
+      personalSubscription,
       recentResults: resultsRes.rows.filter((row) => withinHistoryWindow(row.created_at)),
       upcomingCompetitions: competitionsRes.rows,
       recentWorkouts: workoutsRes.rows.filter((row) => withinHistoryWindow(row.scheduled_date || row.published_at)),

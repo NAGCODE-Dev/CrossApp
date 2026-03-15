@@ -28,6 +28,7 @@ const runtimeConfig = {
     successUrl: process.env.CROSSAPP_BILLING_SUCCESS_URL || '',
     cancelUrl: process.env.CROSSAPP_BILLING_CANCEL_URL || '',
     links: {
+      athlete_plus: process.env.CROSSAPP_KIWIFY_CHECKOUT_ATHLETE_PLUS_URL || '',
       starter: process.env.CROSSAPP_KIWIFY_CHECKOUT_STARTER_URL || '',
       pro: process.env.CROSSAPP_KIWIFY_CHECKOUT_PRO_URL || '',
       coach: process.env.CROSSAPP_KIWIFY_CHECKOUT_COACH_URL || '',

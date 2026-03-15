@@ -2,15 +2,10 @@ import express from 'express';
 
 import { pool } from '../db.js';
 import { adminRequired, authRequired } from '../auth.js';
+import { grantSubscriptionToUser, normalizeSubscriptionPlanId } from '../utils/subscriptionBilling.js';
 
 export function createAdminSyncRouter() {
   const router = express.Router();
-
-  function normalizePlanId(value) {
-    const raw = String(value || '').trim().toLowerCase();
-    if (raw === 'coach') return 'pro';
-    return ['starter', 'pro', 'performance'].includes(raw) ? raw : '';
-  }
 
   router.post('/sync/push', authRequired, async (req, res) => {
     const { payload } = req.body || {};
@@ -86,7 +81,7 @@ export function createAdminSyncRouter() {
 
   router.post('/admin/subscriptions/activate', adminRequired, async (req, res) => {
     const userId = Number(req.body?.userId);
-    const planId = normalizePlanId(req.body?.planId);
+    const planId = normalizeSubscriptionPlanId(req.body?.planId);
     const renewDays = Math.min(Math.max(Number(req.body?.renewDays) || 30, 1), 365);
 
     if (!Number.isFinite(userId) || userId <= 0) {
@@ -110,18 +105,17 @@ export function createAdminSyncRouter() {
       return res.status(404).json({ error: 'Usuário não encontrado' });
     }
 
-    const renewAt = new Date(Date.now() + renewDays * 24 * 60 * 60 * 1000).toISOString();
-    const inserted = await pool.query(
-      `INSERT INTO subscriptions (user_id, plan_id, status, provider, renew_at, updated_at)
-       VALUES ($1,$2,'active','kiwify_manual',$3,NOW())
-       RETURNING id, user_id, plan_id, status, provider, renew_at, updated_at`,
-      [userId, planId, renewAt],
-    );
+    const subscription = await grantSubscriptionToUser({
+      userId,
+      planId,
+      provider: 'kiwify_manual',
+      renewDays,
+    });
 
     return res.json({
       success: true,
       user,
-      subscription: inserted.rows[0],
+      subscription,
     });
   });
 

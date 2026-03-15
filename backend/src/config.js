@@ -41,6 +41,14 @@ export const TRUST_PROXY = parseTrustProxy(process.env.TRUST_PROXY, IS_PRODUCTIO
 export const DEFAULT_BILLING_SUCCESS_URL = String(process.env.BILLING_SUCCESS_URL || FRONTEND_ORIGIN || 'http://localhost:8000').trim();
 export const DEFAULT_BILLING_CANCEL_URL = String(process.env.BILLING_CANCEL_URL || FRONTEND_ORIGIN || 'http://localhost:8000').trim();
 export const BACKEND_PUBLIC_URL = String(process.env.BACKEND_PUBLIC_URL || '').trim();
+export const KIWIFY_WEBHOOK_TOKEN = String(process.env.KIWIFY_WEBHOOK_TOKEN || '').trim();
+export const KIWIFY_ACCOUNT_ID = String(process.env.KIWIFY_ACCOUNT_ID || '').trim();
+export const KIWIFY_CLIENT_ID = String(process.env.KIWIFY_CLIENT_ID || '').trim();
+export const KIWIFY_CLIENT_SECRET = String(process.env.KIWIFY_CLIENT_SECRET || '').trim();
+export const KIWIFY_PRODUCT_STARTER_ID = String(process.env.KIWIFY_PRODUCT_STARTER_ID || '').trim();
+export const KIWIFY_PRODUCT_PRO_ID = String(process.env.KIWIFY_PRODUCT_PRO_ID || '').trim();
+export const KIWIFY_PRODUCT_PERFORMANCE_ID = String(process.env.KIWIFY_PRODUCT_PERFORMANCE_ID || '').trim();
+export const KIWIFY_PRODUCT_ATHLETE_PLUS_ID = String(process.env.KIWIFY_PRODUCT_ATHLETE_PLUS_ID || '').trim();
 
 export function validateConfig() {
   if (!DATABASE_URL) {

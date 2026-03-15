@@ -2,11 +2,14 @@ const STORAGE_KEY = 'crossapp-athlete-usage-v1';
 
 const DEFAULT_BENEFITS = {
   tier: 'base',
-  label: 'Base',
-  importsPerMonth: 5,
-  historyDays: 30,
+  label: 'Liberado',
+  source: 'base',
+  inherited: false,
+  personal: false,
+  importsPerMonth: null,
+  historyDays: null,
   competitionAccess: 'full',
-  premiumFeatures: false,
+  premiumFeatures: true,
 };
 
 function getMonthKey() {

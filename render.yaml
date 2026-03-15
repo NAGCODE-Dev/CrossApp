@@ -22,8 +22,12 @@ services:
         value: nagcode.contact@gmail.com
       - key: ADMIN_EMAILS
         value: nagcode.contact@gmail.com
+      - key: DEV_EMAILS
+        value: nagcode.contact@gmail.com
       - key: EXPOSE_RESET_CODE
         value: false
+      - key: BACKEND_PUBLIC_URL
+        sync: false
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT
@@ -36,3 +40,19 @@ services:
         sync: false
       - key: SMTP_FROM
         value: nagcode.contact@gmail.com
+      - key: KIWIFY_WEBHOOK_TOKEN
+        sync: false
+      - key: KIWIFY_ACCOUNT_ID
+        sync: false
+      - key: KIWIFY_CLIENT_ID
+        sync: false
+      - key: KIWIFY_CLIENT_SECRET
+        sync: false
+      - key: KIWIFY_PRODUCT_ATHLETE_PLUS_ID
+        sync: false
+      - key: KIWIFY_PRODUCT_STARTER_ID
+        sync: false
+      - key: KIWIFY_PRODUCT_PRO_ID
+        sync: false
+      - key: KIWIFY_PRODUCT_PERFORMANCE_ID
+        sync: false

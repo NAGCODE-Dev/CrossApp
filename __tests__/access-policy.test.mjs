@@ -20,7 +20,7 @@ test('buildEntitlements libera coach_portal e athlete_app conforme contextos do 
   assert.equal(entitlements.includes('athlete_app'), true);
 });
 
-test('buildEntitlements nao libera athlete_app quando coach expirou', () => {
+test('buildEntitlements mantem athlete_app autenticado, mas nao libera coach tiers quando coach expirou', () => {
   const entitlements = buildEntitlements({
     subscription: { status: 'inactive', plan_id: 'free' },
     gymContexts: [
@@ -31,7 +31,7 @@ test('buildEntitlements nao libera athlete_app quando coach expirou', () => {
     ],
   });
 
-  assert.deepEqual(entitlements, []);
+  assert.deepEqual(entitlements, ['athlete_app']);
 });
 
 test('buildEntitlements nao libera coach_portal sem permissao real de gerenciamento', () => {
