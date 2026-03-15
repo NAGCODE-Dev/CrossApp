@@ -462,7 +462,8 @@ function renderAccountPage(state) {
   const profile = state?.__ui?.auth?.profile || null;
   const coachPortal = state?.__ui?.coachPortal || {};
   const subscription = coachPortal?.subscription || null;
-  const planName = subscription?.plan || subscription?.plan_id || 'free';
+  const planKey = subscription?.plan || subscription?.plan_id || 'free';
+  const planName = formatSubscriptionPlanName(planKey);
   const planStatus = subscription?.status || 'inactive';
   const renewAt = subscription?.renewAt || subscription?.renew_at || null;
   const canUseDeveloperTools = isDeveloperEmail(profile?.email);
@@ -473,6 +474,7 @@ function renderAccountPage(state) {
   const canCoachManage = accessEntitlements.includes('coach_portal');
   const gyms = coachPortal?.gyms || [];
   const athleteStats = state?.__ui?.athleteOverview?.stats || {};
+  const athleteBenefitSource = describeAthleteBenefitSource(athleteBenefits);
 
   if (!profile?.email) {
     return `
@@ -486,16 +488,17 @@ function renderAccountPage(state) {
           `,
         })}
 
-        <div class="summary-strip summary-strip-3">
-          ${renderSummaryTile('Solo', '5 imports', 'PDF ou mídia por mês')}
-          ${renderSummaryTile('Coach', 'Mais recursos', 'benefícios herdados do plano')}
+        <div class="summary-strip summary-strip-4">
+          ${renderSummaryTile('Solo', 'Tudo liberado', 'imports e histórico completos')}
+          ${renderSummaryTile('Coach', 'Portal separado', 'gestão do box e dos atletas')}
+          ${renderSummaryTile('Treino', 'Uso diário', 'planilha, histórico e PRs')}
           ${renderSummaryTile('Portal', 'Separado', 'operação do coach')}
         </div>
 
         <div class="coach-grid">
-          ${renderPageFold({
-            title: 'O que você libera',
-            subtitle: 'Valor prático da conta no uso diário.',
+        ${renderPageFold({
+          title: 'O que você libera',
+          subtitle: 'Valor prático da conta no uso diário.',
             content: `
             <div class="coach-list coach-listCompact">
               <div class="coach-listItem static">
@@ -504,11 +507,11 @@ function renderAccountPage(state) {
               </div>
               <div class="coach-listItem static">
                 <strong>Treinos do coach</strong>
-                <span>Receba a programação do box sem precisar importar tudo manualmente.</span>
+                <span>Receba a programação do box mantendo o app principal como sua rotina diária.</span>
               </div>
               <div class="coach-listItem static">
                 <strong>Histórico e PRs</strong>
-                <span>Use seu progresso para calcular cargas e enxergar evolução.</span>
+                <span>Use seu progresso para calcular cargas e enxergar evolução, sem limite artificial no app.</span>
               </div>
             </div>
             `,
@@ -534,7 +537,7 @@ function renderAccountPage(state) {
       ${renderPageHero({
         eyebrow: 'Conta',
         title: profile.name || 'Sua conta',
-        subtitle: 'Sessão, benefícios herdados e acesso ao portal do coach.',
+        subtitle: 'Sessão, sync, histórico completo e acesso ao portal do coach.',
         actions: `
           <button class="btn-secondary" data-action="auth:refresh" type="button">Atualizar</button>
           <button class="btn-primary" data-action="auth:signout" type="button">Sair</button>
@@ -544,7 +547,7 @@ function renderAccountPage(state) {
       <div class="summary-strip summary-strip-4">
         ${renderSummaryTile('Conta', isBusy ? '...' : escapeHtml(profile.name || 'Sem nome'), isBusy ? '' : escapeHtml(profile.email || ''))}
         ${renderSummaryTile('Plano', isBusy ? '...' : escapeHtml(planName), isBusy ? '' : escapeHtml(planStatus))}
-        ${renderSummaryTile('Benefício atleta', isBusy ? '...' : athleteBenefits.label, isBusy ? '' : 'herdado do plano do coach')}
+        ${renderSummaryTile('Benefício atleta', isBusy ? '...' : athleteBenefits.label, isBusy ? '' : athleteBenefitSource)}
         ${renderSummaryTile('Importações', isBusy ? '...' : (importUsage.unlimited ? 'Ilimitado' : `${importUsage.remaining}/${importUsage.limit}`), isBusy ? '' : (importUsage.unlimited ? 'PDF e mídia sem limite' : `${importUsage.used} uso(s) neste mês`))}
       </div>
 
@@ -559,8 +562,8 @@ function renderAccountPage(state) {
           `}
           <div class="coach-list coach-listCompact">
             <div class="coach-listItem static">
-              <strong>Nível atual</strong>
-              <span>${escapeHtml(athleteBenefits.label)}${athleteBenefits.inherited ? ' • herdado do coach' : ' • modo base'}</span>
+              <strong>Acesso do atleta</strong>
+              <span>${escapeHtml(athleteBenefits.label)} • ${escapeHtml(athleteBenefitSource)}</span>
             </div>
             <div class="coach-listItem static">
               <strong>Resultados e agenda</strong>
@@ -581,8 +584,8 @@ function renderAccountPage(state) {
         })}
 
         ${renderPageFold({
-          title: 'Plano e benefícios',
-          subtitle: 'Plano do coach e impacto direto no app do atleta.',
+          title: 'Plano e acesso',
+          subtitle: 'Atletas usam o app completo. O plano do coach vale para a operação do box.',
           content: `
           ${isBusy ? renderAccountSkeleton() : `
             <div class="account-name">${escapeHtml(planName)}</div>
@@ -590,20 +593,20 @@ function renderAccountPage(state) {
           `}
           <div class="coach-list coach-listCompact">
             <div class="coach-listItem static">
-              <strong>Seu nível no app</strong>
-              <span>${escapeHtml(athleteBenefits.label)}${athleteBenefits.inherited ? ' • herdado do coach' : ' • modo base'}</span>
+              <strong>Status do atleta</strong>
+              <span>${escapeHtml(athleteBenefits.label)} • ${escapeHtml(athleteBenefitSource)}</span>
             </div>
             <div class="coach-listItem static">
-              <strong>Imports neste mês</strong>
+              <strong>Imports</strong>
               <span>${importUsage.unlimited ? 'PDF e mídia ilimitados' : `${importUsage.remaining} restante(s) de ${importUsage.limit}`}</span>
-            </div>
-            <div class="coach-listItem static">
-              <strong>Como funciona a cota</strong>
-              <span>${importUsage.unlimited ? 'Você pode importar PDF, imagem, vídeo e OCR sem limite mensal.' : 'A mesma cota vale para PDF, imagem, vídeo e OCR.'}</span>
             </div>
             <div class="coach-listItem static">
               <strong>Histórico visível</strong>
               <span>${athleteBenefits.historyDays === null ? 'Completo' : `${athleteBenefits.historyDays} dias`}</span>
+            </div>
+            <div class="coach-listItem static">
+              <strong>Competições</strong>
+              <span>Liberadas no app do atleta.</span>
             </div>
           </div>
           <div class="page-actions">
@@ -678,7 +681,7 @@ function renderAthleteBenefitsStrip(state) {
 
   return `
     <div class="summary-strip summary-strip-3">
-      ${renderSummaryTile('Seu nível', benefits.label, benefits.inherited ? 'benefício herdado do coach' : 'modo base do atleta')}
+      ${renderSummaryTile('Seu acesso', benefits.label, describeAthleteBenefitSource(benefits))}
       ${renderSummaryTile('Imports no mês', importUsage.unlimited ? 'Ilimitado' : `${importUsage.remaining}/${importUsage.limit}`, importUsage.unlimited ? 'PDF ou mídia sem limite' : `${importUsage.used} usado(s) entre PDF e mídia`)}
       ${renderSummaryTile('Histórico', historyValue, 'competições liberadas')}
     </div>
@@ -797,6 +800,22 @@ function renderSummaryTile(label, value, detail = '') {
       ${detail ? `<span class="summary-detail">${escapeHtml(detail || '')}</span>` : ''}
     </div>
   `;
+}
+
+function describeAthleteBenefitSource(benefits) {
+  const normalized = normalizeAthleteBenefits(benefits);
+  if (normalized.personal) return 'liberado na conta do atleta';
+  if (normalized.inherited) return 'liberado também quando há coach vinculado';
+  return 'sem bloqueios no app do atleta';
+}
+
+function formatSubscriptionPlanName(planId) {
+  const normalized = String(planId || 'free').trim().toLowerCase();
+  if (normalized === 'athlete_plus') return 'Atleta Plus';
+  if (normalized === 'starter') return 'Coach Starter';
+  if (normalized === 'pro' || normalized === 'coach') return 'Coach Pro';
+  if (normalized === 'performance') return 'Coach Performance';
+  return 'Free';
 }
 
 const EXERCISE_VIDEO_LIBRARY = [
@@ -1237,7 +1256,9 @@ function renderAuthModal({ auth = {}, authMode = 'signin' } = {}) {
     const athleteResults = athleteOverview?.recentResults || [];
     const athleteCompetitions = athleteOverview?.upcomingCompetitions || [];
     const athleteWorkouts = athleteOverview?.recentWorkouts || [];
-    const planName = subscription?.plan || subscription?.plan_id || 'free';
+    const athleteBenefits = normalizeAthleteBenefits(athleteOverview?.athleteBenefits || null);
+    const planKey = subscription?.plan || subscription?.plan_id || 'free';
+    const planName = formatSubscriptionPlanName(planKey);
     const planStatus = subscription?.status || 'inactive';
     const canUseDeveloperTools = isDeveloperEmail(profile?.email);
     const renewAt = subscription?.renewAt || subscription?.renew_at || null;
@@ -1259,7 +1280,7 @@ function renderAuthModal({ auth = {}, authMode = 'signin' } = {}) {
                 `}
               </div>
               <div class="account-planCard">
-                <span class="account-planLabel">Plano do coach</span>
+                <span class="account-planLabel">Plano da conta</span>
                 ${isBusy ? renderAccountSkeleton() : `
                   <strong class="account-planValue">${escapeHtml(planName)}</strong>
                   <span class="account-planMeta">${escapeHtml(planStatus)}${renewAt ? ` • renova em ${escapeHtml(formatDateShort(renewAt))}` : ''}</span>
@@ -1275,12 +1296,12 @@ function renderAuthModal({ auth = {}, authMode = 'signin' } = {}) {
                 </div>
               `).join('') : `
               <div class="summary-tile">
-                  <span class="summary-label">Coach</span>
-                <strong class="summary-value">${canCoachManage ? 'Liberado' : 'Bloqueado'}</strong>
+                <span class="summary-label">Acesso</span>
+                <strong class="summary-value">${escapeHtml(athleteBenefits.label)}</strong>
               </div>
               <div class="summary-tile">
-                <span class="summary-label">Atletas</span>
-                <strong class="summary-value">${canAthleteUseApp ? 'Com acesso' : 'Limitados'}</strong>
+                <span class="summary-label">Fonte</span>
+                <strong class="summary-value">${escapeHtml(describeAthleteBenefitSource(athleteBenefits))}</strong>
               </div>
               <div class="summary-tile">
                 <span class="summary-label">Gyms</span>
@@ -1349,10 +1370,10 @@ function renderAuthModal({ auth = {}, authMode = 'signin' } = {}) {
               <div class="section-kicker">Coach</div>
               <p class="account-hint">${canCoachManage || canUseDeveloperTools
                 ? 'O portal do coach continua separado do app do atleta. Use sua mesma conta para abrir o workspace do box.'
-                : 'Seu acesso de coach está bloqueado. Ative um plano quando quiser operar box, atletas e grupos no portal separado.'}</p>
+                : 'Seu acesso de coach está bloqueado. Ative um plano quando quiser operar box, atletas e grupos no portal separado. O app do atleta continua liberado.'}</p>
               <div class="coach-pillRow">
                 <span class="coach-pill ${canCoachManage ? 'isGood' : 'isWarn'}">${canCoachManage ? 'Coach liberado' : 'Coach bloqueado'}</span>
-                <span class="coach-pill ${canAthleteUseApp ? 'isGood' : 'isWarn'}">${canAthleteUseApp ? 'Atleta com acesso' : 'Atleta limitado'}</span>
+                <span class="coach-pill isGood">${canAthleteUseApp ? 'Atleta liberado' : 'Atleta liberado'}</span>
                 <span class="coach-pill">${gyms.length} gym(s)</span>
               </div>
               <div class="settings-actions coach-billingActions">

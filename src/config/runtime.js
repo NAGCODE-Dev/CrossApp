@@ -29,6 +29,7 @@ const defaults = {
     successUrl: '',
     cancelUrl: '',
     links: {
+      athlete_plus: '',
       starter: '',
       pro: '',
       coach: '',

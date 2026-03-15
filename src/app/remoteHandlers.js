@@ -210,8 +210,8 @@ export function createRemoteHandlers({
       return { success: true, data };
     },
 
-    async handleGetAthleteDashboard() {
-      const data = await getAthleteDashboard({ sportType: getCurrentSportType() });
+    async handleGetAthleteDashboard(params = {}) {
+      const data = await getAthleteDashboard({ ...params, sportType: getCurrentSportType() });
       return { success: true, data };
     },
 

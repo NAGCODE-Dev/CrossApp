@@ -6,6 +6,7 @@ window.__CROSSAPP_CONFIG__ = window.__CROSSAPP_CONFIG__ || {
     successUrl: '',
     cancelUrl: '',
     links: {
+      athlete_plus: '',
       starter: '',
       pro: '',
       coach: '',

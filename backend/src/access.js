@@ -79,12 +79,12 @@ export async function getAccessContextForGym(gymId) {
     },
     gymAccess: {
       canCoachManage: ownerSubscription?.accessTier === 'active',
-      canAthletesUseApp: ownerSubscription?.accessTier === 'active' || ownerSubscription?.accessTier === 'grace',
+      canAthletesUseApp: true,
       warning: resolveGymWarning(ownerSubscription),
     },
     athleteBenefits: getAthleteBenefitProfile({
       ownerSubscription,
-      canAthletesUseApp: ownerSubscription?.accessTier === 'active' || ownerSubscription?.accessTier === 'grace',
+      canAthletesUseApp: true,
     }),
   };
 }
@@ -151,8 +151,8 @@ function resolveGymWarning(ownerSubscription) {
   }
 
   if (ownerSubscription.accessTier === 'grace') {
-    return 'Coach em período de graça. Atletas com acesso limitado e edição bloqueada.';
+    return 'Coach em período de graça. Atletas seguem usando o app normalmente.';
   }
 
-  return 'Assinatura do coach inativa ou expirada';
+  return 'Assinatura do coach inativa ou expirada. Atletas seguem com acesso ao app.';
 }

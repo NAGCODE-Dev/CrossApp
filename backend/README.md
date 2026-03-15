@@ -2,7 +2,7 @@
 
 Backend Node + Postgres para:
 - autenticação
-- billing (Kiwify link no frontend + mock local de desenvolvimento)
+- billing (Kiwify link no frontend + webhook/postback opcional + mock local de desenvolvimento)
 - sync entre dispositivos
 - telemetria
 - reset de senha por código
@@ -128,7 +128,38 @@ Seeds:
 ## Billing atual
 
 - checkout externo por link da Kiwify no frontend
+- webhook/postback opcional para ativação automática:
+  - `POST /billing/kiwify/webhook`
 - backend mantém:
   - `GET /billing/status`
   - `GET /billing/entitlements`
   - `POST /billing/mock/activate` para desenvolvimento
+
+### Webhook Kiwify
+
+Configuração mínima no backend:
+
+```env
+KIWIFY_WEBHOOK_TOKEN=troque-isto
+KIWIFY_ACCOUNT_ID=
+KIWIFY_CLIENT_ID=
+KIWIFY_CLIENT_SECRET=
+KIWIFY_PRODUCT_ATHLETE_PLUS_ID=
+KIWIFY_PRODUCT_STARTER_ID=
+KIWIFY_PRODUCT_PRO_ID=
+KIWIFY_PRODUCT_PERFORMANCE_ID=
+```
+
+URL recomendada no painel da Kiwify:
+
+```txt
+https://SEU_BACKEND/billing/kiwify/webhook?token=SEU_TOKEN
+```
+
+O backend também aceita o token via header/body, então você pode usar o modo que a Kiwify expuser no painel.
+
+Com isso:
+- pagamento aprovado gera uma claim por email
+- se o usuário já existir, o plano é ativado na hora
+- se o usuário ainda não existir, a claim fica pendente e é aplicada no próximo signup/signin
+- se a API nativa da Kiwify estiver configurada, o backend tenta validar a venda pela API oficial antes de aplicar a claim

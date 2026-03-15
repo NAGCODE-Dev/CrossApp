@@ -88,12 +88,17 @@ SUPPORT_EMAIL=nagcode.contact@gmail.com
 ADMIN_EMAILS=nagcode.contact@gmail.com
 DEV_EMAILS=nagcode.contact@gmail.com
 EXPOSE_RESET_CODE=false
+BACKEND_PUBLIC_URL=https://your-backend.onrender.com
 SMTP_HOST=
 SMTP_PORT=587
 SMTP_SECURE=false
 SMTP_USER=
 SMTP_PASS=
 SMTP_FROM=nagcode.contact@gmail.com
+KIWIFY_WEBHOOK_TOKEN=troque-isto
+KIWIFY_PRODUCT_STARTER_ID=
+KIWIFY_PRODUCT_PRO_ID=
+KIWIFY_PRODUCT_PERFORMANCE_ID=
 ```
 
 ### Teste
@@ -114,7 +119,19 @@ Depois que o Render subir:
 
 ## Billing atual
 
-O projeto usa `kiwify_link` no frontend para abrir checkout externo por plano. O backend não depende de webhook de cobrança no estado atual.
+O projeto usa `kiwify_link` no frontend para abrir checkout externo por plano.
+
+Para liberar o plano automaticamente após o pagamento:
+
+1. configure `KIWIFY_WEBHOOK_TOKEN` no Render
+2. opcionalmente preencha os `KIWIFY_PRODUCT_*_ID`
+3. crie o webhook na Kiwify apontando para:
+
+```txt
+https://your-backend.onrender.com/billing/kiwify/webhook?token=SEU_TOKEN
+```
+
+Se os IDs dos produtos não forem informados, o backend tenta mapear o plano pelo nome do produto (`Starter`, `Pro`, `Performance`).
 
 ## Limitação do plano gratuito
 

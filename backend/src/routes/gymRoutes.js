@@ -2,7 +2,7 @@ import express from 'express';
 
 import { pool } from '../db.js';
 import { authRequired } from '../auth.js';
-import { getAccessContextForGym, getAccessContextForUser, getMembershipForUser, getUserMemberships } from '../access.js';
+import { getAccessContextForGym, getAccessContextForUser, getActiveSubscriptionForUser, getMembershipForUser, getUserMemberships } from '../access.js';
 import { selectEffectiveAthleteBenefits } from '../accessPolicy.js';
 
 export function createGymRouter({ requireGymManager, slugify, enrichWorkoutWithBenchmark }) {
@@ -62,9 +62,13 @@ export function createGymRouter({ requireGymManager, slugify, enrichWorkoutWithB
   }
 
   router.get('/access/context', authRequired, async (req, res) => {
-    const gyms = await getAccessContextForUser(req.user.userId);
+    const [gyms, personalSubscription] = await Promise.all([
+      getAccessContextForUser(req.user.userId),
+      getActiveSubscriptionForUser(req.user.userId),
+    ]);
     return res.json({
-      athleteBenefits: selectEffectiveAthleteBenefits(gyms),
+      athleteBenefits: selectEffectiveAthleteBenefits({ gymContexts: gyms, personalSubscription }),
+      personalSubscription,
       gyms: gyms.map((ctx) => ({
         membership: ctx.membership,
         gymAccess: ctx.access?.gymAccess || null,
