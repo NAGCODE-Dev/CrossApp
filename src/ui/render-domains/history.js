@@ -57,6 +57,7 @@ export function renderHistoryPage(state, helpers) {
     formatTrendValue,
     formatNumber,
     escapeHtml,
+    escapeAttribute,
   } = helpers;
 
   const athleteOverview = state?.__ui?.athleteOverview || {};

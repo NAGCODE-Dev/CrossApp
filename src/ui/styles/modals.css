@@ -68,6 +68,11 @@
   gap: 14px;
 }
 
+.auth-intro {
+  display: grid;
+  gap: 6px;
+}
+
 .auth-switch .btn-secondary.isSelected,
 .btn-secondary.isSelected {
   background: var(--bg-surface-3);
@@ -161,30 +166,43 @@
     padding: calc(var(--safe-top) + 8px) 0 0;
   }
 
+  .modal-container-auth {
+    width: 100%;
+  }
+
   .modal-header {
-    padding: 14px 16px;
+    padding: 12px 14px;
   }
 
   .modal-title {
-    font-size: 0.98rem;
+    font-size: 0.95rem;
   }
 
   .modal-close {
-    width: 36px;
-    height: 36px;
+    width: 34px;
+    height: 34px;
   }
 
   .modal-body {
-    padding: 14px 16px 18px;
+    padding: 10px 14px 16px;
   }
 
   .modal-body-auth {
-    gap: 12px;
+    gap: 10px;
     align-content: start;
   }
 
   .auth-switch {
     grid-template-columns: 1fr;
+  }
+
+  .auth-intro {
+    gap: 4px;
+  }
+
+  .auth-intro .account-hint {
+    line-height: 1.45;
+    font-size: 0.92rem;
   }
 
   .auth-resetHeader {
@@ -195,7 +213,25 @@
   .auth-resetSheet,
   .auth-resetPrompt,
   .auth-formCard {
-    padding: 13px 14px;
+    gap: 10px;
+    padding: 11px 12px;
+    border-radius: 16px;
+  }
+
+  .auth-sheetHead {
+    gap: 4px;
+  }
+
+  .auth-form,
+  .auth-resetRequest,
+  .auth-resetConfirm,
+  .auth-sheetActions,
+  .auth-panelStack {
+    gap: 8px;
+  }
+
+  .auth-resetPrompt .account-hint {
+    display: none;
   }
 }
 
@@ -207,10 +243,20 @@
   }
 
   .modal-header {
-    padding: 12px 14px;
+    padding: 10px 12px;
   }
 
   .modal-body {
-    padding: 12px 14px 18px;
+    padding: 8px 12px 14px;
+  }
+
+  .modal-body-auth {
+    gap: 8px;
+  }
+
+  .auth-resetSheet,
+  .auth-resetPrompt,
+  .auth-formCard {
+    padding: 10px 11px;
   }
 }
