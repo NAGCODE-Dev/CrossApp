@@ -7,6 +7,9 @@ import { logOpsEvent } from './opsEvents.js';
 import { EXPOSE_RESET_CODE } from './config.js';
 
 const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || 'nagcode.contact@gmail.com';
+const RESEND_API_KEY = String(process.env.RESEND_API_KEY || '').trim();
+const RESEND_API_BASE_URL = String(process.env.RESEND_API_BASE_URL || 'https://api.resend.com').trim().replace(/\/$/, '');
+const RESEND_FROM = String(process.env.RESEND_FROM || process.env.SMTP_FROM || SUPPORT_EMAIL).trim();
 const MAILER_VERIFY_TIMEOUT_MS = Math.max(Number(process.env.MAILER_VERIFY_TIMEOUT_MS || 8000), 1000);
 const MAILER_SEND_TIMEOUT_MS = Math.max(Number(process.env.MAILER_SEND_TIMEOUT_MS || 12000), 1000);
 const SMTP_CONNECTION_TIMEOUT_MS = Math.max(Number(process.env.SMTP_CONNECTION_TIMEOUT_MS || 8000), 1000);
@@ -30,7 +33,7 @@ export async function sendSignupVerificationEmail({ to, code }) {
 
 export async function getAuthCodeDeliveryCapability(email = '') {
   const providers = await getProviders();
-  const hasInboxDelivery = providers.some((provider) => provider.kind === 'smtp');
+  const hasInboxDelivery = providers.some((provider) => provider.kind === 'smtp' || provider.kind === 'resend');
   const developerPreview = !hasInboxDelivery && EXPOSE_RESET_CODE && isDeveloperEmail(email);
 
   return {
@@ -287,7 +290,7 @@ async function attemptEmailDelivery(job) {
     const startedAt = Date.now();
     try {
       const info = await withTimeout(
-        provider.transport.sendMail({
+        provider.send({
           from: provider.from,
           to: job.email,
           subject: content.subject,
@@ -302,7 +305,7 @@ async function attemptEmailDelivery(job) {
         provider: provider.name,
         transport: provider.kind,
         messageId: info.messageId || null,
-        previewUrl: nodemailer.getTestMessageUrl(info) || null,
+        previewUrl: info.previewUrl || nodemailer.getTestMessageUrl(info) || null,
         durationMs: Date.now() - startedAt,
       };
     } catch (error) {
@@ -337,6 +340,13 @@ async function getProviders() {
 async function createProviders() {
   const providers = [];
 
+  const resend = createResendProvider({
+    name: 'resend_primary',
+    apiKey: RESEND_API_KEY,
+    from: RESEND_FROM,
+  });
+  if (resend) providers.push(resend);
+
   const primary = await createProvider({
     name: 'smtp_primary',
     host: process.env.SMTP_HOST,
@@ -361,41 +371,102 @@ async function createProviders() {
 
   if (!providers.length) {
     const testAccount = await nodemailer.createTestAccount();
+    const transport = nodemailer.createTransport({
+      host: testAccount.smtp.host,
+      port: testAccount.smtp.port,
+      secure: testAccount.smtp.secure,
+      auth: {
+        user: testAccount.user,
+        pass: testAccount.pass,
+      },
+    });
     providers.push({
       name: 'ethereal',
       kind: 'ethereal',
       from: process.env.SMTP_FROM || SUPPORT_EMAIL,
-      transport: nodemailer.createTransport({
-        host: testAccount.smtp.host,
-        port: testAccount.smtp.port,
-        secure: testAccount.smtp.secure,
-        auth: {
-          user: testAccount.user,
-          pass: testAccount.pass,
-        },
-      }),
+      transport,
+      send: (message) => transport.sendMail(message),
+      verify: () => transport.verify(),
     });
   }
 
   return providers;
 }
 
+function createResendProvider({ name, apiKey, from }) {
+  if (!apiKey) return null;
+
+  return {
+    name,
+    kind: 'resend',
+    from: from || SUPPORT_EMAIL,
+    async send({ from: emailFrom, to, subject, text }) {
+      const response = await fetch(`${RESEND_API_BASE_URL}/emails`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          from: emailFrom,
+          to: [to],
+          subject,
+          text,
+        }),
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        const error = new Error(data?.message || data?.error || `Resend error (${response.status})`);
+        error.code = data?.name || `resend_${response.status}`;
+        throw error;
+      }
+
+      return {
+        messageId: data?.id || null,
+        previewUrl: null,
+      };
+    },
+    async verify() {
+      const response = await fetch(`${RESEND_API_BASE_URL}/domains`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+        },
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        const error = new Error(data?.message || data?.error || `Resend verify error (${response.status})`);
+        error.code = data?.name || `resend_verify_${response.status}`;
+        throw error;
+      }
+
+      return true;
+    },
+  };
+}
+
 async function createProvider({ name, host, port, secure, user, pass, from }) {
   if (!(host && user && pass)) return null;
+
+  const transport = nodemailer.createTransport({
+    host,
+    port: Number(port || 587),
+    secure: String(secure || 'false').trim().toLowerCase() === 'true',
+    connectionTimeout: SMTP_CONNECTION_TIMEOUT_MS,
+    greetingTimeout: SMTP_GREETING_TIMEOUT_MS,
+    socketTimeout: SMTP_SOCKET_TIMEOUT_MS,
+    auth: { user, pass },
+  });
 
   return {
     name,
     kind: 'smtp',
     from: from || SUPPORT_EMAIL,
-    transport: nodemailer.createTransport({
-      host,
-      port: Number(port || 587),
-      secure: String(secure || 'false').trim().toLowerCase() === 'true',
-      connectionTimeout: SMTP_CONNECTION_TIMEOUT_MS,
-      greetingTimeout: SMTP_GREETING_TIMEOUT_MS,
-      socketTimeout: SMTP_SOCKET_TIMEOUT_MS,
-      auth: { user, pass },
-    }),
+    transport,
+    send: (message) => transport.sendMail(message),
+    verify: () => transport.verify(),
   };
 }
 
@@ -403,7 +474,7 @@ async function verifyProvider(provider) {
   if (!provider) return null;
   const startedAt = Date.now();
   try {
-    await withTimeout(provider.transport.verify(), MAILER_VERIFY_TIMEOUT_MS, `${provider.name}_verify_timeout`);
+    await withTimeout(provider.verify(), MAILER_VERIFY_TIMEOUT_MS, `${provider.name}_verify_timeout`);
     return {
       ok: true,
       provider: provider.name,
