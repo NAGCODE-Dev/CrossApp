@@ -52,7 +52,6 @@ export function renderHistoryPage(state, helpers) {
     renderPageHero,
     renderSummaryTile,
     renderPageFold,
-    renderListSkeletons,
     renderTrendSkeletons,
     renderSparkline,
     formatTrendValue,
