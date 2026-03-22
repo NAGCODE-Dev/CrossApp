@@ -470,7 +470,7 @@ function renderAccountPage(state) {
             content: `
             <div class="page-actions">
               <button class="btn-secondary" data-action="modal:open" data-modal="auth" type="button">Entrar</button>
-              <a class="btn-secondary" href="/coach/" target="_blank" rel="noopener noreferrer">Abrir portal</a>
+              <a class="btn-secondary" href="/coach/index.html" target="_blank" rel="noopener noreferrer">Abrir portal</a>
             </div>
             `,
           })}
@@ -548,7 +548,7 @@ function renderAccountPage(state) {
           <div class="page-actions">
             ${!canCoachManage ? '<button class="btn-primary" data-action="billing:checkout" data-plan="coach" type="button">Assinar Coach</button>' : ''}
             ${canUseDeveloperTools ? '<button class="btn-secondary" data-action="billing:activate-local" data-plan="coach" type="button">Ativar local</button>' : ''}
-            <a class="btn-secondary" href="/coach/" target="_blank" rel="noopener noreferrer">Abrir portal</a>
+            <a class="btn-secondary" href="/coach/index.html" target="_blank" rel="noopener noreferrer">Abrir portal</a>
             <a class="btn-secondary" href="/pricing.html" target="_blank" rel="noopener noreferrer">Ver planos</a>
           </div>
           `,
@@ -1100,13 +1100,13 @@ function renderSettingsModal(settings = {}) {
             <button class="btn-secondary" data-action="pdf:clear" type="button">
               🗑️ Limpar Tudo
             </button>
-            <a class="btn-secondary" href="./privacy.html" target="_blank" rel="noopener noreferrer" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">
+            <a class="btn-secondary" href="/privacy.html" target="_blank" rel="noopener noreferrer" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">
               🔐 Privacidade
             </a>
-            <a class="btn-secondary" href="./pricing.html" target="_blank" rel="noopener noreferrer" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">
+            <a class="btn-secondary" href="/pricing.html" target="_blank" rel="noopener noreferrer" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">
               💳 Planos
             </a>
-            <a class="btn-secondary" href="./terms.html" target="_blank" rel="noopener noreferrer" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">
+            <a class="btn-secondary" href="/terms.html" target="_blank" rel="noopener noreferrer" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">
               📄 Termos
             </a>
           </div>
@@ -1237,7 +1237,7 @@ function renderAuthModal({ auth = {}, authMode = 'signin' } = {}) {
 
             <div class="settings-actions account-actions">
               <button class="btn-secondary" data-action="auth:refresh" type="button">Atualizar</button>
-              <a class="btn-secondary" href="/sports/cross/#account" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">Ir para Conta</a>
+              <a class="btn-secondary" href="/sports/cross/index.html#account" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center;">Ir para Conta</a>
             </div>
 
             <div class="auth-intro">
@@ -1255,7 +1255,7 @@ function renderAuthModal({ auth = {}, authMode = 'signin' } = {}) {
               <div class="settings-actions coach-billingActions">
                 ${!canCoachManage ? '<button class="btn-primary" data-action="billing:checkout" data-plan="coach" type="button">Assinar Coach</button>' : ''}
                 ${!canCoachManage && canUseDeveloperTools ? '<button class="btn-secondary" data-action="billing:activate-local" data-plan="coach" type="button">Ativar local</button>' : ''}
-                <a class="btn-secondary" href="/coach/" target="_blank" rel="noopener noreferrer">Abrir portal</a>
+                <a class="btn-secondary" href="/coach/index.html" target="_blank" rel="noopener noreferrer">Abrir portal</a>
                 <a class="btn-secondary" href="/pricing.html" target="_blank" rel="noopener noreferrer">Ver planos</a>
               </div>
             </div>

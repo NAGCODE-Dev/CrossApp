@@ -22,16 +22,16 @@ const defaults = {
     sport: 'cross',
     appName: 'Cross',
     appLabel: 'CrossApp Cross',
-    hubUrl: '/',
+    hubUrl: '/index.html',
     rollout: {
       coreSports: ['cross'],
       betaSports: ['running', 'strength'],
       showBetaSports: false,
     },
     sports: {
-      cross: '/sports/cross/',
-      running: '/sports/running/',
-      strength: '/sports/strength/',
+      cross: '/sports/cross/index.html',
+      running: '/sports/running/index.html',
+      strength: '/sports/strength/index.html',
     },
   },
   billing: {

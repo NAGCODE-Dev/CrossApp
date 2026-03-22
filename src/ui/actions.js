@@ -63,6 +63,9 @@ export function setupActions({ root, toast, rerender, getUiState, setUiState, pa
   }
 
   async function loadGoogleScript() {
+    if (!navigator.onLine) {
+      throw new Error('Google Sign-In indisponível offline');
+    }
     if (window.google?.accounts?.id) return window.google;
     if (googleScriptPromise) return googleScriptPromise;
 
@@ -108,6 +111,10 @@ export function setupActions({ root, toast, rerender, getUiState, setUiState, pa
     const clientId = String(runtime?.auth?.googleClientId || '').trim();
     if (!clientId) {
       shell.innerHTML = '<p class="account-hint auth-googleHint">Google Sign-In não configurado.</p>';
+      return;
+    }
+    if (!navigator.onLine) {
+      shell.innerHTML = '<p class="account-hint auth-googleHint">Google Sign-In disponível quando houver internet.</p>';
       return;
     }
 
@@ -290,20 +297,19 @@ export function setupActions({ root, toast, rerender, getUiState, setUiState, pa
     hydrateAthleteResultsBlock,
   } = hydration;
 
-  async function syncAthletePrIfAuthenticated(exercise, value) {
+  async function syncAthletePrIfAuthenticated() {
     const profile = getAppBridge()?.getProfile?.()?.data || null;
     if (!profile?.email) return null;
 
     try {
-      await getAppBridge()?.logAthletePr?.({
-        exercise,
-        value,
-        unit: 'kg',
-        source: 'app',
-      });
-      invalidateHydrationCache({ coach: false, athlete: true, account: true });
-      await hydrateAthleteSummary(profile, { force: true });
-      await hydrateAthleteResultsBlock(profile, { force: true });
+      const currentPrs = getAppBridge()?.getState?.()?.prs || {};
+      const syncResult = await getAppBridge()?.syncAthletePrSnapshot?.(currentPrs);
+      const syncQueued = Boolean(syncResult?.queued) || !navigator.onLine;
+      if (!syncQueued) {
+        invalidateHydrationCache({ coach: false, athlete: true, account: true });
+        await hydrateAthleteSummary(profile, { force: true });
+        await hydrateAthleteResultsBlock(profile, { force: true });
+      }
       return getUiState?.()?.athleteOverview || null;
     } catch {
       return null;

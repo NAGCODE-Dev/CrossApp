@@ -1,10 +1,5 @@
-import { inject } from '@vercel/analytics';
-import { injectSpeedInsights } from '@vercel/speed-insights';
 import { getStoredProfile, refreshSession, signIn, signOut } from '/src/core/services/authService.js';
 import { getAthleteDashboard, getStrengthHistory, getWorkoutFeed, logStrengthSession } from '/src/core/services/gymService.js';
-
-inject();
-injectSpeedInsights();
 
 const root = document.getElementById('strength-root');
 let strengthViewState = { period: 'all' };
@@ -153,8 +148,8 @@ function renderApp({ profile, dashboard, feed, strengthHistory }) {
         <h1>Força e musculação com feed do coach e histórico por modalidade.</h1>
         <p class="hub-lead">Aqui você recebe sessões de força, registra exercícios concluídos e acompanha sua progressão sem misturar com Cross ou Running.</p>
         <div class="hub-actions">
-          <a class="hub-primaryAction" href="/sports/cross/">Abrir Cross</a>
-          <a class="hub-secondaryAction" href="/">Trocar esporte</a>
+          <a class="hub-primaryAction" href="/sports/cross/index.html">Abrir Cross</a>
+          <a class="hub-secondaryAction" href="/index.html">Trocar esporte</a>
           ${profile ? '<button class="hub-secondaryAction" type="button" data-strength-action="refresh">Atualizar</button>' : ''}
           ${profile ? '<button class="hub-secondaryAction" type="button" data-strength-action="logout">Sair</button>' : ''}
         </div>
@@ -205,7 +200,7 @@ function renderApp({ profile, dashboard, feed, strengthHistory }) {
             <p class="hub-lead" style="font-size:0.96rem;">Sessões de força, blocos de musculação, progressão por movimento e histórico por modalidade.</p>
           `)}
           ${card('Coach continua separado', `
-            <p class="hub-lead" style="font-size:0.96rem;">O Coach Portal continua em <a href="/coach/">/coach/</a>. Aqui o atleta só usa a experiência de força.</p>
+            <p class="hub-lead" style="font-size:0.96rem;">O Coach Portal continua em <a href="/coach/index.html">/coach/</a>. Aqui o atleta só usa a experiência de força.</p>
           `)}
         </section>
       `}

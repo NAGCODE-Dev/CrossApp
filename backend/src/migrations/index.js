@@ -14,6 +14,7 @@ import { migration as accountDeletionRequestsMigration } from './014_account_del
 import { migration as enablePublicRlsLockdownMigration } from './015_enable_public_rls_lockdown.js';
 import { migration as fkIndexesAndIndexCleanupMigration } from './016_fk_indexes_and_index_cleanup.js';
 import { migration as operationalRetentionIndexesMigration } from './017_operational_retention_indexes.js';
+import { migration as appStateSyncIndexMigration } from './018_app_state_sync_index.js';
 
 const MIGRATIONS = [
   baseSchemaMigration,
@@ -31,6 +32,7 @@ const MIGRATIONS = [
   enablePublicRlsLockdownMigration,
   fkIndexesAndIndexCleanupMigration,
   operationalRetentionIndexesMigration,
+  appStateSyncIndexMigration,
 ];
 
 export async function runMigrations() {

@@ -13,6 +13,8 @@ const CORE_ASSETS = [
   './support.html',
   './src/main.js',
   './src/app.js',
+  './src/app/auxiliaryBrowser.js',
+  './src/app/nativeBack.js',
   './src/config/runtime.js',
   './src/ui/ui.js',
   './src/ui/render.js',

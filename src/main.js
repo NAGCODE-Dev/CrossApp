@@ -9,8 +9,8 @@
 
 import { init } from './app.js';
 import { getAppBridge } from './app/bridge.js';
-import { inject } from '@vercel/analytics';
-import { injectSpeedInsights } from '@vercel/speed-insights';
+import { initAuxiliaryBrowserLayer } from './app/auxiliaryBrowser.js';
+import { initNativeBackHandling } from './app/nativeBack.js';
 import { mountConsentBanner } from './ui/consent.js';
 import { flushTelemetry, trackError, trackEvent } from './core/services/telemetryService.js';
 import { captureAppError, initErrorMonitoring, setErrorMonitorUser } from './core/services/errorMonitor.js';
@@ -28,6 +28,8 @@ if (window.__TREINO_BOOTSTRAPPED__) {
 
 async function bootstrap() {
   applyAppContext();
+  initAuxiliaryBrowserLayer();
+  initNativeBackHandling();
   setupErrorMonitoring();
   setupVercelObservability();
   setupGlobalTelemetryHandlers();
@@ -67,11 +69,8 @@ async function bootstrap() {
 }
 
 function setupVercelObservability() {
-  if (window.__CROSSAPP_VERCEL_OBSERVABILITY__) return;
+  if (window.__CROSSAPP_VERCEL_OBSERVABILITY__ || !navigator.onLine) return;
   window.__CROSSAPP_VERCEL_OBSERVABILITY__ = true;
-
-  inject();
-  injectSpeedInsights();
 }
 
 function registerServiceWorker() {

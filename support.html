@@ -6,11 +6,34 @@
   <title>CrossApp - Suporte</title>
   <style>
     body { font-family: system-ui, sans-serif; margin: 0; background: #f8fafc; color: #0f172a; }
-    main { max-width: 860px; margin: 0 auto; padding: 24px; }
+    main { max-width: 860px; margin: 0 auto; padding: 88px 24px 24px; }
     .card { background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08); }
+    .app-back {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      z-index: 10;
+      min-height: 44px;
+      padding: 0 16px;
+      border: 0;
+      border-radius: 999px;
+      background: #111827;
+      color: #f9fafb;
+      font-size: 16px;
+      font-weight: 700;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.18);
+    }
+    body.embedded .app-back { display: none; }
+    body.embedded main { padding-top: 24px; }
   </style>
 </head>
 <body>
+  <script>
+    if (new URLSearchParams(window.location.search).get('embedded') === '1') {
+      document.body.classList.add('embedded');
+    }
+  </script>
+  <button class="app-back" type="button" onclick="if (history.length > 1) history.back(); else location.assign('/index.html')">Voltar</button>
   <main>
     <h1>Suporte CrossApp</h1>
     <div class="card">

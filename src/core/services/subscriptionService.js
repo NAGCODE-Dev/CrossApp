@@ -89,7 +89,7 @@ export function consumeCheckoutIntent() {
 
 export function buildCheckoutAuthUrl(planId, options = {}) {
   const cfg = getRuntimeConfig();
-  const appUrl = cfg?.app?.sports?.cross || '/sports/cross/';
+  const appUrl = cfg?.app?.sports?.cross || '/sports/cross/index.html';
   const params = new URLSearchParams();
   params.set('checkoutPlan', String(planId || '').trim().toLowerCase());
   if (options?.returnTo) params.set('returnTo', String(options.returnTo).trim());
