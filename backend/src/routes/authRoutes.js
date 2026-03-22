@@ -661,6 +661,8 @@ function buildNativeAppAuthRedirectUrl(appCallback, { token = '', user = null, e
   return target.toString();
 }
 
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+
 function setGoogleOAuthContextCookie(res, payload) {
   const encoded = createGoogleOAuthState(payload);
   res.append('Set-Cookie', serializeCookie(GOOGLE_OAUTH_CONTEXT_COOKIE, encoded, {
