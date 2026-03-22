@@ -60,12 +60,17 @@
 .modal-body-auth {
   display: grid;
   gap: 14px;
+  justify-items: center;
 }
 
 .auth-form,
 .auth-resetForm {
   display: grid;
   gap: 12px;
+}
+
+.modal-body-auth > * {
+  width: 100%;
 }
 
 .auth-switch {
@@ -121,6 +126,15 @@
 
 .auth-resetToggle {
   justify-self: start;
+}
+
+.auth-switch,
+.auth-googleBlock,
+.auth-divider,
+.auth-form,
+.auth-resetBox {
+  width: min(100%, 420px);
+  margin-inline: auto;
 }
 
 .auth-signupVerify {
