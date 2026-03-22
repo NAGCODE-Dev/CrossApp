@@ -10,11 +10,6 @@
   z-index: 12000;
 }
 
-.modal-overlay-auth {
-  align-items: flex-start;
-  padding-top: max(18px, calc(var(--safe-top) + 12px));
-}
-
 .modal-overlay.isOpen {
   display: flex;
 }
@@ -30,7 +25,7 @@
 }
 
 .modal-container-auth {
-  width: min(100%, 720px);
+  width: min(100%, 980px);
 }
 
 .modal-header {
@@ -60,12 +55,6 @@
   padding: 18px 20px;
   overflow-y: auto;
   max-height: calc(88vh - 78px);
-}
-
-.modal-body-auth {
-  display: grid;
-  align-content: start;
-  gap: 14px;
 }
 
 .auth-switch .btn-secondary.isSelected,
@@ -99,68 +88,11 @@
   background: var(--bg-soft);
 }
 
-.auth-resetSheet,
-.auth-resetPrompt {
-  display: grid;
-  gap: 14px;
-  padding: 14px 16px;
-  border-radius: 18px;
-  border: 1px solid var(--line);
-  background: var(--bg-soft);
-}
-
-.auth-sheetHead {
-  display: grid;
-  gap: 6px;
-}
-
-.auth-panelStack {
-  display: grid;
-  gap: 14px;
-}
-
-.auth-formCard {
-  display: grid;
-  gap: 14px;
-  padding: 14px 16px;
-  border-radius: 18px;
-  border: 1px solid var(--line);
-  background: var(--bg-soft);
-}
-
-.auth-resetHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.auth-resetRequest,
-.auth-resetConfirm {
-  display: grid;
-  gap: 10px;
-}
-
-.auth-sheetActions {
-  display: grid;
-  gap: 10px;
-}
-
-.auth-form {
-  display: grid;
-  gap: 10px;
-}
-
 .reset-previewLink {
   color: var(--text-primary);
 }
 
 @media (max-width: 640px) {
-  .modal-overlay-auth {
-    align-items: flex-start;
-    padding: calc(var(--safe-top) + 8px) 0 0;
-  }
-
   .modal-header {
     padding: 14px 16px;
   }
@@ -180,22 +112,10 @@
 
   .modal-body-auth {
     gap: 12px;
-    align-content: start;
   }
 
   .auth-switch {
     grid-template-columns: 1fr;
-  }
-
-  .auth-resetHeader {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .auth-resetSheet,
-  .auth-resetPrompt,
-  .auth-formCard {
-    padding: 13px 14px;
   }
 }
 
@@ -203,7 +123,6 @@
   .modal-container,
   .modal-container-auth {
     border-radius: 22px 22px 0 0;
-    max-height: calc(100dvh - var(--safe-top) - 8px);
   }
 
   .modal-header {

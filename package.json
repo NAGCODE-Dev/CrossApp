@@ -10,8 +10,6 @@
     "generate:import-fixtures": "node scripts/generate-import-fixtures.mjs",
     "report:import-support": "node scripts/report-import-format-support.mjs",
     "test": "node --test __tests__/*.test.mjs",
-    "test:e2e": "playwright test",
-    "test:e2e:headed": "playwright test --headed",
     "seed:coach-trial": "node scripts/seed-coach-trial.mjs",
     "smoke:coach-trial": "node scripts/smoke-coach-trial.mjs"
   },
@@ -23,7 +21,6 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
-    "@playwright/test": "^1.58.2",
     "vite": "^5.4.14"
   }
 }
