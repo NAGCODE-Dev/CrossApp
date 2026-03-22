@@ -1,4 +1,4 @@
-import * as Sentry from '@sentry/browser';
+import * as Sentry from 'https://esm.sh/@sentry/browser@8.33.1';
 
 let sentryReady = false;
 
