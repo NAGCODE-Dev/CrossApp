@@ -687,7 +687,6 @@ export function setupActions({ root, toast, rerender, getUiState, setUiState, pa
         emptyCoachPortal,
         emptyAthleteOverview,
         emptyAthleteProfile,
-        emptyBenchmarkBrowser,
         emptyCompetitionBrowser,
         loadAccountSnapshot,
         mergeAthleteOverviewSnapshot,
