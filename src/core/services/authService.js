@@ -34,7 +34,11 @@ export async function signInWithGoogle(payload) {
 export function startGoogleRedirect(payload = {}) {
   const returnTo = String(payload.returnTo || `${window.location.pathname}${window.location.search}`).trim() || '/sports/cross/index.html';
   const target = buildGoogleRedirectUrl();
+  const nativeAppCallback = buildNativeAppAuthCallbackUrl(returnTo);
   target.searchParams.set('returnTo', returnTo);
+  if (nativeAppCallback) {
+    target.searchParams.set('appCallback', nativeAppCallback);
+  }
   window.location.assign(target.toString());
 }
 
@@ -78,12 +82,18 @@ export function hasStoredSession() {
 }
 
 export function applyAuthRedirectFromLocation() {
+  return applyAuthRedirectFromUrl(window.location.href, { cleanupCurrentLocation: true });
+}
+
+export function applyAuthRedirectFromUrl(urlString, { cleanupCurrentLocation = false } = {}) {
   try {
-    const url = new URL(window.location.href);
+    const url = new URL(urlString, window.location.href);
     const hashParams = new URLSearchParams((url.hash || '').replace(/^#/, ''));
-    const token = String(hashParams.get('authToken') || '').trim();
-    const encodedUser = String(hashParams.get('authUser') || '').trim();
-    const authError = String(hashParams.get('authError') || '').trim();
+    const searchParams = new URLSearchParams(url.search || '');
+    const token = String(hashParams.get('authToken') || searchParams.get('authToken') || '').trim();
+    const encodedUser = String(hashParams.get('authUser') || searchParams.get('authUser') || '').trim();
+    const authError = String(hashParams.get('authError') || searchParams.get('authError') || '').trim();
+    const returnTo = normalizeReturnTo(searchParams.get('returnTo'));
 
     if (!token && !encodedUser && !authError) {
       return { success: false, handled: false };
@@ -100,8 +110,14 @@ export function applyAuthRedirectFromLocation() {
       setErrorMonitorUser(user);
     }
 
-    url.hash = '';
-    window.history.replaceState({}, '', url.toString());
+    if (cleanupCurrentLocation) {
+      url.hash = '';
+      url.searchParams.delete('authToken');
+      url.searchParams.delete('authUser');
+      url.searchParams.delete('authError');
+      url.searchParams.delete('returnTo');
+      window.history.replaceState({}, '', url.toString());
+    }
 
     return {
       success: !authError,
@@ -109,6 +125,7 @@ export function applyAuthRedirectFromLocation() {
       token,
       user,
       error: authError || '',
+      returnTo,
     };
   } catch {
     return { success: false, handled: false };
@@ -180,4 +197,29 @@ export function buildGoogleRedirectUrl() {
     : new URL(normalizedBase, origin || window.location.href).toString();
 
   return new URL('auth/google/start', base);
+}
+
+function buildNativeAppAuthCallbackUrl(returnTo) {
+  if (!isNativePlatform()) return '';
+  const callback = new URL('crossapp://auth/callback');
+  callback.searchParams.set('returnTo', normalizeReturnTo(returnTo));
+  return callback.toString();
+}
+
+function normalizeReturnTo(value) {
+  const raw = String(value || '').trim();
+  if (!raw || !raw.startsWith('/') || raw.startsWith('//')) {
+    return '/sports/cross/index.html';
+  }
+  return raw;
+}
+
+function isNativePlatform() {
+  try {
+    if (window.Capacitor?.isNativePlatform?.()) return true;
+    const protocol = String(window.location?.protocol || '').toLowerCase();
+    return protocol === 'capacitor:' || protocol === 'file:';
+  } catch {
+    return false;
+  }
 }

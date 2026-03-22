@@ -215,9 +215,11 @@ export function createAuthRouter({ authRateLimit, resetRateLimit }) {
     }
 
     const returnTo = normalizeFrontendReturnTo(req.query?.returnTo);
+    const appCallback = normalizeNativeAppCallback(req.query?.appCallback, returnTo);
     const state = createGoogleOAuthState({
       nonce: randomUUID(),
       returnTo,
+      appCallback,
       at: Date.now(),
     });
     const redirectUri = getGoogleRedirectUri(req);
@@ -235,28 +237,29 @@ export function createAuthRouter({ authRateLimit, resetRateLimit }) {
   router.get('/google/callback', async (req, res) => {
     const statePayload = parseGoogleOAuthState(req.query?.state);
     const returnTo = normalizeFrontendReturnTo(statePayload?.returnTo);
+    const appCallback = normalizeNativeAppCallback(statePayload?.appCallback, returnTo);
 
     if (req.query?.error) {
-      return res.redirect(buildFrontendAuthRedirectUrl(returnTo, {
+      return res.redirect(buildAuthRedirectUrl({ returnTo, appCallback }, {
         error: String(req.query.error_description || req.query.error || 'Falha ao entrar com Google'),
       }));
     }
 
     if (!statePayload) {
-      return res.redirect(buildFrontendAuthRedirectUrl(returnTo, {
+      return res.redirect(buildAuthRedirectUrl({ returnTo }, {
         error: 'Sessão de login expirada. Tente novamente.',
       }));
     }
 
     const code = String(req.query?.code || '').trim();
     if (!code) {
-      return res.redirect(buildFrontendAuthRedirectUrl(returnTo, {
+      return res.redirect(buildAuthRedirectUrl({ returnTo, appCallback }, {
         error: 'Código de autorização ausente',
       }));
     }
 
     if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
-      return res.redirect(buildFrontendAuthRedirectUrl(returnTo, {
+      return res.redirect(buildAuthRedirectUrl({ returnTo, appCallback }, {
         error: 'Google OAuth não configurado no servidor',
       }));
     }
@@ -269,21 +272,21 @@ export function createAuthRouter({ authRateLimit, resetRateLimit }) {
       const name = String(payload.name || '').trim() || null;
 
       if (!email || payload.email_verified !== true) {
-        return res.redirect(buildFrontendAuthRedirectUrl(returnTo, {
+        return res.redirect(buildAuthRedirectUrl({ returnTo, appCallback }, {
           error: 'Conta Google sem email verificado',
         }));
       }
 
       const user = await upsertGoogleUser({ email, name, sub: payload.sub });
       const token = signToken(user);
-      return res.redirect(buildFrontendAuthRedirectUrl(returnTo, { token, user }));
+      return res.redirect(buildAuthRedirectUrl({ returnTo, appCallback }, { token, user }));
     } catch (error) {
       captureBackendError(error, {
         tags: { feature: 'auth', source: 'google_callback' },
         code,
       });
       console.error('[auth/google/callback] failed', error);
-      return res.redirect(buildFrontendAuthRedirectUrl(returnTo, {
+      return res.redirect(buildAuthRedirectUrl({ returnTo, appCallback }, {
         error: error?.message || 'Erro ao entrar com Google',
       }));
     }
@@ -617,6 +620,39 @@ function buildFrontendAuthRedirectUrl(returnTo, { token = '', user = null, error
   if (user) hash.set('authUser', encodeBase64Url(JSON.stringify(user)));
   if (error) hash.set('authError', error);
   target.hash = hash.toString();
+  return target.toString();
+}
+
+function buildAuthRedirectUrl({ returnTo, appCallback } = {}, payload = {}) {
+  const nativeTarget = normalizeNativeAppCallback(appCallback, returnTo);
+  if (nativeTarget) {
+    return buildNativeAppAuthRedirectUrl(nativeTarget, payload);
+  }
+  return buildFrontendAuthRedirectUrl(returnTo, payload);
+}
+
+function normalizeNativeAppCallback(value, returnTo) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+
+  try {
+    const parsed = new URL(raw);
+    if (parsed.protocol !== 'crossapp:' || parsed.hostname !== 'auth' || parsed.pathname !== '/callback') {
+      return '';
+    }
+    parsed.searchParams.set('returnTo', normalizeFrontendReturnTo(parsed.searchParams.get('returnTo') || returnTo));
+    parsed.hash = '';
+    return parsed.toString();
+  } catch {
+    return '';
+  }
+}
+
+function buildNativeAppAuthRedirectUrl(appCallback, { token = '', user = null, error = '' } = {}) {
+  const target = new URL(appCallback);
+  if (token) target.searchParams.set('authToken', token);
+  if (user) target.searchParams.set('authUser', encodeBase64Url(JSON.stringify(user)));
+  if (error) target.searchParams.set('authError', error);
   return target.toString();
 }
 

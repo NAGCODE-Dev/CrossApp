@@ -16,7 +16,7 @@ import { flushTelemetry, trackError, trackEvent } from './core/services/telemetr
 import { captureAppError, initErrorMonitoring, setErrorMonitorUser } from './core/services/errorMonitor.js';
 import { isDeveloperProfile } from './core/utils/devAccess.js';
 import { getRuntimeConfig } from './config/runtime.js';
-import { applyAuthRedirectFromLocation } from './core/services/authService.js';
+import { applyAuthRedirectFromLocation, applyAuthRedirectFromUrl } from './core/services/authService.js';
 
 if (window.__TREINO_BOOTSTRAPPED__) {
   // Evita double-boot caso o script seja incluído duas vezes acidentalmente.
@@ -30,12 +30,13 @@ async function bootstrap() {
   applyAppContext();
   initAuxiliaryBrowserLayer();
   initNativeBackHandling();
+  const nativeAuthRedirect = await setupNativeAuthRedirects();
   setupErrorMonitoring();
   setupVercelObservability();
   setupGlobalTelemetryHandlers();
   registerServiceWorker();
   mountConsentBanner();
-  const authRedirect = applyAuthRedirectFromLocation();
+  const authRedirect = nativeAuthRedirect?.handled ? nativeAuthRedirect : applyAuthRedirectFromLocation();
 
   const result = await init();
   if (!result?.success) {
@@ -66,6 +67,36 @@ async function bootstrap() {
   }
 
   await mountUI();
+}
+
+async function setupNativeAuthRedirects() {
+  const appPlugin = getCapacitorAppPlugin();
+  if (!appPlugin?.addListener) return null;
+
+  appPlugin.addListener('appUrlOpen', ({ url } = {}) => {
+    const result = applyAuthRedirectFromUrl(url || '');
+    if (result?.handled) {
+      redirectAfterNativeAuth(result);
+    }
+  });
+
+  try {
+    const launch = await appPlugin.getLaunchUrl?.();
+    const result = applyAuthRedirectFromUrl(String(launch?.url || ''));
+    if (result?.handled) {
+      redirectAfterNativeAuth(result);
+      return result;
+    }
+  } catch {
+    // no-op
+  }
+
+  return null;
+}
+
+function redirectAfterNativeAuth(result) {
+  const returnTo = String(result?.returnTo || '/sports/cross/index.html').trim() || '/sports/cross/index.html';
+  window.location.replace(returnTo);
 }
 
 function setupVercelObservability() {
@@ -228,4 +259,12 @@ function setupGlobalTelemetryHandlers() {
     });
     trackError(event?.reason || 'unhandled_rejection', { source: 'promise' });
   });
+}
+
+function getCapacitorAppPlugin() {
+  try {
+    return window.Capacitor?.Plugins?.App || null;
+  } catch {
+    return null;
+  }
 }
