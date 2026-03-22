@@ -29,7 +29,7 @@ export function mountConsentBanner() {
   banner.innerHTML = `
     <div style="max-width: 760px;">
       Usamos telemetria para melhorar o produto (retenção, conversão e erros), conforme LGPD.
-      Veja <a href="./privacy.html" style="color:#93c5fd;">Política de Privacidade</a>.
+      Veja <a href="/privacy.html" style="color:#93c5fd;">Política de Privacidade</a>.
     </div>
     <div style="display:flex; gap:8px; white-space:nowrap;">
       <button id="consent-decline" style="padding:8px 12px; border:1px solid #6b7280; background:transparent; color:#f3f4f6; border-radius:8px;">Recusar</button>

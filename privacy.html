@@ -6,13 +6,36 @@
   <title>CrossApp - Política de Privacidade</title>
   <style>
     body { font-family: system-ui, sans-serif; margin: 0; background: #f9fafb; color: #111827; }
-    main { max-width: 900px; margin: 0 auto; padding: 24px; line-height: 1.55; }
+    main { max-width: 900px; margin: 0 auto; padding: 88px 24px 24px; line-height: 1.55; }
     h1, h2 { line-height: 1.25; }
     .card { background: white; border-radius: 12px; padding: 18px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); margin-bottom: 16px; }
     a { color: #2563eb; }
+    .app-back {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      z-index: 10;
+      min-height: 44px;
+      padding: 0 16px;
+      border: 0;
+      border-radius: 999px;
+      background: #111827;
+      color: #f9fafb;
+      font-size: 16px;
+      font-weight: 700;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.18);
+    }
+    body.embedded .app-back { display: none; }
+    body.embedded main { padding-top: 24px; }
   </style>
 </head>
 <body>
+  <script>
+    if (new URLSearchParams(window.location.search).get('embedded') === '1') {
+      document.body.classList.add('embedded');
+    }
+  </script>
+  <button class="app-back" type="button" onclick="if (history.length > 1) history.back(); else location.assign('/index.html')">Voltar</button>
   <main>
     <h1>Política de Privacidade - CrossApp</h1>
     <div class="card">

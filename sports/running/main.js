@@ -1,10 +1,5 @@
-import { inject } from '@vercel/analytics';
-import { injectSpeedInsights } from '@vercel/speed-insights';
 import { getStoredProfile, refreshSession, signIn, signOut } from '/src/core/services/authService.js';
 import { getAthleteDashboard, getRunningHistory, getWorkoutFeed, logRunningSession } from '/src/core/services/gymService.js';
-
-inject();
-injectSpeedInsights();
 
 const root = document.getElementById('running-root');
 let runningViewState = { period: 'all' };
@@ -155,8 +150,8 @@ function renderApp({ profile, dashboard, feed, runningHistory }) {
         <h1>Corrida com feed do coach, agenda e histórico por modalidade.</h1>
         <p class="hub-lead">Aqui você recebe treinos de corrida, registra sessões concluídas e acompanha o volume da modalidade sem misturar com Cross ou Strength.</p>
         <div class="hub-actions">
-          <a class="hub-primaryAction" href="/sports/cross/">Abrir Cross</a>
-          <a class="hub-secondaryAction" href="/">Trocar esporte</a>
+          <a class="hub-primaryAction" href="/sports/cross/index.html">Abrir Cross</a>
+          <a class="hub-secondaryAction" href="/index.html">Trocar esporte</a>
           ${profile ? '<button class="hub-secondaryAction" type="button" data-running-action="refresh">Atualizar</button>' : ''}
           ${profile ? '<button class="hub-secondaryAction" type="button" data-running-action="logout">Sair</button>' : ''}
         </div>
@@ -207,7 +202,7 @@ function renderApp({ profile, dashboard, feed, runningHistory }) {
             <p class="hub-lead" style="font-size:0.96rem;">Treinos de corrida, agenda, longões, intervalados e histórico por modalidade.</p>
           `)}
           ${card('Coach continua separado', `
-            <p class="hub-lead" style="font-size:0.96rem;">O Coach Portal continua em <a href="/coach/">/coach/</a>. Aqui o atleta só usa a experiência de corrida.</p>
+            <p class="hub-lead" style="font-size:0.96rem;">O Coach Portal continua em <a href="/coach/index.html">/coach/</a>. Aqui o atleta só usa a experiência de corrida.</p>
           `)}
         </section>
       `}

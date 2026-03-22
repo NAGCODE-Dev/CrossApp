@@ -21,6 +21,7 @@ import {
   getAthleteResultsSummary,
   getAthleteSummary,
   getAthleteWorkoutsRecent,
+  getAppStateSnapshot,
   getImportedPlanSnapshot,
   getGymInsights,
   getMeasurementHistory,
@@ -36,6 +37,7 @@ import {
   listGymGroups,
   listGymMembers,
   publishGymWorkout,
+  saveAppStateSnapshot,
   saveImportedPlanSnapshot,
   deleteImportedPlanSnapshot,
 } from '../core/services/gymService.js';
@@ -235,6 +237,16 @@ export function createRemoteHandlers({
 
     async handleGetImportedPlanSnapshot() {
       const data = await getImportedPlanSnapshot();
+      return { success: true, data };
+    },
+
+    async handleGetAppStateSnapshot() {
+      const data = await getAppStateSnapshot({ sportType: getCurrentSportType() });
+      return { success: true, data };
+    },
+
+    async handleSaveAppStateSnapshot(payload) {
+      const data = await saveAppStateSnapshot(payload, { sportType: getCurrentSportType() });
       return { success: true, data };
     },
 

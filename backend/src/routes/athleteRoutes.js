@@ -415,6 +415,84 @@ export function createAthleteRouter({ buildBenchmarkTrendSeries, buildPrTrendSer
     });
   });
 
+  router.get('/athletes/me/app-state', authRequired, async (req, res) => {
+    const sportType = normalizeSportType(req.query?.sportType);
+    const snapshotRes = await pool.query(
+      `SELECT id, payload, created_at
+       FROM sync_snapshots
+       WHERE user_id = $1
+         AND COALESCE(payload->>'kind', '') = 'app_state'
+         AND COALESCE(payload->>'sportType', 'cross') = $2
+       ORDER BY created_at DESC, id DESC
+       LIMIT 1`,
+      [req.user.userId, sportType],
+    );
+
+    const row = snapshotRes.rows[0];
+    if (!row) {
+      return res.json({ appState: null });
+    }
+
+    const payload = row.payload && typeof row.payload === 'object' ? row.payload : {};
+    return res.json({
+      appState: {
+        sportType,
+        snapshot: payload.snapshot && typeof payload.snapshot === 'object' ? payload.snapshot : {},
+        updatedAt: payload.updatedAt || row.created_at,
+      },
+    });
+  });
+
+  router.put('/athletes/me/app-state', authRequired, async (req, res) => {
+    const sportType = normalizeSportType(req.query?.sportType || req.body?.sportType);
+    const snapshot = req.body?.snapshot && typeof req.body.snapshot === 'object' ? req.body.snapshot : null;
+    const updatedAt = String(req.body?.updatedAt || '').trim() || new Date().toISOString();
+
+    if (!snapshot) {
+      return res.status(400).json({ error: 'snapshot é obrigatório' });
+    }
+
+    const payload = {
+      kind: 'app_state',
+      sportType,
+      snapshot,
+      updatedAt,
+    };
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(
+        `DELETE FROM sync_snapshots
+         WHERE user_id = $1
+           AND COALESCE(payload->>'kind', '') = 'app_state'
+           AND COALESCE(payload->>'sportType', 'cross') = $2`,
+        [req.user.userId, sportType],
+      );
+      const inserted = await client.query(
+        `INSERT INTO sync_snapshots (user_id, payload)
+         VALUES ($1, $2::jsonb)
+         RETURNING id, payload, created_at`,
+        [req.user.userId, JSON.stringify(payload)],
+      );
+      await client.query('COMMIT');
+
+      const row = inserted.rows[0];
+      return res.json({
+        appState: {
+          sportType,
+          snapshot: row.payload?.snapshot && typeof row.payload.snapshot === 'object' ? row.payload.snapshot : {},
+          updatedAt: row.payload?.updatedAt || row.created_at,
+        },
+      });
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  });
+
   router.put('/athletes/me/imported-plan', authRequired, async (req, res) => {
     const weeks = Array.isArray(req.body?.weeks) ? req.body.weeks : null;
     const metadata = req.body?.metadata && typeof req.body.metadata === 'object' ? req.body.metadata : {};

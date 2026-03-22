@@ -1,14 +1,14 @@
-import { inject } from '@vercel/analytics';
-import { injectSpeedInsights } from '@vercel/speed-insights';
 import { getRuntimeConfig } from '../config/runtime.js';
+import { initAuxiliaryBrowserLayer } from '../app/auxiliaryBrowser.js';
+import { initNativeBackHandling } from '../app/nativeBack.js';
 
 const STORAGE_KEY = 'crossapp-active-sport';
 
 boot();
 
 function boot() {
-  inject();
-  injectSpeedInsights();
+  initAuxiliaryBrowserLayer();
+  initNativeBackHandling();
 
   const root = document.getElementById('hub-root');
   if (!root) return;
@@ -19,7 +19,7 @@ function boot() {
   const fallbackSport = availableSports[0]?.value || 'cross';
   const lastSport = getLastSport();
   const selectedSport = availableSports.some((sport) => sport.value === lastSport) ? lastSport : fallbackSport;
-  const lastSportUrl = sports[selectedSport] || sports.cross || '/sports/cross/';
+  const lastSportUrl = sports[selectedSport] || sports.cross || '/sports/cross/index.html';
 
   root.innerHTML = renderHub({ sports, availableSports, lastSport: selectedSport, lastSportUrl });
   bindEvents(root, sports);
@@ -33,16 +33,25 @@ function bindEvents(root, sports) {
     if (sport) setLastSport(sport);
   });
 
+  root.addEventListener('click', (event) => {
+    const target = event.target.closest('[data-nav-href]');
+    if (!target) return;
+    const href = String(target.getAttribute('data-nav-href') || '').trim();
+    if (!href) return;
+    event.preventDefault();
+    window.location.assign(href);
+  });
+
   root.addEventListener('change', (event) => {
     const target = event.target;
     if (!(target instanceof HTMLInputElement)) return;
     if (target.name !== 'hub-sport') return;
 
     const sport = target.value;
-    const nextUrl = sports[sport] || '/sports/cross/';
+    const nextUrl = sports[sport] || '/sports/cross/index.html';
     const primary = root.querySelector('[data-hub-primary]');
     if (primary) {
-      primary.setAttribute('href', nextUrl);
+      primary.setAttribute('data-nav-href', nextUrl);
       primary.textContent = `Abrir ${labelForSport(sport)}`;
       primary.setAttribute('data-sport-link', sport);
     }
@@ -62,10 +71,10 @@ function renderHub({ sports, availableSports, lastSport, lastSportUrl }) {
           O CrossApp funciona de dois jeitos: como app diário do atleta no modo solo, ou conectado a um coach que publica treino e organiza a operação do box no portal separado.
         </p>
         <div class="hub-actions">
-          <a class="hub-primaryAction" href="${escapeHtml(lastSportUrl)}" data-hub-primary data-sport-link="${escapeHtml(selectedSport)}">
+          <button class="hub-primaryAction" type="button" data-hub-primary data-sport-link="${escapeHtml(selectedSport)}" data-nav-href="${escapeHtml(lastSportUrl)}">
             Abrir ${escapeHtml(labelForSport(selectedSport))}
-          </a>
-          <a class="hub-secondaryAction" href="/coach/">Abrir Coach Portal</a>
+          </button>
+          <a class="hub-secondaryAction" href="/coach/index.html">Abrir Coach Portal</a>
         </div>
         <div class="hub-meta">
           <span>Use solo com app liberado</span>
@@ -86,7 +95,7 @@ function renderHub({ sports, availableSports, lastSport, lastSportUrl }) {
           title: sport.title,
           description: sport.description,
           status: sport.status,
-          href: sports[sport.value] || '/sports/cross/',
+          href: sports[sport.value] || '/sports/cross/index.html',
           selected: selectedSport === sport.value,
           tier: sport.tier,
         })).join('')}
@@ -119,7 +128,7 @@ function renderSportCard({ sport, title, description, status, href, selected, ti
       <h2>${escapeHtml(title)}</h2>
       <p>${escapeHtml(description)}</p>
       <div class="hub-cardActions">
-        <a class="hub-cardLink" href="${escapeHtml(href)}" data-sport-link="${escapeHtml(sport)}">Entrar</a>
+        <button class="hub-cardLink" type="button" data-nav-href="${escapeHtml(href)}" data-sport-link="${escapeHtml(sport)}">Entrar</button>
       </div>
     </article>
   `;

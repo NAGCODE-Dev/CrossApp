@@ -67,6 +67,20 @@ export async function getImportedPlanSnapshot() {
   return apiRequest('/athletes/me/imported-plan', { method: 'GET' });
 }
 
+export async function getAppStateSnapshot(params = {}) {
+  const search = new URLSearchParams();
+  if (params?.sportType) search.set('sportType', params.sportType);
+  const suffix = search.toString() ? `?${search.toString()}` : '';
+  return apiRequest(`/athletes/me/app-state${suffix}`, { method: 'GET' });
+}
+
+export async function saveAppStateSnapshot(payload, params = {}) {
+  const search = new URLSearchParams();
+  if (params?.sportType) search.set('sportType', params.sportType);
+  const suffix = search.toString() ? `?${search.toString()}` : '';
+  return apiRequest(`/athletes/me/app-state${suffix}`, { method: 'PUT', body: payload });
+}
+
 export async function saveImportedPlanSnapshot(payload) {
   return apiRequest('/athletes/me/imported-plan', { method: 'PUT', body: payload });
 }

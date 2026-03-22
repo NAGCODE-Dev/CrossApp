@@ -19,13 +19,25 @@ export async function mountUI({ root }) {
   // Estado de UI (não depende do core)
   let uiState = normalizeUiState((await uiStorage.get('state')) || {});
   let uiBusy = false;
+  let uiSyncTimeout = null;
+  let measurementSyncTimeout = null;
+  let lastMeasurementSyncHash = getMeasurementSyncHash(uiState?.athleteOverview?.measurements);
   await uiStorage.set('state', uiState);
+
+  const remoteUiState = await restoreUiStateFromAccount();
+  if (remoteUiState) {
+    uiState = normalizeUiState({ ...uiState, ...remoteUiState });
+    await uiStorage.set('state', uiState);
+  }
 
   const getUiState = () => uiState;
 
   const setUiState = async (next) => {
+    const previous = uiState;
     uiState = normalizeUiState({ ...uiState, ...(next || {}) });
     await uiStorage.set('state', uiState);
+    scheduleUiStateSync(previous, uiState);
+    scheduleMeasurementSync(previous, uiState);
   };
 
   const patchUiState = async (fn) => {
@@ -33,7 +45,70 @@ export async function mountUI({ root }) {
     const updated = normalizeUiState((fn && fn(current)) || current);
     uiState = updated;
     await uiStorage.set('state', updated);
+    scheduleUiStateSync(current, updated);
+    scheduleMeasurementSync(current, updated);
   };
+
+  function scheduleUiStateSync(previous, next) {
+    if (
+      previous?.currentPage === next?.currentPage
+      && JSON.stringify(previous?.settings || {}) === JSON.stringify(next?.settings || {})
+      && JSON.stringify(previous?.wod || {}) === JSON.stringify(next?.wod || {})
+      && previous?.coachPortal?.selectedGymId === next?.coachPortal?.selectedGymId
+    ) {
+      return;
+    }
+
+    clearTimeout(uiSyncTimeout);
+    uiSyncTimeout = window.setTimeout(() => {
+      getAppBridge()?.saveAppStateSnapshot?.({
+        ui: {
+          currentPage: next?.currentPage || 'today',
+          settings: next?.settings || {},
+          wod: next?.wod || {},
+          coachPortal: {
+            selectedGymId: next?.coachPortal?.selectedGymId || null,
+          },
+        },
+      });
+    }, 300);
+  }
+
+  function scheduleMeasurementSync(previous, next) {
+    const previousHash = getMeasurementSyncHash(previous?.athleteOverview?.measurements);
+    const nextHash = getMeasurementSyncHash(next?.athleteOverview?.measurements);
+    if (previousHash === nextHash || nextHash === lastMeasurementSyncHash) {
+      return;
+    }
+
+    clearTimeout(measurementSyncTimeout);
+    measurementSyncTimeout = window.setTimeout(async () => {
+      try {
+        const result = await getAppBridge()?.syncAthleteMeasurementsSnapshot?.(next?.athleteOverview?.measurements || []);
+        if (result?.success || result?.queued) {
+          lastMeasurementSyncHash = nextHash;
+        }
+      } catch {
+        // no-op
+      }
+    }, 300);
+  }
+
+  async function restoreUiStateFromAccount() {
+    try {
+      const response = await getAppBridge()?.getAppStateSnapshot?.();
+      const snapshot = response?.data?.appState?.snapshot || null;
+      if (!snapshot?.ui || typeof snapshot.ui !== 'object') return null;
+      return {
+        currentPage: snapshot.ui.currentPage,
+        settings: snapshot.ui.settings,
+        wod: snapshot.ui.wod,
+        coachPortal: snapshot.ui.coachPortal,
+      };
+    } catch {
+      return null;
+    }
+  }
 
   const setBusy = (isBusy, message) => {
     uiBusy = !!isBusy;
@@ -210,6 +285,18 @@ function normalizeUiState(s) {
   if (typeof next.coachPortal.status !== 'string') next.coachPortal.status = 'idle';
   if (typeof next.coachPortal.error !== 'string') next.coachPortal.error = '';
 
+  Object.keys(next.wod).forEach((key) => {
+    const entry = next.wod[key];
+    if (!entry || typeof entry !== 'object') {
+      delete next.wod[key];
+      return;
+    }
+    next.wod[key] = {
+      activeLineId: typeof entry.activeLineId === 'string' ? entry.activeLineId : null,
+      done: entry.done && typeof entry.done === 'object' ? entry.done : {},
+    };
+  });
+
   return next;
 }
 
@@ -355,4 +442,12 @@ function escapeHtml(str) {
   const div = document.createElement('div');
   div.textContent = String(str ?? '');
   return div.innerHTML;
+}
+
+function getMeasurementSyncHash(entries = []) {
+  try {
+    return JSON.stringify(Array.isArray(entries) ? entries : []);
+  } catch {
+    return '[]';
+  }
 }

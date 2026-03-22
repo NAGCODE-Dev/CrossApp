@@ -37,7 +37,7 @@ export function startGoogleRedirect(payload = {}) {
     throw new Error('API base URL não configurada');
   }
 
-  const returnTo = String(payload.returnTo || `${window.location.pathname}${window.location.search}`).trim() || '/sports/cross/';
+  const returnTo = String(payload.returnTo || `${window.location.pathname}${window.location.search}`).trim() || '/sports/cross/index.html';
   const baseUrl = String(cfg.apiBaseUrl).replace(/\/$/, '');
   const target = new URL(`${baseUrl}/auth/google/start`);
   target.searchParams.set('returnTo', returnTo);
