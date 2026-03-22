@@ -1,7 +1,6 @@
 import { renderAppShell, renderAll } from './render.js';
 import { setupActions } from './actions.js';
 import { bindAppEvents } from './events.js';
-import { normalizeMeasurementEntries } from './profileMeasurements.js';
 
 export async function mountUI({ root }) {
   if (!root) throw new Error('mountUI: root é obrigatório');
@@ -66,8 +65,6 @@ export async function mountUI({ root }) {
     setHTML(refs.headerAccount, view.headerAccountHtml);
     setHTML(refs.main, view.mainHtml);
     setHTML(refs.bottomNav, view.bottomNavHtml);
-    setHTML(refs.sidebarNav, view.sidebarNavHtml);
-    setHTML(refs.sidebarMeta, view.sidebarMetaHtml);
     setHTML(refs.modals, view.modalsHtml);
 
     // Contador de PR (se existir no shell)
@@ -151,42 +148,8 @@ function normalizeUiState(s) {
   if (typeof next.settings.showEmojis !== 'boolean') next.settings.showEmojis = true;
   if (typeof next.settings.showObjectivesInWods !== 'boolean') next.settings.showObjectivesInWods = true;
   next.authMode = next.authMode === 'signup' ? 'signup' : 'signin';
-  if (typeof next.authSubmitting !== 'boolean') next.authSubmitting = false;
   next.passwordReset = next.passwordReset && typeof next.passwordReset === 'object' ? next.passwordReset : {};
-  if (typeof next.passwordReset.open !== 'boolean') next.passwordReset.open = false;
-  if (typeof next.passwordReset.requesting !== 'boolean') next.passwordReset.requesting = false;
-  if (typeof next.passwordReset.confirming !== 'boolean') next.passwordReset.confirming = false;
-  next.admin = next.admin && typeof next.admin === 'object' ? next.admin : { overview: null, health: null, manualReset: null };
-  next.benchmarkBrowser = next.benchmarkBrowser && typeof next.benchmarkBrowser === 'object'
-    ? next.benchmarkBrowser
-    : {
-        items: [],
-        pagination: { total: 0, page: 1, limit: 12, pages: 1 },
-        category: 'girls',
-        query: '',
-        sort: 'year_desc',
-        loading: false,
-        selectedSlug: '',
-        selectedBenchmark: null,
-        leaderboard: [],
-        currentUserResult: null,
-        leaderboardLoading: false,
-      };
-  next.competitionBrowser = next.competitionBrowser && typeof next.competitionBrowser === 'object'
-    ? next.competitionBrowser
-    : {
-        items: [],
-        loading: false,
-        selectedCompetitionId: null,
-        selectedEventId: null,
-        competitionLeaderboard: null,
-        eventLeaderboard: null,
-      };
-  next.athleteProfile = next.athleteProfile && typeof next.athleteProfile === 'object'
-    ? next.athleteProfile
-    : {
-        measurements: [],
-      };
+  next.admin = next.admin && typeof next.admin === 'object' ? next.admin : { overview: null };
   next.athleteOverview = next.athleteOverview && typeof next.athleteOverview === 'object'
     ? next.athleteOverview
     : { detailLevel: 'none', stats: null, recentResults: [], upcomingCompetitions: [], recentWorkouts: [], gymAccess: [], athleteBenefits: null };
@@ -209,25 +172,6 @@ function normalizeUiState(s) {
   if (!Array.isArray(next.coachPortal.gymAccess)) next.coachPortal.gymAccess = [];
   if (!Array.isArray(next.coachPortal.entitlements)) next.coachPortal.entitlements = [];
   if (typeof next.coachPortal.selectedGymId !== 'number') next.coachPortal.selectedGymId = next.coachPortal.selectedGymId || null;
-  if (!Array.isArray(next.benchmarkBrowser.items)) next.benchmarkBrowser.items = [];
-  if (!next.benchmarkBrowser.pagination || typeof next.benchmarkBrowser.pagination !== 'object') {
-    next.benchmarkBrowser.pagination = { total: 0, page: 1, limit: 12, pages: 1 };
-  }
-  if (!Array.isArray(next.benchmarkBrowser.leaderboard)) next.benchmarkBrowser.leaderboard = [];
-  if (!next.benchmarkBrowser.currentUserResult || typeof next.benchmarkBrowser.currentUserResult !== 'object') next.benchmarkBrowser.currentUserResult = null;
-  if (typeof next.benchmarkBrowser.category !== 'string') next.benchmarkBrowser.category = 'girls';
-  if (typeof next.benchmarkBrowser.query !== 'string') next.benchmarkBrowser.query = '';
-  if (typeof next.benchmarkBrowser.sort !== 'string') next.benchmarkBrowser.sort = 'year_desc';
-  if (typeof next.benchmarkBrowser.selectedSlug !== 'string') next.benchmarkBrowser.selectedSlug = '';
-  if (typeof next.benchmarkBrowser.loading !== 'boolean') next.benchmarkBrowser.loading = false;
-  if (typeof next.benchmarkBrowser.leaderboardLoading !== 'boolean') next.benchmarkBrowser.leaderboardLoading = false;
-  if (!Array.isArray(next.competitionBrowser.items)) next.competitionBrowser.items = [];
-  if (typeof next.competitionBrowser.loading !== 'boolean') next.competitionBrowser.loading = false;
-  if (typeof next.competitionBrowser.selectedCompetitionId !== 'number') next.competitionBrowser.selectedCompetitionId = next.competitionBrowser.selectedCompetitionId || null;
-  if (typeof next.competitionBrowser.selectedEventId !== 'number') next.competitionBrowser.selectedEventId = next.competitionBrowser.selectedEventId || null;
-  if (!next.competitionBrowser.competitionLeaderboard || typeof next.competitionBrowser.competitionLeaderboard !== 'object') next.competitionBrowser.competitionLeaderboard = null;
-  if (!next.competitionBrowser.eventLeaderboard || typeof next.competitionBrowser.eventLeaderboard !== 'object') next.competitionBrowser.eventLeaderboard = null;
-  next.athleteProfile.measurements = normalizeMeasurementEntries(next.athleteProfile.measurements);
 
   return next;
 }
@@ -246,17 +190,12 @@ function buildUiForRender(state, uiState, uiBusy = false) {
     isBusy: uiBusy,
     settings: uiState.settings,
     authMode: uiState.authMode,
-    authSubmitting: uiState.authSubmitting,
     auth: {
       profile: safeGetProfile(),
-      submitting: !!uiState.authSubmitting,
     },
     passwordReset: uiState.passwordReset,
     admin: uiState.admin,
-    benchmarkBrowser: uiState.benchmarkBrowser,
-    competitionBrowser: uiState.competitionBrowser,
     athleteOverview: uiState.athleteOverview,
-    athleteProfile: uiState.athleteProfile,
     coachPortal: uiState.coachPortal,
 
     wodKey: key,
@@ -288,8 +227,6 @@ function getRefs(root) {
     headerAccount: q('#ui-headerAccount'),
     main: q('#ui-main'),
     bottomNav: q('#ui-bottomNav'),
-    sidebarNav: q('#ui-sidebarNav'),
-    sidebarMeta: q('#ui-sidebarMeta'),
     modals: q('#ui-modals'),
     prsCount: q('#ui-prsCount'),
   };
