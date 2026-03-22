@@ -58,11 +58,14 @@ __APP__.setRuntimeConfig({
 - `POST /auth/request-password-reset`
 - `POST /auth/confirm-password-reset`
 
-Se SMTP não estiver configurado, o backend usa Ethereal para preview de email. O preview/código só é exposto para a conta de desenvolvimento e apenas quando `EXPOSE_RESET_CODE=true`.
+Se `RESEND_API_KEY` estiver configurado, o backend usa Resend como provedor principal. Se não estiver, tenta SMTP. Se nenhum estiver configurado, usa Ethereal para preview de email. O preview/código só é exposto para a conta de desenvolvimento e apenas quando `EXPOSE_RESET_CODE=true`.
 
-SMTP com fallback e fila:
+Resend + SMTP com fallback e fila:
 
 ```env
+RESEND_API_KEY=
+RESEND_FROM=CrossApp <nagcode.contact@gmail.com>
+
 SMTP_HOST=
 SMTP_PORT=587
 SMTP_SECURE=false
