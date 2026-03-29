@@ -27,11 +27,22 @@ export CROSSAPP_ATHLETE_PASSWORD="${CROSSAPP_ATHLETE_PASSWORD:-CrossAppSeed123}"
 
 cd "$ROOT_DIR"
 
-node backend/src/server.js &
-BACKEND_PID=$!
+if curl -fsS "http://localhost:${PORT}/health" >/dev/null 2>&1; then
+  echo "[dev-backend-supabase-and-smoke] backend já está rodando na porta ${PORT}"
+  BACKEND_PID=""
+else
+  EXISTING_PID="$(lsof -ti :"${PORT}" 2>/dev/null || true)"
+  if [[ -n "${EXISTING_PID}" ]]; then
+    echo "[dev-backend-supabase-and-smoke] porta ${PORT} ocupada (pid ${EXISTING_PID}), encerrando..."
+    kill "${EXISTING_PID}" || true
+  fi
+
+  node backend/src/server.js &
+  BACKEND_PID=$!
+fi
 
 cleanup() {
-  if kill -0 "$BACKEND_PID" >/dev/null 2>&1; then
+  if [[ -n "${BACKEND_PID}" ]] && kill -0 "$BACKEND_PID" >/dev/null 2>&1; then
     kill "$BACKEND_PID"
   fi
 }
