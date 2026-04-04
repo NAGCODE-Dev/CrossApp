@@ -1,11 +1,26 @@
 import {
-  OPENAI_API_KEY,
+  CROSSAI_PROVIDER,
   CROSSAI_MODEL,
   CROSSAI_REASONING_EFFORT,
-  CROSSAI_SCIENCE_VECTOR_STORE_IDS,
+  CROSSAI_LOCAL_RESEARCH_ENABLED,
+  OPENROUTER_API_KEY,
+  OPENROUTER_BASE_URL,
+  OPENROUTER_SITE_URL,
+  OPENROUTER_APP_NAME,
+  GROQ_API_KEY,
+  GROQ_BASE_URL,
 } from '../config.js';
 import { composePromptLayers } from './promptCatalog.js';
 import { buildCrossAiContext } from './contextStore.js';
+import { searchLocalResearchChunks } from './researchStore.js';
+
+const CHAT_PRESET_KEYS = new Set([
+  'explain_workout',
+  'strategy_wod',
+  'adapt_workout',
+  'analyze_result',
+  'chat_coach',
+]);
 
 function buildSystemInstructions(preset) {
   return composePromptLayers(preset.layers);
@@ -23,19 +38,11 @@ function buildUserPayload({ preset, body, user, context }) {
     );
   }
 
-  if (preset.key === 'research_answer') {
+  if (preset.key === 'research_answer' || preset.key === 'verify_study') {
     extraInstructions.push(
-      'Use a biblioteca científica recuperada por file_search antes de responder.',
-      'Preencha citations apenas com fontes realmente recuperadas ou claramente apoiadas no material encontrado.',
-      'Se a evidência estiver incompleta, reduza o evidenceLevel e explique caveats.',
-    );
-  }
-
-  if (preset.key === 'verify_study') {
-    extraInstructions.push(
-      'Baseie a resposta no arquivo fornecido no payload.',
-      'Se o arquivo não permitir concluir com segurança, explique isso em caveats.',
-      'Preencha citations apenas com trechos que façam sentido a partir do material analisado.',
+      'Use apenas as evidências locais fornecidas no payload.',
+      'Não invente citações nem trate evidência ausente como se existisse.',
+      'Separe claramente o que está apoiado nas fontes do que é inferência.',
     );
   }
 
@@ -62,81 +69,26 @@ function buildUserPayload({ preset, body, user, context }) {
   ].join('\n');
 }
 
-function buildInputForPreset({ preset, input, body }) {
-  if (preset.key === 'verify_study') {
-    const content = [{ type: 'input_text', text: input }];
-
-    if (body?.fileId) {
-      content.push({ type: 'input_file', file_id: String(body.fileId) });
-    } else if (body?.fileUrl) {
-      content.push({ type: 'input_file', file_url: String(body.fileUrl) });
-    }
-
-    return [{ role: 'user', content }];
+function extractChatCompletionText(responseJson) {
+  const choice = Array.isArray(responseJson?.choices) ? responseJson.choices[0] : null;
+  const content = choice?.message?.content;
+  if (typeof content === 'string') return content.trim();
+  if (Array.isArray(content)) {
+    return content
+      .map((part) => {
+        if (typeof part?.text === 'string') return part.text;
+        if (typeof part === 'string') return part;
+        return '';
+      })
+      .join('\n')
+      .trim();
   }
-
-  return input;
-}
-
-function buildToolsForPreset(preset) {
-  if (preset.key !== 'research_answer') {
-    return {};
-  }
-
-  if (!CROSSAI_SCIENCE_VECTOR_STORE_IDS.length) {
-    const error = new Error('CROSSAI_SCIENCE_VECTOR_STORE_IDS não configurado');
-    error.statusCode = 503;
-    throw error;
-  }
-
-  return {
-    include: ['file_search_call.results'],
-    tools: [
-      {
-        type: 'file_search',
-        vector_store_ids: CROSSAI_SCIENCE_VECTOR_STORE_IDS,
-        max_num_results: 8,
-      },
-    ],
-  };
-}
-
-function extractOutputText(responseJson) {
-  const output = Array.isArray(responseJson?.output) ? responseJson.output : [];
-  const chunks = [];
-
-  for (const item of output) {
-    if (item?.type !== 'message') continue;
-    const content = Array.isArray(item.content) ? item.content : [];
-    for (const part of content) {
-      if (part?.type === 'output_text' && typeof part.text === 'string') {
-        chunks.push(part.text);
-      }
-    }
-  }
-
-  return chunks.join('\n').trim();
-}
-
-function extractRefusal(responseJson) {
-  const output = Array.isArray(responseJson?.output) ? responseJson.output : [];
-
-  for (const item of output) {
-    if (item?.type !== 'message') continue;
-    const content = Array.isArray(item.content) ? item.content : [];
-    for (const part of content) {
-      if (part?.type === 'refusal' && typeof part.refusal === 'string') {
-        return part.refusal.trim();
-      }
-    }
-  }
-
   return '';
 }
 
 function parseStructuredOutput(rawText) {
   if (!rawText) {
-    throw new Error('A resposta da OpenAI veio vazia');
+    throw new Error('A resposta do provider veio vazia');
   }
 
   try {
@@ -147,50 +99,110 @@ function parseStructuredOutput(rawText) {
     if (start >= 0 && end > start) {
       return JSON.parse(rawText.slice(start, end + 1));
     }
-    throw new Error('Não foi possível converter a resposta da OpenAI em JSON');
+    throw new Error('Nao foi possivel converter a resposta do provider em JSON');
   }
 }
 
-export function isCrossAiConfigured() {
-  return Boolean(OPENAI_API_KEY);
+function hasProviderCredentials(provider) {
+  if (provider === 'groq') return Boolean(GROQ_API_KEY);
+  if (provider === 'openrouter') return Boolean(OPENROUTER_API_KEY);
+  return false;
 }
 
-export async function generateCrossAiResponse({ preset, body, user }) {
-  if (!OPENAI_API_KEY) {
-    const error = new Error('OPENAI_API_KEY não configurada');
+export function isCrossAiConfigured() {
+  return hasProviderCredentials('openrouter') || hasProviderCredentials('groq');
+}
+
+export function resolveCrossAiProvider(preset) {
+  if (preset.key === 'verify_study') {
+    return 'local-rag-pending';
+  }
+
+  if (preset.key === 'research_answer' && !CROSSAI_LOCAL_RESEARCH_ENABLED) {
+    return 'local-rag-pending';
+  }
+
+  if (CROSSAI_PROVIDER === 'groq') {
+    return 'groq';
+  }
+
+  return 'openrouter';
+}
+
+export function isCrossAiPresetAvailable(preset) {
+  const provider = resolveCrossAiProvider(preset);
+  if (provider === 'local-rag-pending') {
+    return false;
+  }
+  if (!CHAT_PRESET_KEYS.has(preset.key)) {
+    return false;
+  }
+  return hasProviderCredentials(provider) || hasProviderCredentials(getFallbackProvider(provider));
+}
+
+function getFallbackProvider(provider) {
+  if (provider === 'groq') return 'openrouter';
+  if (provider === 'openrouter') return 'groq';
+  return null;
+}
+
+function assertPresetAvailability(provider, preset) {
+  if (preset.key === 'verify_study') {
+    const error = new Error('Base científica indisponível nesta configuração atual');
     error.statusCode = 503;
     throw error;
   }
 
-  if (preset.key === 'verify_study' && !body?.fileId && !body?.fileUrl) {
-    const error = new Error('verify-study exige fileId ou fileUrl');
-    error.statusCode = 400;
+  if (preset.key === 'research_answer' && !CROSSAI_LOCAL_RESEARCH_ENABLED) {
+    const error = new Error('Base científica indisponível nesta configuração atual');
+    error.statusCode = 503;
     throw error;
   }
 
-  const instructions = await buildSystemInstructions(preset);
-  const context = await buildCrossAiContext({ preset, body, user });
-  const input = buildUserPayload({ preset, body, user, context });
-  const requestInput = buildInputForPreset({ preset, input, body });
-  const toolOptions = buildToolsForPreset(preset);
-  const response = await fetch('https://api.openai.com/v1/responses', {
+  if (preset.key !== 'research_answer' && !CHAT_PRESET_KEYS.has(preset.key)) {
+    const error = new Error('Modo indisponível nesta configuração atual');
+    error.statusCode = 503;
+    throw error;
+  }
+
+  if (!hasProviderCredentials(provider) && !hasProviderCredentials(getFallbackProvider(provider))) {
+    const error = new Error(`Nenhum provider configurado para ${provider}`);
+    error.statusCode = 503;
+    throw error;
+  }
+}
+
+function buildMessageContent(input) {
+  return typeof input === 'string' ? input : JSON.stringify(input, null, 2);
+}
+
+async function requestChatCompletion({
+  providerLabel,
+  endpoint,
+  apiKey,
+  headers = {},
+  preset,
+  instructions,
+  requestInput,
+}) {
+  const response = await fetch(endpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${OPENAI_API_KEY}`,
+      Authorization: `Bearer ${apiKey}`,
+      ...headers,
     },
     body: JSON.stringify({
       model: CROSSAI_MODEL,
-      reasoning: {
-        effort: CROSSAI_REASONING_EFFORT,
-      },
-      instructions,
-      input: requestInput,
-      ...toolOptions,
-      text: {
-        format: {
-          type: 'json_schema',
-          strict: true,
+      messages: [
+        { role: 'system', content: instructions },
+        { role: 'user', content: buildMessageContent(requestInput) },
+      ],
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: preset.contract.mode.replace(/[^a-zA-Z0-9_-]/g, '_'),
+          strict: false,
           schema: preset.contract.schema,
         },
       },
@@ -200,26 +212,95 @@ export async function generateCrossAiResponse({ preset, body, user }) {
   const responseJson = await response.json();
 
   if (!response.ok) {
-    const error = new Error(responseJson?.error?.message || 'Falha ao consultar a OpenAI');
+    const error = new Error(responseJson?.error?.message || `Falha ao consultar ${providerLabel}`);
     error.statusCode = response.status;
     error.details = responseJson;
     throw error;
   }
 
-  const refusal = extractRefusal(responseJson);
-  if (refusal) {
-    const error = new Error(refusal);
-    error.statusCode = 422;
-    throw error;
-  }
-
-  const rawText = extractOutputText(responseJson);
+  const rawText = extractChatCompletionText(responseJson);
   const parsed = parseStructuredOutput(rawText);
 
   return {
     id: responseJson.id || null,
     model: responseJson.model || CROSSAI_MODEL,
     usage: responseJson.usage || null,
+    provider: providerLabel,
     output: parsed,
   };
+}
+
+async function requestOpenRouterResponse({ preset, instructions, requestInput }) {
+  return requestChatCompletion({
+    providerLabel: 'openrouter',
+    endpoint: `${OPENROUTER_BASE_URL}/chat/completions`,
+    apiKey: OPENROUTER_API_KEY,
+    headers: {
+      ...(OPENROUTER_SITE_URL ? { 'HTTP-Referer': OPENROUTER_SITE_URL } : {}),
+      ...(OPENROUTER_APP_NAME ? { 'X-OpenRouter-Title': OPENROUTER_APP_NAME } : {}),
+    },
+    preset,
+    instructions,
+    requestInput,
+  });
+}
+
+async function requestGroqResponse({ preset, instructions, requestInput }) {
+  return requestChatCompletion({
+    providerLabel: 'groq',
+    endpoint: `${GROQ_BASE_URL}/chat/completions`,
+    apiKey: GROQ_API_KEY,
+    preset,
+    instructions,
+    requestInput,
+  });
+}
+
+async function requestWithProvider(provider, args) {
+  if (provider === 'groq') {
+    return requestGroqResponse(args);
+  }
+  return requestOpenRouterResponse(args);
+}
+
+export async function generateCrossAiResponse({ preset, body, user }) {
+  const provider = resolveCrossAiProvider(preset);
+  assertPresetAvailability(provider, preset);
+
+  const instructions = await buildSystemInstructions(preset);
+  const context = await buildCrossAiContext({ preset, body, user });
+  let mergedContext = context;
+
+  if (preset.key === 'research_answer') {
+    const researchEvidence = await searchLocalResearchChunks({
+      question: body?.question || body?.message || '',
+      limit: 6,
+    });
+    if (!researchEvidence.length) {
+      const error = new Error('Base científica sem estudos indexados para esta pergunta');
+      error.statusCode = 503;
+      throw error;
+    }
+    mergedContext = {
+      ...(context || {}),
+      researchEvidence,
+    };
+  }
+
+  const requestInput = buildUserPayload({ preset, body, user, context: mergedContext });
+
+  if (hasProviderCredentials(provider)) {
+    try {
+      return await requestWithProvider(provider, { preset, instructions, requestInput });
+    } catch (error) {
+      const fallbackProvider = getFallbackProvider(provider);
+      if (fallbackProvider && hasProviderCredentials(fallbackProvider)) {
+        return requestWithProvider(fallbackProvider, { preset, instructions, requestInput });
+      }
+      throw error;
+    }
+  }
+
+  const fallbackProvider = getFallbackProvider(provider);
+  return requestWithProvider(fallbackProvider, { preset, instructions, requestInput });
 }

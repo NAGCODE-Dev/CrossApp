@@ -141,16 +141,72 @@ O backend agora inclui uma base inicial da CrossAI com:
 
 - prompts versionados em `backend/src/ai/prompts/*.txt`
 - composição de camadas por endpoint
-- resposta estruturada em JSON via OpenAI Responses API
+- resposta estruturada em JSON via provider configurável
 - rotas prontas para atleta e coach
 
 Configuração mínima:
 
 ```env
-OPENAI_API_KEY=
-CROSSAI_MODEL=gpt-5.4
+CROSSAI_PROVIDER=openrouter
+CROSSAI_MODEL=openrouter/free
 CROSSAI_REASONING_EFFORT=medium
+OPENROUTER_API_KEY=
+GROQ_API_KEY=
 ```
+
+Alternativa com Groq:
+
+```env
+CROSSAI_PROVIDER=groq
+CROSSAI_MODEL=llama-3.3-70b-versatile
+GROQ_API_KEY=
+```
+
+Notas de provider:
+
+- `openrouter`
+  - usa `POST /api/v1/chat/completions`
+  - suporta contracts JSON via `response_format.json_schema`
+  - atende as rotas operacionais da CrossAI
+- `groq`
+  - usa endpoint compatível com OpenAI em `POST /openai/v1/chat/completions`
+  - atende as rotas operacionais da CrossAI
+  - funciona como fallback do `openrouter` quando configurado
+- `research-answer`
+  - começa a ser reconstruído sobre busca local em `study_documents` + `study_chunks`
+  - só fica disponível quando `CROSSAI_LOCAL_RESEARCH_ENABLED=true`
+
+Modo recomendado sem OpenAI:
+
+- `OPENROUTER_API_KEY` para:
+  - `explain-workout`
+  - `strategy`
+  - `adapt-workout`
+  - `analyze-result`
+  - `chat-coach`
+- `GROQ_API_KEY` como fallback opcional dessas mesmas rotas
+- `research-answer` e `verify-study` ficam temporariamente indisponíveis
+- `compare-history`, `import-workout`, `competition-plan`, `recovery-check` e `coach-review` ficam fora do stack sem OpenAI nesta fase
+- o backend decide automaticamente o provider por rota
+
+Para iniciar a reconstrução local da base científica:
+
+```env
+CROSSAI_LOCAL_RESEARCH_ENABLED=true
+```
+
+Schema SQL inicial:
+
+```sql
+\i backend/sql/2026-04-04-crossai-research.sql
+```
+
+Tabelas:
+
+- `study_documents`
+  - metadados da fonte científica
+- `study_chunks`
+  - trechos pesquisáveis usados pelo `research-answer`
 
 Memória esportiva inicial da CrossAI:
 
@@ -314,26 +370,21 @@ Payload sugerido para conversa:
 Contracts de evidência:
 
 - `POST /ai/research-answer`
-  - usa `file_search` com `CROSSAI_SCIENCE_VECTOR_STORE_IDS`
   - `data.answer`
   - `data.bottomLine`
   - `data.evidenceLevel`
   - `data.citations[]`
   - `data.caveats[]`
+  - quando `CROSSAI_LOCAL_RESEARCH_ENABLED=true`, busca trechos locais em `study_chunks`
+  - se não houver estudos indexados para a pergunta, retorna `503`
 
 - `POST /ai/verify-study`
-  - exige `fileId` ou `fileUrl`
   - `data.answer`
   - `data.verdict`
   - `data.evidenceLevel`
   - `data.citations[]`
   - `data.caveats[]`
-
-Configuração adicional para biblioteca científica:
-
-```env
-CROSSAI_SCIENCE_VECTOR_STORE_IDS=vs_123,vs_456
-```
+  - nesta fase retorna `503` até o pipeline local de PDF/chunking ficar pronto
 
 Payload sugerido para pesquisa:
 
@@ -355,8 +406,9 @@ Payload sugerido para verificação:
 
 Observações:
 
-- sem `OPENAI_API_KEY`, as rotas `/ai/*` retornam `503`
-- sem `CROSSAI_SCIENCE_VECTOR_STORE_IDS`, `POST /ai/research-answer` retorna `503`
+- sem credencial do provider ativo, as rotas `/ai/*` retornam `503`
+- `GET /ai/meta` expõe `provider` por rota e `available` já considerando a configuração real
+- `research-answer` e `verify-study` ficam marcadas como indisponíveis no `meta`
 - os contracts por tela ficam em `backend/src/ai/contracts.js`
 - a composição de camadas fica em `backend/src/ai/presets.js`
 

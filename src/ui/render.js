@@ -326,13 +326,13 @@ function renderCrossAiActionsCard(state) {
           enabled: hasWorkout && isAuthenticated && meta.configured && routeFlags.chatCoach,
           loading: false,
         })}
-        ${renderCrossAiActionButton({
+        ${routeFlags.researchAnswer ? renderCrossAiActionButton({
           label: 'Base científica',
           mode: 'researchAnswer',
           action: 'crossai:open-form',
           enabled: isAuthenticated && meta.configured && routeFlags.researchAnswer,
           loading: isMetaLoading || actions?.researchAnswer?.loading,
-        })}
+        }) : ''}
       </div>
 
       ${renderCrossAiInsights(state)}
@@ -864,7 +864,7 @@ function renderEmptyState(state) {
         </div>
         <div class="page-actions page-actions-inline">
           <button class="btn-primary" data-action="modal:open" data-modal="import" type="button">Importar treino</button>
-          <button class="btn-secondary" data-action="crossai:open-form" data-mode="researchAnswer" type="button" ${isAuthenticated && canUseResearch ? '' : 'disabled'}>Perguntar à IA</button>
+          ${canUseResearch ? '<button class="btn-secondary" data-action="crossai:open-form" data-mode="researchAnswer" type="button">Perguntar à IA</button>' : ''}
           <button class="btn-secondary" data-action="modal:open" data-modal="auth" type="button">${isAuthenticated ? 'Conta' : 'Entrar'}</button>
         </div>
       </div>
@@ -1228,12 +1228,14 @@ export function renderImportModal(state = {}) {
               <span class="quick-actionIcon">EXP</span>
               <span class="quick-actionLabel">Exportar treino atual</span>
             </button>
-            <button class="quick-action quick-action-modal" data-action="crossai:open-form" data-mode="importWorkout" type="button" ${canUseImportAi ? '' : 'disabled'}>
+            ${canUseImportAi ? `
+            <button class="quick-action quick-action-modal" data-action="crossai:open-form" data-mode="importWorkout" type="button">
               <span class="quick-actionIcon">AI</span>
               <span class="quick-actionLabel">Organizar com CrossAI</span>
             </button>
+            ` : ''}
           </div>
-          ${canUseImportAi ? '' : '<p class="account-hint">Entre e habilite a CrossAI para organizar treinos por texto.</p>'}
+          ${canUseImportAi ? '' : '<p class="account-hint">A importação por IA está indisponível nesta configuração atual.</p>'}
         </div>
       </div>
     </div>
