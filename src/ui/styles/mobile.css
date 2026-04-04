@@ -235,6 +235,15 @@
     grid-template-columns: 1fr;
   }
 
+  .modal-body-settings {
+    gap: 12px;
+  }
+
+  .settings-section {
+    padding: 12px;
+    border-radius: 16px;
+  }
+
   .crossai-historyHead,
   .crossai-historyCardHead,
   .crossai-historyActions,
