@@ -2,9 +2,17 @@ import express from 'express';
 
 import { authRequired } from '../auth.js';
 import { getCrossAiPreset, listCrossAiPresets } from '../ai/presets.js';
-import { isCrossAiConfigured, generateCrossAiResponse } from '../ai/service.js';
+import {
+  isCrossAiConfigured,
+  isCrossAiPresetAvailable,
+  resolveCrossAiProvider,
+  generateCrossAiResponse,
+} from '../ai/service.js';
 import { saveCrossAiInsight } from '../ai/contextStore.js';
-import { CROSSAI_MODEL, CROSSAI_SCIENCE_VECTOR_STORE_IDS } from '../config.js';
+import {
+  CROSSAI_MODEL,
+  CROSSAI_PROVIDER,
+} from '../config.js';
 
 function buildMetaResponse() {
   return {
@@ -12,16 +20,16 @@ function buildMetaResponse() {
     configured: isCrossAiConfigured(),
     version: 'v1',
     model: CROSSAI_MODEL,
+    provider: CROSSAI_PROVIDER,
     routes: listCrossAiPresets().map((preset) => ({
       key: preset.key,
       route: preset.route,
       intent: preset.intent,
       audience: preset.audience,
       mode: preset.contract.mode,
+      provider: resolveCrossAiProvider(preset),
       layers: preset.layers,
-      available: preset.key === 'research_answer'
-        ? CROSSAI_SCIENCE_VECTOR_STORE_IDS.length > 0
-        : true,
+      available: isCrossAiPresetAvailable(preset),
     })),
   };
 }
