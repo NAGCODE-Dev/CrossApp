@@ -750,21 +750,26 @@
 
 .modal-body-settings {
   display: grid;
-  gap: 14px;
+  gap: 16px;
 }
 
 .settings-section {
   display: grid;
   gap: 10px;
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg-surface) 82%, white 18%);
 }
 
 .settings-sectionHead {
   display: grid;
-  gap: 3px;
+  gap: 4px;
 }
 
 .settings-sectionHead strong {
-  font-size: 0.96rem;
+  font-size: 0.98rem;
+  line-height: 1.2;
 }
 
 .settings-sectionHead span {
@@ -776,6 +781,7 @@
 .settings-actions-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .pr-item,
@@ -956,6 +962,19 @@
   background: var(--bg-surface-2);
 }
 
+.settings-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  flex: 0 0 auto;
+}
+
+.settings-label > span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
 .settings-label strong {
   display: block;
   font-size: 0.88rem;
@@ -980,6 +999,11 @@
   border-color: rgba(255, 141, 141, 0.24);
   background: rgba(255, 141, 141, 0.08);
   color: #ffb0b0;
+}
+
+.settings-section-danger {
+  border-color: rgba(255, 141, 141, 0.18);
+  background: linear-gradient(180deg, rgba(255, 141, 141, 0.05), rgba(255, 141, 141, 0.02));
 }
 
 .coach-checkRow span,
