@@ -33,7 +33,7 @@
     "deploy:prod": "vercel --prod"
   },
   "dependencies": {
-    "@capacitor/android": "^6.2.1",
+    "@capacitor/android": "^8.3.0",
     "@capacitor/app": "^6.0.3",
     "@capacitor/cli": "^6.2.1",
     "@capacitor/core": "^6.2.1",
