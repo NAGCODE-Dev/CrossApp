@@ -21,7 +21,6 @@ const jobs = [
     outputs: [
       { width: 940, height: 240, name: 'ryxen-logo-horizontal.png' },
       { width: 470, height: 120, name: 'ryxen-logo-horizontal@2x-half.png' },
-      { width: 1200, height: 630, name: 'ryxen-social-og.png' },
     ],
   },
   {

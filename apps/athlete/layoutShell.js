@@ -1,7 +1,7 @@
 import { renderAppShell } from '../../src/ui/render.js';
 
 export function prepareAthleteLayoutRoot(root) {
-  ensureAthleteStylesheet('./src/ui/styles.css');
+  ensureAthleteStylesheet('./src/ui/tailwind.generated.css');
   ensureAthleteBackground();
   root.innerHTML = renderAppShell();
   return getAthleteLayoutRefs(root);

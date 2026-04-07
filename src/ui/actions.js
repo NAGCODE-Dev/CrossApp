@@ -12,15 +12,21 @@ import {
   queueCheckoutIntent,
 } from '../core/services/subscriptionService.js';
 import { getAppBridge } from '../app/bridge.js';
-import { handleAthleteAccountHistoryAction } from '../../apps/athlete/actions/accountHistoryActions.js';
-import { handleAthleteBillingAction } from '../../apps/athlete/actions/billingActions.js';
-import { handleAthleteAuthAction, handleAthleteAuthEnterKey } from '../../apps/athlete/actions/authActions.js';
+import {
+  handleAthleteAccountHistoryAction,
+  handleAthleteAuthAction,
+  handleAthleteAuthEnterKey,
+  handleAthleteBillingAction,
+} from '../../apps/athlete/features/account/actions.js';
 import {
   handleAthleteModalAction,
   handleAthleteModalEscapeKey,
   handleAthleteModalOverlayClick,
 } from '../../apps/athlete/actions/modalActions.js';
-import { handleAthleteTodayAction, handleAthleteTodayChange } from '../../apps/athlete/actions/todayActions.js';
+import {
+  handleAthleteTodayAction,
+  handleAthleteTodayChange,
+} from '../../apps/athlete/features/today/actions.js';
 import {
   explainImportFailure,
   formatBytes,
@@ -33,7 +39,7 @@ import {
   pickPdfFile,
   pickUniversalFile,
   prepareImportFileForClientUse,
-} from '../../apps/athlete/services/importFiles.js';
+} from '../../apps/athlete/features/import/services.js';
 import {
   cssEscape,
   getActiveLineIdFromUi,
@@ -43,17 +49,17 @@ import {
   scrollToLine,
   startRestTimer,
   workoutKeyFromAppState,
-} from '../../apps/athlete/services/workoutUi.js';
+} from '../../apps/athlete/features/today/services.js';
 import {
   createEmptyAthleteOverviewState,
   createEmptyCoachPortalState,
-} from '../../apps/athlete/uiState.js';
+} from '../../apps/athlete/state/uiState.js';
 import {
   maybePrimeCheckoutIntentFromUrl,
   maybeResumePendingCheckout,
   normalizeCheckoutPlan,
-} from '../../apps/athlete/services/checkoutFlow.js';
-import { createAthleteHydrationBindings } from '../../apps/athlete/services/athleteHydration.js';
+} from '../../apps/athlete/features/account/services.js';
+import { createAthleteHydrationBindings } from '../../apps/athlete/features/account/services.js';
 
 export function setupActions({ root, toast, rerender, getUiState, setUiState, patchUiState }) {
   if (!root) throw new Error('setupActions: root é obrigatório');
