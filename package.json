@@ -37,12 +37,12 @@
     "@capacitor/app": "^6.0.3",
     "@capacitor/cli": "^6.2.1",
     "@capacitor/core": "^6.2.1",
+    "@lokalise/xlsx": "^0.20.3",
     "@sentry/browser": "^8.33.1",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "xlsx": "^0.18.5"
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.24.0",
@@ -51,6 +51,9 @@
     "eslint": "^9.24.0",
     "globals": "^16.0.0",
     "playwright": "^1.59.1",
-    "vite": "^5.4.14"
+    "vite": "^8.0.7"
+  },
+  "overrides": {
+    "tar": "^7.5.13"
   }
 }
