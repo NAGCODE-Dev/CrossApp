@@ -21,7 +21,7 @@ export async function extractTextFromSpreadsheetFile(file, options = {}) {
     throw new Error('Arquivo não é uma planilha suportada');
   }
 
-  const XLSX = await import('xlsx');
+  const XLSX = await import('@lokalise/xlsx');
   const arrayBuffer = await file.arrayBuffer();
   const workbook = XLSX.read(arrayBuffer, {
     type: 'array',
