@@ -1,177 +1,146 @@
-.account-hero {
-  display: grid;
-  grid-template-columns: 1.35fr 1fr;
-  gap: 12px;
-}
-
-.account-name {
-  font-size: 1.02rem;
-  font-weight: 800;
-  line-height: 1.18;
-}
-
-.account-email {
-  margin-top: 4px;
-  color: var(--text-secondary);
-  font-size: 0.82rem;
-  line-height: 1.45;
-}
-
-.account-actions {
-  margin-bottom: 0;
-}
-
-.account-section {
-  display: grid;
-  gap: 14px;
-}
-
-.account-fold {
-  display: grid;
-  gap: 0;
-  border: 1px solid var(--line);
-  border-radius: 24px;
-  background: var(--bg-surface-2);
-  overflow: hidden;
-}
-
-.account-foldSummary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 14px 16px;
-  cursor: pointer;
-  list-style: none;
-}
-
-.account-foldSummary::-webkit-details-marker {
-  display: none;
-}
-
-.account-foldSummary strong {
-  display: block;
-  font-size: 0.95rem;
-}
-
-.account-foldMeta {
-  color: var(--text-secondary);
-  font-size: 0.76rem;
-  text-align: right;
-}
-
-.account-foldBody {
-  display: grid;
-  gap: 10px;
-  padding: 0 16px 16px;
-  border-top: 1px solid var(--line);
-}
-
-.account-fold.isCompact .account-foldBody {
-  gap: 12px;
-}
-
-.account-sectionHead strong {
-  font-size: 0.95rem;
-}
-
-.page-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.account-actions .btn-secondary,
-.coach-billingActions .btn-secondary,
-.coach-billingActions .btn-primary,
-.page-stack-account .page-actions .btn-secondary,
-.page-stack-account .page-actions .btn-primary {
-  min-height: 44px;
-}
-
-.page-stack-account .coach-grid {
-  align-items: start;
-  gap: 12px;
-}
-
-.page-stack-account .coach-card,
-.page-stack-history .coach-card {
-  min-height: 100%;
-}
-
-.page-stack-account .summary-strip {
-  gap: 8px;
-}
-
-.page-stack-account .coach-listCompact {
-  gap: 6px;
-}
-
-.page-stack-account .coach-listCompact .coach-listItem {
-  padding: 10px 12px;
-}
-
-.page-stack-account .summary-tileCompact {
-  padding: 11px 12px;
-}
-
-@media (max-width: 980px) {
-  .summary-strip,
-  .summary-strip-4,
-  .page-stack-account .coach-grid,
-  .page-stack-history .trend-grid,
-  .page-stack-account .page-actions {
-    grid-template-columns: 1fr;
-  }
-
-  .page-stack-account .coach-grid {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .coach-listCompact .coach-listItem {
-    grid-template-columns: 1fr;
-  }
-}
-
-.admin-toolbar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-}
-
-.coach-billingActions {
-  justify-content: flex-start;
-}
-
-@media (max-width: 640px) {
+@layer components {
   .account-hero {
-    grid-template-columns: 1fr;
-    gap: 10px;
-  }
-
-  .account-foldSummary {
-    flex-direction: column;
-    align-items: flex-start;
-    padding: 13px 14px;
-  }
-
-  .account-foldMeta {
-    text-align: left;
-  }
-
-  .page-actions {
-    grid-template-columns: 1fr;
-  }
-
-  .account-foldBody {
-    padding: 0 14px 14px;
+    @apply grid grid-cols-[1.35fr_1fr] gap-3;
   }
 
   .account-name {
-    font-size: 1rem;
+    @apply text-[1.02rem] font-extrabold leading-[1.18];
   }
 
   .account-email {
-    font-size: 0.84rem;
+    @apply mt-1 text-[0.82rem] leading-[1.45] text-ryxen-text-soft;
+  }
+
+  .account-actions {
+    @apply mb-0;
+  }
+
+  .account-section {
+    @apply grid gap-3.5;
+  }
+
+  .account-fold {
+    @apply grid gap-0 overflow-hidden rounded-[24px] border border-white/10 bg-ryxen-surface-2;
+  }
+
+  .account-foldSummary {
+    @apply flex cursor-pointer list-none items-center justify-between gap-3.5 px-4 py-3.5;
+  }
+
+  .account-foldSummary::-webkit-details-marker {
+    display: none;
+  }
+
+  .account-foldSummary strong,
+  .account-sectionHead strong {
+    @apply block text-[0.95rem];
+  }
+
+  .account-foldMeta {
+    @apply text-right text-[0.76rem] text-ryxen-text-soft;
+  }
+
+  .account-foldBody {
+    @apply grid gap-2.5 border-t border-white/10 px-4 pb-4 pt-0;
+  }
+
+  .account-fold.isCompact .account-foldBody {
+    @apply gap-3;
+  }
+
+  .page-actions {
+    @apply grid grid-cols-2 gap-2;
+  }
+
+  .account-actions .btn-secondary,
+  .coach-billingActions .btn-secondary,
+  .coach-billingActions .btn-primary,
+  .page-stack-account .page-actions .btn-secondary,
+  .page-stack-account .page-actions .btn-primary {
+    @apply min-h-11;
+  }
+
+  .page-stack-account .coach-grid {
+    @apply items-start gap-3;
+  }
+
+  .page-stack-account .coach-card,
+  .page-stack-history .coach-card {
+    @apply min-h-full;
+  }
+
+  .page-stack-account .summary-strip {
+    @apply gap-2;
+  }
+
+  .page-stack-account .coach-listCompact {
+    @apply gap-1.5;
+  }
+
+  .page-stack-account .coach-listCompact .coach-listItem {
+    @apply px-3 py-2.5;
+  }
+
+  .page-stack-account .summary-tileCompact {
+    @apply px-3 py-[11px];
+  }
+
+  .admin-toolbar {
+    @apply grid grid-cols-[minmax(0,1fr)_auto];
+  }
+
+  .coach-billingActions {
+    @apply justify-start;
+  }
+}
+
+@layer utilities {
+  @media (max-width: 980px) {
+    .summary-strip,
+    .summary-strip-4,
+    .page-stack-account .coach-grid,
+    .page-stack-history .trend-grid,
+    .page-stack-account .page-actions {
+      grid-template-columns: 1fr;
+    }
+
+    .page-stack-account .coach-grid {
+      @apply flex flex-col;
+    }
+
+    .coach-listCompact .coach-listItem {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .account-hero {
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .account-foldSummary {
+      @apply flex-col items-start px-3.5 py-[13px];
+    }
+
+    .account-foldMeta {
+      @apply text-left;
+    }
+
+    .page-actions {
+      grid-template-columns: 1fr;
+    }
+
+    .account-foldBody {
+      @apply px-3.5 pb-3.5;
+    }
+
+    .account-name {
+      @apply text-base;
+    }
+
+    .account-email {
+      @apply text-[0.84rem];
+    }
   }
 }

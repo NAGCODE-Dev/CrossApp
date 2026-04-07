@@ -45,11 +45,20 @@ textarea {
   margin-top: 28px;
 }
 
+.hub-showcaseStack {
+  display: grid;
+  gap: 36px;
+}
+
 .hub-showcase {
   display: grid;
   grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
   gap: 28px;
   align-items: center;
+}
+
+.hub-showcase-reverse {
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
 }
 
 .hub-showcaseCopy h2 {
@@ -99,6 +108,11 @@ textarea {
   pointer-events: none;
 }
 
+.hub-showcase-reverse .hub-showcaseMedia::before {
+  inset: 32px 18px auto auto;
+  background: radial-gradient(circle, rgba(249, 115, 22, 0.18), transparent 72%);
+}
+
 .hub-productShot {
   display: block;
   width: 100%;
@@ -116,9 +130,9 @@ textarea {
   border: 1px solid var(--hub-border);
   border-radius: 32px;
   background:
-    linear-gradient(180deg, rgba(18, 24, 33, 0.96), rgba(11, 15, 20, 0.99)),
-    radial-gradient(circle at top right, rgba(59, 130, 246, 0.16), transparent 32%);
-  box-shadow: var(--hub-shadow);
+    linear-gradient(180deg, rgba(18, 24, 33, 0.9), rgba(11, 15, 20, 0.98)),
+    radial-gradient(circle at top right, rgba(59, 130, 246, 0.12), transparent 32%);
+  box-shadow: 0 22px 70px rgba(0, 0, 0, 0.24);
 }
 
 .hub-hero::after,
@@ -135,9 +149,9 @@ textarea {
 
 .hub-heroGrid {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(320px, 0.9fr);
-  gap: 22px;
-  align-items: start;
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 0.92fr);
+  gap: 30px;
+  align-items: center;
 }
 
 .hub-heroMain,
@@ -151,7 +165,7 @@ textarea {
 .hub-heroMain {
   display: flex;
   flex-direction: column;
-  min-height: 540px;
+  min-height: 0;
   justify-content: center;
 }
 
@@ -213,14 +227,6 @@ textarea {
   color: var(--hub-text-soft);
   font-size: 1.04rem;
   line-height: 1.7;
-}
-
-.hub-supportingCopy {
-  margin: 18px 0 0;
-  color: rgba(148, 163, 184, 0.72);
-  font-size: 0.95rem;
-  line-height: 1.6;
-  max-width: 42ch;
 }
 
 .hub-proofRow,
@@ -304,7 +310,6 @@ textarea {
 
 .hub-heroPanel {
   padding: 26px;
-  min-height: 520px;
   border-radius: 24px;
   border: 1px solid var(--hub-border);
   background:
@@ -597,6 +602,10 @@ textarea {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.hub-grid-roles-mainCompact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .hub-grid-platform {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
@@ -606,8 +615,8 @@ textarea {
   padding: 22px;
   border-radius: 26px;
   border: 1px solid var(--hub-border);
-  background: linear-gradient(180deg, var(--hub-surface), var(--hub-surface-3));
-  box-shadow: var(--hub-shadow);
+  background: linear-gradient(180deg, rgba(18, 24, 33, 0.86), rgba(14, 19, 27, 0.94));
+  box-shadow: 0 18px 52px rgba(0, 0, 0, 0.18);
 }
 
 .hub-card-guide {
@@ -661,8 +670,8 @@ textarea {
 .hub-card-selected {
   border-color: var(--hub-border-strong);
   background:
-    linear-gradient(180deg, rgba(29, 43, 34, 0.78), rgba(11, 17, 23, 0.98)),
-    radial-gradient(circle at top right, rgba(215, 240, 106, 0.12), transparent 30%);
+    linear-gradient(180deg, rgba(22, 31, 41, 0.94), rgba(10, 15, 22, 0.98)),
+    radial-gradient(circle at top right, rgba(66, 142, 255, 0.12), transparent 30%);
 }
 
 .hub-cardChoice {
@@ -734,25 +743,23 @@ textarea {
 
 .hub-editorialList {
   display: grid;
-  gap: 14px;
+  gap: 16px;
+}
+
+.hub-editorialListColumns {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
 }
 
 .hub-benefitRow {
   display: grid;
-  grid-template-columns: minmax(220px, 0.65fr) minmax(0, 1.35fr);
-  gap: 18px;
-  align-items: center;
-  padding: 24px 0;
-  border-top: 1px solid rgba(148, 163, 184, 0.12);
-}
-
-.hub-benefitRow:last-child {
-  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+  gap: 10px;
+  align-content: start;
 }
 
 .hub-benefitIntro h3 {
-  margin: 14px 0 0;
-  font-size: clamp(1.35rem, 2vw, 1.85rem);
+  margin: 10px 0 0;
+  font-size: clamp(1.2rem, 1.8vw, 1.55rem);
   letter-spacing: -0.04em;
 }
 
@@ -765,7 +772,7 @@ textarea {
 }
 
 .hub-benefitBody p {
-  max-width: 52ch;
+  max-width: 28ch;
 }
 
 .hub-ctaCard {
@@ -793,6 +800,27 @@ textarea {
 .hub-ctaPrimary,
 .hub-ctaSecondary {
   width: 100%;
+}
+
+.hub-roleNote,
+.hub-platformMeta {
+  color: var(--hub-text-soft);
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+
+.hub-roleNote {
+  margin-top: 14px;
+  max-width: 56ch;
+}
+
+.hub-grid-platformEditorial .hub-card {
+  box-shadow: none;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.hub-grid-platformEditorial .hub-cardTop {
+  align-items: flex-start;
 }
 
 @media (max-width: 960px) {
@@ -835,14 +863,13 @@ textarea {
 
   .hub-heroSplit,
   .hub-grid-platform,
-  .hub-grid-roles-main {
+  .hub-grid-roles-main,
+  .hub-editorialListColumns {
     grid-template-columns: 1fr;
   }
 
   .hub-benefitRow {
-    grid-template-columns: 1fr;
     gap: 10px;
-    padding: 20px 0;
   }
 
   .hub-deviceBody {

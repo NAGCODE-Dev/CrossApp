@@ -1,0 +1,8 @@
+@import "tailwindcss";
+@import "../styles/tailwind.shared.css";
+@import "./styles.css";
+
+@source "../../index.html";
+@source "./main.js";
+@source "../../sports/running/index.html";
+@source "../../sports/strength/index.html";

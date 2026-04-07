@@ -3,7 +3,7 @@ import { setupActions } from './actions.js';
 import { bindAppEvents } from './events.js';
 import { getAppBridge } from '../app/bridge.js';
 import { prepareAthleteLayoutRoot, ensureAthleteToast, setLayoutHtml, setLayoutText } from '../../apps/athlete/layoutShell.js';
-import { buildAthleteUiForRender, normalizeAthleteUiState } from '../../apps/athlete/uiState.js';
+import { buildAthleteUiForRender, normalizeAthleteUiState } from '../../apps/athlete/state/uiState.js';
 
 export async function mountUI({ root }) {
   if (!root) throw new Error('mountUI: root é obrigatório');

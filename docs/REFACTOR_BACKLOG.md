@@ -93,6 +93,16 @@ Sair de uma base web única com fronteiras implícitas e chegar em uma plataform
 ## Fase 4. Coach portal
 
 - `done` Coach consumindo shared auth/runtime
+- `done` Instalar Tailwind CSS no repo
+- `done` Configurar Tailwind no build do `coach-portal`
+- `done` Criar base compartilhada de tema Tailwind para `hub`, `coach` e `athlete`
+- `done` Criar pipeline dedicado de build Tailwind para o hub público
+- `done` Criar pipeline dedicado de build Tailwind para o athlete app
+- `in_progress` Migrar superfícies para Tailwind-first
+  - `done` hub com CSS gerado dedicado e hero/CTA em utilities
+  - `done` coach-portal compilando Tailwind como camada principal
+  - `done` athlete shell carregando CSS gerado do Tailwind
+  - `in_progress` converter classes semânticas restantes do athlete para `@apply`/components
 - `pending` Extrair `coach api client` próprio
 - `pending` Separar módulos do portal:
   - gyms

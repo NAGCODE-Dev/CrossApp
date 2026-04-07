@@ -1,0 +1,30 @@
+@import "tailwindcss";
+@import "../src/styles/tailwind.shared.css";
+
+@theme {
+  --font-sans: "Space Grotesk", "Segoe UI", sans-serif;
+  --color-ryxen-bg: #071427;
+  --color-ryxen-surface: #0f1c2c;
+  --color-ryxen-surface-2: #13263d;
+  --color-ryxen-text: #f8fafc;
+  --color-ryxen-text-soft: rgba(226, 232, 240, 0.78);
+  --color-ryxen-line: rgba(148, 163, 184, 0.16);
+  --color-ryxen-accent: #2f8fff;
+  --color-ryxen-accent-warm: #ff8230;
+  --shadow-ryxen-card: 0 24px 80px rgba(0, 0, 0, 0.24);
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    color: var(--color-ryxen-text);
+    background: var(--color-ryxen-bg);
+  }
+
+  body {
+    color: var(--color-ryxen-text);
+    background:
+      radial-gradient(circle at top left, rgba(47, 143, 255, 0.16), transparent 28%),
+      linear-gradient(180deg, #071427 0%, #09111b 100%);
+  }
+}

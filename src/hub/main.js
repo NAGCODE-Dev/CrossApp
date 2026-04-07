@@ -101,30 +101,26 @@ function bindEvents(root, sports) {
 
 function renderHub({ sports, availableSports, lastSport, lastSportUrl, coachUrl }) {
   const selectedSport = lastSport || 'cross';
-  const hasBeta = availableSports.some((sport) => sport.tier === 'beta');
-  const selectedSportMeta = availableSports.find((sport) => sport.value === selectedSport) || availableSports[0] || null;
   return `
     <main class="hub-shell">
-      <section class="hub-hero">
-        <div class="hub-heroGrid">
-          <div class="hub-heroMain">
-            <img class="hub-wordmark" src="/branding/ryxen-logo-horizontal.svg" alt="Ryxen" width="940" height="240" fetchpriority="high">
-            <div class="hub-kicker">Ryxen para atleta e coach</div>
-            <h1>Importe treino. Acompanhe evolução. Entre no fluxo certo.</h1>
-            <p class="hub-lead">
-              Performance para atleta e coach com entradas separadas, rotina clara e operação sem ruído.
+      <section class="hub-hero isolate">
+        <div class="hub-heroGrid items-start xl:items-center">
+          <div class="hub-heroMain max-w-3xl md:pr-6">
+            <img class="hub-wordmark w-[212px] md:w-[256px]" src="/branding/ryxen-logo-horizontal.svg" alt="Ryxen" width="940" height="240" fetchpriority="high">
+            <div class="hub-kicker max-w-max border-white/10 bg-white/5 px-4">Ryxen para atleta e coach</div>
+            <h1 class="max-w-[10ch]">Entre no fluxo certo para treinar ou operar.</h1>
+            <p class="hub-lead max-w-[42rem] text-base/8 md:text-[1.08rem]">
+              Ryxen separa a experiência do atleta e do coach para deixar treino, evolução e operação mais claros.
             </p>
-            <div class="hub-actions">
-              <button class="hub-primaryAction" type="button" data-hub-primary data-entry-target="athlete" data-sport-link="${escapeHtml(selectedSport)}" data-nav-href="${escapeHtml(lastSportUrl)}">
+            <div class="hub-actions sm:flex-row sm:items-center">
+              <button class="hub-primaryAction inline-flex min-h-12 items-center justify-center px-6" type="button" data-hub-primary data-entry-target="athlete" data-sport-link="${escapeHtml(selectedSport)}" data-nav-href="${escapeHtml(lastSportUrl)}">
                 Abrir ${escapeHtml(labelForSport(selectedSport))}
               </button>
-              <button class="hub-secondaryAction" type="button" data-entry-target="coach" data-nav-href="${escapeHtml(coachUrl)}">Entrar no Coach Portal</button>
+              <button class="hub-secondaryAction inline-flex min-h-12 items-center justify-center px-6" type="button" data-entry-target="coach" data-nav-href="${escapeHtml(coachUrl)}">Entrar no Coach Portal</button>
             </div>
-            <p class="hub-supportingCopy">${hasBeta ? 'Cross no núcleo. Running e Strength crescendo na mesma base.' : 'Cross no núcleo. Expansão modular para outras modalidades na mesma base.'}</p>
           </div>
 
-          <aside class="hub-heroPanel">
-            <div class="hub-panelEyebrow">Visão do produto</div>
+          <aside class="hub-heroPanel rounded-[28px] border border-white/10 bg-white/[0.025] p-5 md:p-6">
             <div class="hub-heroVisual">
               <div class="hub-heroMockup" aria-hidden="true">
                 <div class="hub-deviceFrame">
@@ -169,49 +165,57 @@ function renderHub({ sports, availableSports, lastSport, lastSportUrl, coachUrl 
                   </div>
                 </div>
               </div>
-              <div class="hub-heroSplit">
-                <div class="hub-heroTrack hub-heroTrack-athlete">
-                  <span class="hub-heroTrackLabel">Atleta</span>
-                  <strong>Treino claro, histórico vivo e evolução sem fricção.</strong>
-                  <p>Importação por PDF, imagem e OCR. PRs, rotina e progresso no mesmo lugar.</p>
-                </div>
-                <div class="hub-heroTrack hub-heroTrack-coach">
-                  <span class="hub-heroTrackLabel">Coach</span>
-                  <strong>Portal separado para publicar, organizar grupos e operar com contexto.</strong>
-                  <p>Conta única, experiência diferente. O atleta vê o que precisa. O coach opera sem poluir o fluxo principal.</p>
-                </div>
-              </div>
-              <div class="hub-heroSignal">
-                <span class="hub-heroSignalTag">${escapeHtml(selectedSportMeta?.title || 'Cross / Conditioning')}</span>
-                <strong>Uma base que cresce sem refazer a experiência.</strong>
-                <p>${escapeHtml(selectedSportMeta?.description || 'Treino do dia, histórico, importação e coach no mesmo fluxo.')}</p>
-              </div>
             </div>
           </aside>
         </div>
       </section>
 
       <section class="hub-section">
-        <div class="hub-showcase">
-          <div class="hub-showcaseCopy">
-            <div class="hub-sectionKicker">Produto real</div>
-            <h2>O atleta entra direto no treino, sem cair num painel genérico.</h2>
-            <p>Em vez de prometer “all-in-one”, o Ryxen começa com uma experiência prática: treino do dia, contexto da semana, histórico e progressão no mesmo ritmo de uso.</p>
-            <div class="hub-showcaseNotes">
-              <span>Treino do dia</span>
-              <span>Semana ativa</span>
-              <span>Histórico vivo</span>
+        <div class="hub-showcaseStack">
+          <div class="hub-showcase">
+            <div class="hub-showcaseCopy">
+              <div class="hub-sectionKicker">Produto real</div>
+              <h2>O atleta entra direto no treino, sem cair num painel genérico.</h2>
+              <p>Em vez de prometer “all-in-one”, o Ryxen começa com uma experiência prática: treino do dia, contexto da semana, histórico e progressão no mesmo ritmo de uso.</p>
+              <div class="hub-showcaseNotes">
+                <span>Treino do dia</span>
+                <span>Semana ativa</span>
+                <span>Histórico vivo</span>
+              </div>
+            </div>
+            <div class="hub-showcaseMedia">
+              <img
+                class="hub-productShot"
+                src="/branding/exports/ryxen-athlete-product-shot.png"
+                alt="Tela real do app do atleta do Ryxen mostrando treino, progresso e navegação principal"
+                width="1440"
+                height="1100"
+                loading="lazy"
+              >
             </div>
           </div>
-          <div class="hub-showcaseMedia">
-            <img
-              class="hub-productShot"
-              src="/branding/exports/ryxen-athlete-product-shot.png"
-              alt="Tela real do app do atleta do Ryxen mostrando treino, progresso e navegação principal"
-              width="1440"
-              height="1100"
-              loading="lazy"
-            >
+
+          <div class="hub-showcase hub-showcase-reverse">
+            <div class="hub-showcaseMedia">
+              <img
+                class="hub-productShot"
+                src="/branding/exports/ryxen-coach-portal-shot.png"
+                alt="Tela real do Coach Portal do Ryxen mostrando login, proposta de valor e entrada operacional"
+                width="1440"
+                height="1100"
+                loading="lazy"
+              >
+            </div>
+            <div class="hub-showcaseCopy">
+              <div class="hub-sectionKicker">Ryxen Coach</div>
+              <h2>O coach entra num portal próprio para operar, publicar e organizar com contexto.</h2>
+              <p>O portal do coach mostra a diferença de superfície: publicação de treinos, grupos, atletas, benchmarks e acesso operacional sem poluir a experiência do atleta.</p>
+              <div class="hub-showcaseNotes">
+                <span>Portal separado</span>
+                <span>Publicação</span>
+                <span>Operação do box</span>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -220,38 +224,34 @@ function renderHub({ sports, availableSports, lastSport, lastSportUrl, coachUrl 
         <div class="hub-sectionHeader">
           <div>
             <div class="hub-sectionKicker">Fluxos</div>
-            <h2>Dois caminhos. Sem confusão.</h2>
+            <h2>Duas entradas. Um mesmo ecossistema.</h2>
           </div>
-          <p>Primeiro fica claro quem entra para treinar e quem entra para operar. Depois o produto expande sem pedir que a pessoa entenda tudo de uma vez.</p>
+          <p>O atleta entra para treinar e evoluir. O coach entra para publicar, organizar grupos e operar o box. Cada lado começa com a interface certa.</p>
         </div>
-        <div class="hub-grid hub-grid-roles hub-grid-roles-main">
-          ${renderRoleCard('Sou atleta', 'Abro o treino, importo rotina, acompanho PRs e sigo o dia com clareza. A experiência continua enxuta mesmo quando o coach publica treino.', [
+        <div class="hub-grid hub-grid-roles hub-grid-roles-main hub-grid-roles-mainCompact">
+          ${renderRoleCard('Atleta', 'Abro o treino, importo rotina, acompanho PRs e sigo o dia com clareza. Quando o coach publica treino, a experiência continua no mesmo fluxo.', [
             'Treino do dia, histórico e semana ativa',
             'Importação por PDF, imagem e OCR',
-            'PRs, medidas e uso fora do fluxo coach',
+            'PRs, medidas e evolução no mesmo lugar',
           ], `Abrir ${labelForSport(selectedSport)}`, lastSportUrl, selectedSport, true, 'athlete')}
-          ${renderRoleCard('Atleta conectado', 'Recebo treino publicado pelo coach, mas continuo com autonomia para consultar, adaptar e acompanhar minha própria evolução.', [
-            'Treino enviado pelo coach no mesmo fluxo',
-            'Alternância entre treino publicado e importado',
-            'Experiência limpa sem entrar no portal operacional',
-          ], 'Entrar como atleta', lastSportUrl, selectedSport, false, 'athlete')}
-          ${renderRoleCard('Sou coach / box', 'Entro num portal separado para publicar programação, organizar atletas e operar o box com mais estrutura e menos improviso.', [
+          ${renderRoleCard('Coach / Box', 'Entro num portal separado para publicar programação, organizar atletas e operar o box com mais estrutura e menos improviso.', [
             'Grupos, atletas e publicação por contexto',
             'Portal separado da experiência do atleta',
-            'Operação mais limpa para o dia a dia do gym',
+            'Operação do box com contexto e menos ruído',
           ], 'Abrir Coach Portal', coachUrl, 'coach', false, 'coach')}
         </div>
+        <p class="hub-roleNote">Atleta conectado continua no mesmo fluxo do atleta: recebe treino publicado pelo coach sem cair numa área operacional separada.</p>
       </section>
 
       <section class="hub-section">
         <div class="hub-sectionHeader">
           <div>
             <div class="hub-sectionKicker">Benefícios</div>
-            <h2>Três dores. Três respostas claras.</h2>
+            <h2>O produto resolve o que mais pesa no dia a dia.</h2>
           </div>
-          <p>Sem checklist infinito de features. O produto começa resolvendo o que pesa no uso real, com uma resposta simples para cada dor.</p>
+          <p>Sem checklist infinito de features. O ponto é reduzir atrito logo no uso real, com respostas diretas para treino, evolução e operação.</p>
         </div>
-        <div class="hub-editorialList">
+        <div class="hub-editorialList hub-editorialListColumns">
           ${renderBenefitRow('Treino organizado', 'Material solto vira rotina utilizável.', 'Você entra no dia com treino legível, contexto de semana e menos improviso.')}
           ${renderBenefitRow('Evolução visível', 'PRs, histórico e semana ativa ficam acessíveis.', 'Acompanhamento deixa de depender de memória, nota perdida ou print antigo.')}
           ${renderBenefitRow('Operação limpa', 'Coach publica e organiza no portal separado.', 'O atleta mantém foco em treino enquanto o box ganha uma operação mais consistente.')}
@@ -262,11 +262,11 @@ function renderHub({ sports, availableSports, lastSport, lastSportUrl, coachUrl 
         <div class="hub-sectionHeader">
           <div>
             <div class="hub-sectionKicker">Base do produto</div>
-            <h2>Cross no núcleo. Expansão modular sem refazer a experiência.</h2>
+            <h2>Hoje o núcleo está em Cross. O restante cresce sobre a mesma base.</h2>
           </div>
-          <p>Hoje a entrada mais madura está em Cross. Running e Strength crescem sobre a mesma base, com o mesmo princípio de clareza entre atleta e coach.</p>
+          <p>Você entra por uma experiência madura agora, sem travar a arquitetura do que vem depois. Running e Strength avançam sobre a mesma lógica de clareza entre atleta e coach.</p>
         </div>
-        <div class="hub-grid hub-grid-platform">
+        <div class="hub-grid hub-grid-platform hub-grid-platformEditorial">
         ${availableSports.map((sport) => renderSportCard({
           sport: sport.value,
           title: sport.title,
@@ -280,17 +280,17 @@ function renderHub({ sports, availableSports, lastSport, lastSportUrl, coachUrl 
       </section>
 
       <section class="hub-section hub-section-cta">
-        <div class="hub-ctaCard">
-          <div class="hub-ctaCopy">
-            <div class="hub-sectionKicker">Comece pelo essencial</div>
-            <h2>Entre pelo papel certo. O resto aparece no contexto certo.</h2>
-            <p>Atleta entra para treinar. Coach entra para operar. O produto cresce sem exigir que a pessoa aprenda tudo no primeiro minuto.</p>
+        <div class="hub-ctaCard grid gap-6 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+          <div class="hub-ctaCopy max-w-2xl">
+            <div class="hub-sectionKicker max-w-max">Comece pelo essencial</div>
+            <h2 class="max-w-[11ch]">Comece pelo papel certo.</h2>
+            <p class="max-w-[36rem]">Atleta entra para treinar e evoluir. Coach entra para operar o box.</p>
           </div>
-          <div class="hub-ctaActions">
-            <button class="hub-primaryAction hub-ctaPrimary" type="button" data-hub-primary data-entry-target="athlete" data-sport-link="${escapeHtml(selectedSport)}" data-nav-href="${escapeHtml(lastSportUrl)}">
+          <div class="hub-ctaActions flex flex-col gap-3 sm:flex-row sm:items-center">
+            <button class="hub-primaryAction hub-ctaPrimary inline-flex min-h-12 items-center justify-center px-6" type="button" data-hub-primary data-entry-target="athlete" data-sport-link="${escapeHtml(selectedSport)}" data-nav-href="${escapeHtml(lastSportUrl)}">
               Entrar como atleta
             </button>
-            <button class="hub-secondaryAction hub-ctaSecondary" type="button" data-entry-target="coach" data-nav-href="${escapeHtml(coachUrl)}">Abrir Coach Portal</button>
+            <button class="hub-secondaryAction hub-ctaSecondary inline-flex min-h-12 items-center justify-center px-6" type="button" data-entry-target="coach" data-nav-href="${escapeHtml(coachUrl)}">Abrir Coach Portal</button>
           </div>
         </div>
       </section>
@@ -355,9 +355,7 @@ function renderSportCard({ sport, title, description, status, href, selected, ti
         <span class="hub-platformDot ${selected ? 'hub-platformDot-active' : ''}"></span>
         <span class="hub-platformLine"></span>
       </div>
-      <div class="hub-cardActions">
-        <button class="hub-cardLink" type="button" data-nav-href="${escapeHtml(href)}" data-sport-link="${escapeHtml(sport)}">Explorar ${escapeHtml(labelForSport(sport))}</button>
-      </div>
+      <div class="hub-platformMeta">${selected ? 'Entrada principal ativa agora.' : 'Expansão sobre a mesma base de produto.'}</div>
     </article>
   `;
 }

@@ -1,10 +1,12 @@
-import { renderAthleteTodayPage } from '../../apps/athlete/pages/today.js';
-import { renderAthleteHistoryPage } from '../../apps/athlete/pages/history.js';
-import { renderAthleteAccountPage } from '../../apps/athlete/pages/account.js';
-import { renderAthleteAuthModal } from '../../apps/athlete/modals/authModal.js';
-import { renderAthleteImportModal } from '../../apps/athlete/modals/importModal.js';
-import { renderAthletePrsModal } from '../../apps/athlete/modals/prsModal.js';
-import { renderAthleteSettingsModal } from '../../apps/athlete/modals/settingsModal.js';
+import { renderAthleteTodayPage } from '../../apps/athlete/features/today/page.js';
+import { renderAthleteHistoryPage } from '../../apps/athlete/features/history/page.js';
+import { renderAthleteAccountPage } from '../../apps/athlete/features/account/page.js';
+import {
+  renderAthleteAuthModal,
+  renderAthleteSettingsModal,
+} from '../../apps/athlete/features/account/modals.js';
+import { renderAthleteImportModal } from '../../apps/athlete/features/import/modal.js';
+import { renderAthletePrsModal } from '../../apps/athlete/features/prs/modal.js';
 import {
   createAthleteRenderHelpers,
   describeAthleteBenefitSource,
@@ -13,7 +15,7 @@ import {
   isDeveloperEmail,
   normalizeAthleteBenefits,
   renderAccountSkeleton,
-} from '../../apps/athlete/renderHelpers.js';
+} from '../../apps/athlete/components/renderHelpers.js';
 
 export function renderAppShell() {
   const appLabel = getAppLabel();

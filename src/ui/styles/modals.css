@@ -1,184 +1,138 @@
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  padding: 18px;
-  background: rgba(8, 10, 13, 0.72);
-  backdrop-filter: blur(14px);
-  z-index: 12000;
-}
+@layer components {
+  .modal-overlay {
+    @apply fixed inset-0 z-[12000] hidden items-center justify-center p-[18px];
+    background: rgba(8, 10, 13, 0.72);
+    backdrop-filter: blur(14px);
+  }
 
-.modal-overlay.isOpen {
-  display: flex;
-}
+  .modal-overlay.isOpen {
+    @apply flex;
+  }
 
-.modal-overlay-auth {
-  align-items: center !important;
-  justify-content: center !important;
-}
+  .modal-overlay-auth {
+    align-items: center !important;
+    justify-content: center !important;
+  }
 
-.modal-container {
-  width: min(100%, 920px);
-  max-height: min(88vh, 920px);
-  border-radius: 30px;
-  border: 1px solid var(--line);
-  background: linear-gradient(180deg, rgba(18, 22, 28, 0.98), rgba(11, 14, 18, 0.98));
-  box-shadow: var(--shadow-lg);
-  overflow: hidden;
-}
+  .modal-container {
+    @apply w-full max-w-[920px] overflow-hidden rounded-[30px] border border-white/10;
+    max-height: min(88vh, 920px);
+    background: linear-gradient(180deg, rgba(18, 22, 28, 0.98), rgba(11, 14, 18, 0.98));
+    box-shadow: var(--shadow-lg);
+  }
 
-.modal-container-auth {
-  width: min(100%, 560px);
-  margin: auto;
-  border-color: rgba(148, 163, 184, 0.2);
-  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.44);
-}
+  .modal-container-auth {
+    width: min(100%, 560px);
+    margin: auto;
+    border-color: rgba(148, 163, 184, 0.2);
+    box-shadow: 0 28px 80px rgba(0, 0, 0, 0.44);
+  }
 
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  padding: 18px 20px;
-  border-bottom: 1px solid var(--line);
-}
+  .modal-header {
+    @apply flex items-center justify-between gap-2.5 border-b border-white/10 px-5 py-[18px];
+  }
 
-.modal-title {
-  font-size: 1.06rem;
-  font-weight: 800;
-}
+  .modal-title {
+    @apply text-[1.06rem] font-extrabold;
+  }
 
-.modal-close {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  background: var(--bg-soft);
-  color: var(--text-primary);
-}
+  .modal-close {
+    @apply h-10 w-10 rounded-xl border border-white/10 bg-ryxen-soft text-ryxen-text;
+  }
 
-.modal-body {
-  padding: 18px 20px;
-  overflow-y: auto;
-  max-height: calc(88vh - 78px);
-}
+  .modal-body {
+    @apply overflow-y-auto px-5 py-[18px];
+    max-height: calc(88vh - 78px);
+  }
 
-.modal-body-auth {
-  display: grid;
-  gap: 16px;
-  justify-items: center;
-}
+  .modal-body-auth {
+    @apply grid justify-items-center gap-4;
+  }
 
-.auth-form,
-.auth-resetForm {
-  display: grid;
-  gap: 12px;
-}
+  .auth-form,
+  .auth-resetForm,
+  .settings-layout,
+  .auth-googleBlock {
+    @apply grid;
+  }
 
-.modal-body-auth > * {
-  width: 100%;
-}
+  .auth-form,
+  .auth-resetForm {
+    @apply gap-3;
+  }
 
-.settings-layout {
-  display: grid;
-  gap: 14px;
-}
+  .modal-body-auth > * {
+    @apply w-full;
+  }
 
-.settings-section {
-  display: grid;
-  gap: 10px;
-  padding: 14px;
-  border-radius: 16px;
-  border: 1px solid var(--line);
-  background: var(--bg-soft);
-}
+  .settings-layout {
+    @apply gap-3.5;
+  }
 
-.settings-sectionTitle {
-  margin: 0;
-  font-size: 0.98rem;
-  letter-spacing: -0.01em;
-}
+  .settings-section {
+    @apply grid gap-2.5 rounded-2xl border border-white/10 bg-ryxen-soft p-3.5;
+  }
 
-.settings-hint {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 0.84rem;
-}
+  .settings-sectionTitle {
+    @apply m-0 text-[0.98rem] tracking-[-0.01em];
+  }
 
-.settings-actionsUtility {
-  margin-top: 2px;
-}
+  .settings-hint {
+    @apply m-0 text-[0.84rem] text-ryxen-text-muted;
+  }
 
-.settings-linkGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
+  .settings-actionsUtility {
+    @apply mt-0.5;
+  }
 
-.settings-linkCard {
-  text-decoration: none;
-}
+  .settings-linkGrid {
+    @apply grid grid-cols-2 gap-2.5;
+  }
 
-.auth-switch {
-  display: flex;
-  gap: 10px;
-  padding: 4px;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(148, 163, 184, 0.1);
-}
+  .settings-linkCard {
+    @apply no-underline;
+  }
 
-.auth-switch .btn-secondary.isSelected,
-.btn-secondary.isSelected {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.16);
-  color: var(--text-primary);
-}
+  .auth-switch {
+    @apply flex gap-2.5 rounded-[20px] border border-white/10 bg-white/[0.03] p-1;
+  }
 
-.auth-divider {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: var(--text-muted);
-  font-size: 0.62rem;
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
-  opacity: 0.42;
-}
+  .auth-switch .btn-secondary.isSelected,
+  .btn-secondary.isSelected {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.16);
+    color: var(--text-primary);
+  }
 
-.auth-divider::before,
-.auth-divider::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--line);
-}
+  .auth-divider {
+    @apply flex items-center gap-3 text-[0.62rem] uppercase tracking-[0.18em] text-ryxen-text-muted;
+    opacity: 0.42;
+  }
 
-.auth-assist {
-  width: min(100%, 420px);
-  margin-inline: auto;
-  display: grid;
-  gap: 8px;
-}
+  .auth-divider::before,
+  .auth-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--line);
+  }
 
-.auth-resetBox {
-  display: grid;
-  gap: 12px;
-  padding: 16px;
-  border-radius: 20px;
-  border: 1px solid rgba(148, 163, 184, 0.12);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.015)),
-    linear-gradient(180deg, rgba(31, 41, 55, 0.5), rgba(17, 24, 39, 0.76));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
-}
+  .auth-assist {
+    @apply mx-auto grid w-full max-w-[420px] gap-2;
+  }
 
-.auth-googleBlock {
-  display: grid;
-  gap: 6px;
-  align-items: stretch;
+  .auth-resetBox {
+    @apply grid gap-3 rounded-[20px] border p-4;
+    border-color: rgba(148, 163, 184, 0.12);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.015)),
+      linear-gradient(180deg, rgba(31, 41, 55, 0.5), rgba(17, 24, 39, 0.76));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  }
+
+  .auth-googleBlock {
+    @apply items-stretch gap-1.5;
+  }
 }
 
 .import-statusCard {
@@ -468,6 +422,8 @@
   .auth-resetBox,
   .auth-signupVerify {
     padding: 14px;
+  }
+
   .settings-linkGrid {
     grid-template-columns: 1fr;
   }
