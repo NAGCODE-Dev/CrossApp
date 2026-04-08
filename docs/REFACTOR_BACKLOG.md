@@ -146,6 +146,7 @@ Sair de uma base web única com fronteiras implícitas e chegar em uma plataform
   - `done` extrair folds de visitante/acesso/portal/atividade de `apps/athlete/features/account/page.js` para `apps/athlete/features/account/sections.js`
   - `done` separar folds guest e autenticados de `apps/athlete/features/account/sections.js` para módulos dedicados
   - `done` extrair preparação de view state de `apps/athlete/features/account/page.js` e `apps/athlete/features/history/page.js` para módulos dedicados
+  - `done` extrair seções do modal de configurações de `apps/athlete/modals/settingsModal.js` para `apps/athlete/modals/settingsSections.js`
   - `done` extrair hero, summary e coach access do modal autenticado para `apps/athlete/modals/authAccountSections.js`
   - `done` extrair guest auth, reset de senha e painel admin de `apps/athlete/modals/authModalSections.js` para módulos dedicados
   - `done` separar as views autenticada e guest de `apps/athlete/modals/authModalSections.js` para módulos dedicados
