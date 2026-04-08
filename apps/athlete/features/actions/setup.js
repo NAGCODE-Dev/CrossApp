@@ -70,7 +70,10 @@ import { createGoogleSignInHelpers } from '../account/googleSignIn.js';
 import {
   createAthleteUiActions,
   queueAthleteCheckoutBootstrap,
-  readAthleteAppState,
+  registerAthleteAuthKeyListeners,
+  registerAthleteChangeListeners,
+  registerAthleteInputListeners,
+  registerAthleteModalListeners,
   routeAthleteClickAction,
 } from './setupHelpers.js';
 
@@ -136,18 +139,15 @@ export function setupAthleteActions({ root, toast, rerender, getUiState, setUiSt
     resumePendingCheckout,
   }));
 
-  // Busca de PRs (filtra em tempo real)
-  root.addEventListener('input', (e) => {
-    const t = e.target;
-    if (!t || t.id !== 'ui-prsSearch') return;
-    filterAthletePrs(root, t.value);
+  registerAthleteInputListeners({
+    root,
+    filterAthletePrs,
   });
 
-  root.addEventListener('keydown', async (e) => {
-    handleAthleteAuthEnterKey(e, {
-      root,
-      getUiState,
-    });
+  registerAthleteAuthKeyListeners({
+    root,
+    getUiState,
+    handleAthleteAuthEnterKey,
   });
 
   // Clicks (delegação)
@@ -217,15 +217,12 @@ export function setupAthleteActions({ root, toast, rerender, getUiState, setUiSt
     }
   });
 
-  // Dia manual (select)
-  root.addEventListener('change', async (e) => {
-    await handleAthleteTodayChange(e, {
-      root,
-      toast,
-      applyUiPatch,
-      finalizeUiChange,
-      getAppBridge,
-    });
+  registerAthleteChangeListeners({
+    root,
+    toast,
+    applyUiPatch,
+    finalizeUiChange,
+    handleAthleteTodayChange,
   });
 
   queueAthleteCheckoutBootstrap({
@@ -234,36 +231,13 @@ export function setupAthleteActions({ root, toast, rerender, getUiState, setUiSt
     maybeResumePendingCheckout: resumePendingCheckout,
   });
 
-  // Clique fora do modal fecha
-  root.addEventListener('click', async (e) => {
-    await handleAthleteModalOverlayClick(e, {
-      toast,
-      getUiState,
-      applyUiPatch,
-      isImportBusy,
-    });
-  });
-
-  // Esc fecha modal
-  document.addEventListener('keydown', async (e) => {
-    await handleAthleteModalEscapeKey(e, {
-      toast,
-      getUiState,
-      applyUiPatch,
-      isImportBusy,
-    });
-  });
-
-  root.addEventListener('keydown', async (e) => {
-    if (e.key !== 'Enter') return;
-    const target = e.target;
-    if (!target?.closest?.('#ui-authForm')) return;
-    if (target.tagName === 'BUTTON' || target.type === 'button') return;
-    e.preventDefault();
-
-    handleAthleteAuthEnterKey(e, {
-      root,
-      getUiState,
-    });
+  registerAthleteModalListeners({
+    root,
+    toast,
+    getUiState,
+    applyUiPatch,
+    isImportBusy,
+    handleAthleteModalOverlayClick,
+    handleAthleteModalEscapeKey,
   });
 }
