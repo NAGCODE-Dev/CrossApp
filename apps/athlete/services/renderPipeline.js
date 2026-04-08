@@ -1,9 +1,5 @@
-import { buildAthleteUiForRender } from '../state/uiState.js';
-import {
-  safeGetAthleteAppState,
-  safeGetAthleteProfile,
-} from './uiControllerHelpers.js';
 import { applyAthleteRenderLayout } from './renderLayoutUpdates.js';
+import { buildAthleteRenderState } from './renderViewState.js';
 
 export function createAthleteRenderPipeline({
   refs,
@@ -22,15 +18,7 @@ export function createAthleteRenderPipeline({
   buildMainSignature,
 }) {
   return async function performRender() {
-    const state = safeGetAthleteAppState();
-    const uiState = getUiState();
-
-    state.__ui = buildAthleteUiForRender({
-      state,
-      uiState,
-      uiBusy: getUiBusy(),
-      profile: safeGetAthleteProfile(),
-    });
+    const state = buildAthleteRenderState({ getUiState, getUiBusy });
 
     document.body.dataset.page = state.__ui.currentPage || 'today';
     applyAthleteRenderLayout({
