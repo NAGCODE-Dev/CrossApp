@@ -1,46 +1,15 @@
-let cachedLineIds = { blocks: null, ids: [] };
+import {
+  createEmptyAdminState,
+  createEmptyAthleteOverviewState,
+  createEmptyCoachPortalState,
+} from './uiEmptyStates.js';
+import { computeLineIdsFromState } from './uiLineIds.js';
 
-export function createEmptyAthleteOverviewState() {
-  return {
-    detailLevel: 'none',
-    stats: null,
-    recentResults: [],
-    recentWorkouts: [],
-    benchmarkHistory: [],
-    prHistory: [],
-    prCurrent: {},
-    measurements: [],
-    runningHistory: [],
-    strengthHistory: [],
-    gymAccess: [],
-    personalSubscription: null,
-    athleteBenefits: null,
-    blocks: {
-      summary: { status: 'idle', error: '' },
-      results: { status: 'idle', error: '' },
-      workouts: { status: 'idle', error: '' },
-    },
-  };
-}
-
-export function createEmptyCoachPortalState() {
-  return {
-    subscription: null,
-    entitlements: [],
-    gymAccess: [],
-    gyms: [],
-    selectedGymId: null,
-    status: 'idle',
-    error: '',
-  };
-}
-
-export function createEmptyAdminState() {
-  return {
-    overview: null,
-    query: '',
-  };
-}
+export {
+  createEmptyAdminState,
+  createEmptyAthleteOverviewState,
+  createEmptyCoachPortalState,
+};
 
 export function normalizeAthleteUiState(state) {
   const next = { ...(state || {}) };
@@ -146,18 +115,4 @@ export function buildAthleteWorkoutKey(state) {
   const week = state?.activeWeekNumber ?? '0';
   const day = state?.currentDay ?? 'Hoje';
   return `${week}:${String(day).toLowerCase()}`;
-}
-
-function computeLineIdsFromState(state) {
-  const blocks = state?.workoutOfDay?.blocks || state?.workout?.blocks || [];
-  if (cachedLineIds.blocks === blocks) {
-    return cachedLineIds.ids;
-  }
-  const ids = [];
-  blocks.forEach((block, blockIndex) => {
-    const lines = block?.lines || [];
-    lines.forEach((_, lineIndex) => ids.push(`b${blockIndex}-l${lineIndex}`));
-  });
-  cachedLineIds = { blocks, ids };
-  return ids;
 }
