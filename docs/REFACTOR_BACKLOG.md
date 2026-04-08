@@ -104,6 +104,7 @@ Sair de uma base web única com fronteiras implícitas e chegar em uma plataform
   - `done` extrair roteamento de páginas (`pages.js`) a partir de `apps/athlete/features/render/shell.js`
   - `done` extrair seções de benchmarks e PRs de `apps/athlete/features/history/page.js` para `apps/athlete/features/history/sections.js`
   - `done` extrair overview, session card e workout header de `apps/athlete/features/today/page.js` para `apps/athlete/features/today/sections.js`
+  - `done` extrair folds de visitante/acesso/portal/atividade de `apps/athlete/features/account/page.js` para `apps/athlete/features/account/sections.js`
 - `pending` Definir camada offline-first explícita:
   - snapshot local
   - fila de sync
