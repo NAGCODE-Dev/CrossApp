@@ -68,6 +68,7 @@ import { createAthleteHydrationBindings } from '../account/services.js';
 import { measureUiAsync } from '../account/metrics.js';
 import { createGoogleSignInHelpers } from '../account/googleSignIn.js';
 import {
+  createAthleteClickContext,
   createAthleteUiActions,
   queueAthleteCheckoutBootstrap,
   routeAthleteClickAction,
@@ -153,7 +154,7 @@ export function setupAthleteActions({ root, toast, rerender, getUiState, setUiSt
     handleAthleteAuthEnterKey,
   });
 
-  registerAthleteClickListeners({
+  const clickContext = createAthleteClickContext({
     root,
     toast,
     getUiState,
@@ -203,6 +204,12 @@ export function setupAthleteActions({ root, toast, rerender, getUiState, setUiSt
     cssEscape,
     startRestTimer,
     consumeAthleteImport,
+  });
+
+  registerAthleteClickListeners({
+    root,
+    toast,
+    clickContext,
     routeAthleteClickAction,
   });
 
