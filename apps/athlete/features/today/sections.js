@@ -1,0 +1,105 @@
+export function renderTodayWorkoutHeader({
+  showSourceToggle = false,
+  activeSource = 'uploaded',
+  warningsCount = 0,
+}) {
+  const showWorkoutHeader = showSourceToggle || warningsCount > 0;
+
+  if (!showWorkoutHeader) return '';
+
+  return `
+    <div class="workout-header">
+      ${showSourceToggle ? `
+        <div class="coach-pillRow workout-sourceToggle">
+          <button
+            class="coach-pill ${activeSource === 'uploaded' ? 'isActive' : ''}"
+            data-action="workout:source"
+            data-source="uploaded"
+            type="button"
+          >
+            Planilha
+          </button>
+          <button
+            class="coach-pill ${activeSource === 'coach' ? 'isActive' : ''}"
+            data-action="workout:source"
+            data-source="coach"
+            type="button"
+          >
+            Coach
+          </button>
+        </div>
+      ` : ''}
+
+      ${warningsCount ? `
+        <div class="workout-warnings">
+          <span class="warning-badge">⚠️ ${warningsCount} aviso(s)</span>
+        </div>
+      ` : ''}
+    </div>
+  `;
+}
+
+export function renderTodayOverview(state, workout, { escapeHtml, formatDay }) {
+  const weeks = state?.weeks?.length ?? 0;
+  const activeWeek = state?.activeWeekNumber ?? state?.weeks?.[0]?.weekNumber ?? null;
+  const activeSource = state?.workoutContext?.activeSource || 'uploaded';
+  const warningsCount = workout?.warnings?.length || 0;
+  const lines = (workout?.blocks || []).reduce((sum, block) => sum + (block?.lines?.length || 0), 0);
+  const blocks = workout?.blocks?.length || 0;
+  const currentDay = formatDay(state?.currentDay || workout?.day || '');
+
+  if (!workout && !weeks) return '';
+
+  if (!workout) {
+    return `
+      <div class="today-overviewCard">
+        <div class="today-overviewTop">
+          <span class="today-overviewBadge">${weeks ? `Semana ${activeWeek || 1}` : 'Modo livre'}</span>
+          <span class="today-overviewMeta">Sem sessão carregada</span>
+        </div>
+        <strong class="today-overviewTitle">${weeks ? 'Escolha o dia ou troque a planilha.' : 'Importe um treino para começar.'}</strong>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="today-overviewCard">
+      <div class="today-overviewTop">
+        <span class="today-overviewBadge">${weeks ? `Semana ${activeWeek || 1}` : 'Sessão avulsa'}</span>
+        <span class="today-overviewMeta">${activeSource === 'coach' ? 'Coach' : 'Planilha'}</span>
+      </div>
+      <strong class="today-overviewTitle">${warningsCount ? `${warningsCount} aviso(s) na sessão` : `${blocks} bloco(s) e ${lines} linha(s)`}</strong>
+      ${currentDay ? `<span class="today-overviewFoot">${escapeHtml(currentDay)}</span>` : ''}
+    </div>
+  `;
+}
+
+export function renderTodaySessionCard(state, workout, { escapeHtml }) {
+  const activeSource = state?.workoutContext?.activeSource || 'uploaded';
+  const warningsCount = workout?.warnings?.length || 0;
+  const blocks = workout?.blocks?.length || 0;
+  const firstUsefulLine = (workout?.blocks || [])
+    .flatMap((block) => block?.lines || [])
+    .map((line) => typeof line === 'string' ? line : (line?.raw || line?.text || ''))
+    .map((line) => String(line || '').trim())
+    .find((line) => line && !line.startsWith('*') && !line.includes('@gmail') && !line.includes('@hotmail')) || '';
+
+  return `
+    <section class="today-sessionCard">
+      <div class="today-sessionHead">
+        <div>
+          <div class="section-kicker">Sessão</div>
+          <h2 class="today-sessionTitle">${escapeHtml(firstUsefulLine || 'Treino pronto')}</h2>
+        </div>
+        <div class="today-sessionPill ${warningsCount ? 'isWarn' : 'isGood'}">${warningsCount ? `${warningsCount} aviso(s)` : 'Pronto'}</div>
+      </div>
+      <div class="today-sessionMeta">
+        <span>${escapeHtml(activeSource === 'coach' ? 'Vindo do coach' : 'Vindo da sua planilha')}</span>
+        <span>${blocks} bloco(s)</span>
+      </div>
+      <div class="today-sessionStrip">
+        <span class="today-sessionStripItem">${warningsCount ? 'Ajuste os avisos antes de começar' : 'Sessão pronta para executar'}</span>
+      </div>
+    </section>
+  `;
+}
