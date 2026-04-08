@@ -21,6 +21,8 @@ Sair de uma base web única com fronteiras implícitas e chegar em uma plataform
   - service worker atualizado para app instalado
   - `validate:stack` criado
   - `running` e `strength` agora usam shell compartilhado de bootstrap/auth/feed
+  - Fase 1 concluída
+  - Fase 2 encerrada como fundação compartilhada
 - `in_progress`
   - extração gradual de shared frontend além de auth/runtime
   - redução do acoplamento do app do atleta ao `src/` legado
@@ -46,9 +48,10 @@ Sair de uma base web única com fronteiras implícitas e chegar em uma plataform
 - `done` Criar `packages/shared-web/modality-shell.js`
 - `done` Migrar `sports/running/main.js` para o shell compartilhado
 - `done` Migrar `sports/strength/main.js` para o shell compartilhado
-- `pending` Extrair componentes utilitários comuns de `running` e `strength`
-- `pending` Mover `running` e `strength` para `apps/athlete/sports/*`
-- `pending` Criar shared layout do atleta para modalidades derivadas
+- `done` Fechar a fase com fundações compartilhadas operando em produção
+- `deferred` Extrair componentes utilitários comuns de `running` e `strength`
+- `deferred` Mover `running` e `strength` para `apps/athlete/sports/*`
+- `deferred` Criar shared layout do atleta para modalidades derivadas
 
 ## Fase 3. Athlete app principal
 
@@ -66,6 +69,7 @@ Sair de uma base web única com fronteiras implícitas e chegar em uma plataform
   - `done` extrair handler `exercise:help` para `apps/athlete/features/actions/router.js`
   - `done` mover setup/orquestração principal de ações para `apps/athlete/features/actions/setup.js` e manter `src/ui/actions.js` como compat layer
   - `done` extrair helpers de bridge/UI e bootstrap de checkout de `apps/athlete/features/actions/setup.js` para `apps/athlete/features/actions/setupHelpers.js`
+  - `done` separar helpers de UI e bootstrap de `apps/athlete/features/actions/setupHelpers.js` para módulos dedicados
   - `done` extrair roteamento de click delegado de `apps/athlete/features/actions/setup.js` para `apps/athlete/features/actions/setupHelpers.js`
   - `done` separar sub-roteadores de click de `apps/athlete/features/actions/setupHelpers.js` para `apps/athlete/features/actions/clickRoutes.js`
   - `done` extrair registro de listeners de `apps/athlete/features/actions/setup.js` para `apps/athlete/features/actions/setupHelpers.js`

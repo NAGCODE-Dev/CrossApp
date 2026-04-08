@@ -68,11 +68,10 @@ import { createAthleteHydrationBindings } from '../account/services.js';
 import { measureUiAsync } from '../account/metrics.js';
 import { createGoogleSignInHelpers } from '../account/googleSignIn.js';
 import {
-  createAthleteClickContext,
-  createAthleteUiActions,
-  queueAthleteCheckoutBootstrap,
   routeAthleteClickAction,
 } from './setupHelpers.js';
+import { createAthleteClickContext } from './setupHelpers.js';
+import { queueAthleteCheckoutBootstrap } from './setupBootstrap.js';
 import {
   registerAthleteAuthKeyListeners,
   registerAthleteChangeListeners,
@@ -80,6 +79,7 @@ import {
   registerAthleteInputListeners,
   registerAthleteModalListeners,
 } from './setupListeners.js';
+import { createAthleteUiActions } from './setupUiHelpers.js';
 
 export function setupAthleteActions({ root, toast, rerender, getUiState, setUiState, patchUiState }) {
   if (!root) throw new Error('setupActions: root é obrigatório');
