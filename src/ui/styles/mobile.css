@@ -5,16 +5,16 @@
   }
 
   .app-main {
-    padding: 16px 12px calc(var(--safe-bottom) + 24px);
+    padding: 14px 12px calc(var(--safe-bottom) + 20px);
   }
 
   .page-hero {
-    gap: 12px;
-    padding-top: 4px;
+    gap: 10px;
+    padding-top: 2px;
   }
 
   .page-heroTitle {
-    font-size: 1.24rem;
+    font-size: 1.16rem;
   }
 
   body[data-page="history"] .page-heroTitle,
@@ -23,8 +23,23 @@
   }
 
   .page-heroSubtitle {
-    font-size: 0.76rem;
-    line-height: 1.42;
+    font-size: 0.73rem;
+    line-height: 1.4;
+  }
+
+  body[data-page="today"] .page-hero {
+    gap: 8px;
+  }
+
+  body[data-page="today"] .page-heroTitle {
+    font-size: 1.08rem;
+    line-height: 1.04;
+  }
+
+  body[data-page="today"] .page-heroSubtitle {
+    max-width: 42ch;
+    font-size: 0.71rem;
+    line-height: 1.36;
   }
 
   .page-heroActions {
@@ -65,7 +80,7 @@
   }
 
   .bottom-tools {
-    padding-top: 4px;
+    padding-top: 2px;
   }
 
   .page-foldTitle {
@@ -175,6 +190,14 @@
     box-shadow: var(--shadow-sm);
   }
 
+  body[data-page="today"] .workout-container {
+    gap: 10px;
+  }
+
+  body[data-page="today"] .page-actions-inline {
+    gap: 8px;
+  }
+
   body[data-page="account"] .workout-container,
   body[data-page="history"] .workout-container {
     gap: 12px;
@@ -280,6 +303,14 @@
   .admin-userRow,
   .workout-header {
     padding: 13px;
+  }
+
+  body[data-page="today"] .today-overviewCard,
+  body[data-page="today"] .today-sessionCard,
+  body[data-page="today"] .workout-block,
+  body[data-page="today"] .workout-header,
+  body[data-page="today"] .empty-state {
+    padding: 12px;
   }
 
   .settings-actions-grid {
