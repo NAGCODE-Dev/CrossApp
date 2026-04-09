@@ -1,7 +1,7 @@
 export function renderGuestIntroSection({ isSignup }) {
   return `
     <div class="auth-intro auth-intro-auth">
-      <div class="section-kicker">${isSignup ? 'Criar conta' : 'Entrar'}</div>
+      <div class="section-kicker">${isSignup ? 'Nova conta' : 'Acesso rápido'}</div>
       <p class="account-hint">${isSignup
         ? 'Crie sua conta para salvar treino, histórico e progresso sem misturar isso com a operação do box.'
         : 'Entre para retomar treino, histórico e progresso exatamente de onde parou.'}</p>
@@ -21,6 +21,10 @@ export function renderGuestSwitchSection({ isSignup }) {
 export function renderSignupVerificationBox({ signupVerification, escapeHtml }) {
   return `
     <div class="auth-signupVerify">
+      <div class="auth-inlineSectionHead">
+        <strong>Confirmar email</strong>
+        <span class="account-hint">Use o código enviado para liberar a conta.</span>
+      </div>
       <button class="btn-secondary" data-action="auth:signup-request-code" type="button">Enviar código</button>
       <input class="add-input" id="auth-signup-code" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="Código de verificação" value="${escapeHtml(signupVerification.code || signupVerification.previewCode || '')}" />
       ${signupVerification?.previewCode ? `
@@ -53,6 +57,10 @@ export function renderPasswordResetBox({ reset, escapeHtml }) {
       </div>
       ${reset?.open ? `
         <div class="auth-resetBody">
+          <div class="auth-inlineSectionHead">
+            <strong>Recuperar acesso</strong>
+            <span class="account-hint">Código por email ou liberação assistida dentro do app.</span>
+          </div>
           <div class="auth-resetRow">
             <input class="add-input" id="reset-email" type="email" inputmode="email" autocapitalize="off" autocomplete="email username" placeholder="Email da conta" value="${escapeHtml(reset.email || '')}" />
             <button class="btn-secondary auth-resetRequestButton" data-action="auth:reset-request" type="button" ${Number(reset?.cooldownUntil || 0) > Date.now() ? 'disabled' : ''}>${escapeHtml(formatCooldownLabel(reset?.cooldownUntil || 0))}</button>

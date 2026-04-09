@@ -14,7 +14,10 @@ export function renderAthleteSettingsModal(settings = {}) {
     <div class="modal-overlay isOpen" id="ui-settingsModalBackdrop">
       <div class="modal-container modal-container-settings">
         <div class="modal-header">
-          <h2 class="modal-title">⚙️ Configurações do app</h2>
+          <div class="modal-titleGroup">
+            <span class="modal-kicker">Ajustes</span>
+            <h2 class="modal-title">Configurações do app</h2>
+          </div>
           <button class="modal-close" data-action="modal:close" type="button">✕</button>
         </div>
 
