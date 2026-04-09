@@ -43,6 +43,9 @@ export function renderPasswordResetBox({ reset, escapeHtml }) {
   const isCodeConfirm = resetStep === 'confirm';
   const isSupportPending = resetStep === 'support_pending';
   const isSupportConfirm = resetStep === 'support_confirm';
+  const isSupportDenied = resetStep === 'support_denied';
+  const isSupportExpired = resetStep === 'support_expired';
+  const trustSignals = reset?.trustSignals || {};
   return `
     <div class="auth-resetBox ${reset?.open ? 'isOpen' : ''}">
       <div class="auth-resetHeader">
@@ -64,28 +67,56 @@ export function renderPasswordResetBox({ reset, escapeHtml }) {
               Abrir preview do email
             </a>
           ` : ''}
-          ${!isSupportPending && !isSupportConfirm ? `
+          ${!isSupportPending && !isSupportConfirm && !isSupportDenied && !isSupportExpired ? `
             <input class="add-input" id="reset-code" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="Código de 6 dígitos" value="${escapeHtml(reset.code || '')}" />
           ` : ''}
           ${isCodeConfirm ? '<input class="add-input" id="reset-password" type="password" autocomplete="new-password" placeholder="Nova senha" />' : ''}
           ${isSupportPending ? `
             <div class="auth-supportNotice">
               <strong>Suporte notificado</strong>
-              <p class="account-hint">Se o admin aprovar no app, você poderá redefinir sua senha aqui sem digitar código.</p>
+              <p class="account-hint">Se o admin aprovar no app, voce podera redefinir sua senha aqui sem digitar codigo.</p>
+              ${trustSignals?.sameDeviceTrusted ? `
+                <p class="account-hint auth-resetMeta">Pedido feito neste aparelho confiavel.</p>
+              ` : ''}
+              ${trustSignals?.recentLoginOnSameDevice ? `
+                <p class="account-hint auth-resetMeta">Ja houve login recente neste mesmo aparelho.</p>
+              ` : ''}
+              ${reset?.requestedAt ? `
+                <p class="account-hint auth-resetMeta">Pedido aberto em ${escapeHtml(formatResetTimestamp(reset.requestedAt))}</p>
+              ` : ''}
+              ${reset?.supportExpiresAt ? `
+                <p class="account-hint auth-resetMeta">Liberacao disponivel ate ${escapeHtml(formatResetTimestamp(reset.supportExpiresAt))}</p>
+              ` : ''}
             </div>
           ` : ''}
           ${isSupportConfirm ? `
             <div class="auth-supportNotice isApproved">
-              <strong>Redefinição liberada</strong>
-              <p class="account-hint">A aprovação já foi registrada. Agora é só definir sua nova senha.</p>
+              <strong>Redefinicao liberada</strong>
+              <p class="account-hint">A aprovacao ja foi registrada. Agora e so definir sua nova senha.</p>
             </div>
             <input class="add-input" id="reset-password-support" type="password" autocomplete="new-password" placeholder="Nova senha" />
           ` : ''}
+          ${isSupportDenied ? `
+            <div class="auth-supportNotice isDenied">
+              <strong>Liberacao negada</strong>
+              <p class="account-hint">O suporte negou a solicitacao atual. Gere um novo pedido se ainda precisar redefinir a senha.</p>
+            </div>
+          ` : ''}
+          ${isSupportExpired ? `
+            <div class="auth-supportNotice">
+              <strong>Liberacao expirada</strong>
+              <p class="account-hint">A janela de redefinicao terminou. Gere um novo pedido para tentar novamente.</p>
+            </div>
+          ` : ''}
           <div class="settings-actions auth-resetActions">
             ${isSupportPending ? `
-              <button class="btn-primary" data-action="auth:reset-check-support" type="button">Verificar liberação</button>
+              <button class="btn-primary" type="button" disabled>${reset?.polling ? 'Aguardando liberacao...' : 'Aguardando liberacao'}</button>
+              <button class="btn-secondary" data-action="auth:reset-check-support" type="button">Atualizar agora</button>
+              <button class="btn-secondary" data-action="auth:reset-request" type="button" ${!reset?.canRetry ? 'disabled' : ''}>Gerar novo pedido</button>
             ` : isSupportConfirm ? `
               <button class="btn-primary" data-action="auth:reset-support-confirm" type="button">Salvar nova senha</button>
+            ` : isSupportDenied || isSupportExpired ? `
+              <button class="btn-primary" data-action="auth:reset-request" type="button" ${Number(reset?.cooldownUntil || 0) > Date.now() ? 'disabled' : ''}>Gerar novo pedido</button>
             ` : `
               <button class="btn-primary" data-action="${isCodeConfirm ? 'auth:reset-confirm' : 'auth:reset-request'}" type="button">${isCodeConfirm ? 'Salvar nova senha' : 'Enviar ou reenviar código'}</button>
             `}
@@ -104,4 +135,18 @@ function formatCooldownLabel(cooldownUntil) {
   if (remainingMs <= 0) return 'Enviar código';
   const remainingSeconds = Math.max(1, Math.ceil(remainingMs / 1000));
   return `Aguarde ${remainingSeconds}s`;
+}
+
+function formatResetTimestamp(value) {
+  if (!value) return '';
+  try {
+    return new Intl.DateTimeFormat('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(new Date(value));
+  } catch {
+    return String(value);
+  }
 }

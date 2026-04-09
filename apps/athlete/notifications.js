@@ -7,12 +7,15 @@ export function buildAthleteNotifications(state = {}) {
   const passwordReset = auth.passwordReset || ui.passwordReset || {};
 
   if (passwordReset?.deliveryStatus === 'admin_review_pending') {
+    const trustSignals = passwordReset?.trustSignals || {};
     notifications.push({
       id: 'password-reset-support-pending',
       level: 'warn',
       area: 'Conta',
       title: 'Redefinicao aguardando liberacao',
-      message: 'O email falhou e o suporte foi avisado no app. Assim que houver liberacao, voce podera redefinir sem codigo.',
+      message: trustSignals?.sameDeviceTrusted
+        ? 'Pedido aberto neste aparelho confiavel. O suporte foi avisado e, ao aprovar, a redefinicao sera liberada aqui automaticamente.'
+        : 'O email falhou e o suporte foi avisado no app. Assim que houver liberacao, voce podera redefinir sem codigo.',
       count: 1,
     });
   }
@@ -35,12 +38,13 @@ export function buildAthleteNotifications(state = {}) {
     const pendingSupport = supportRequests.filter((item) => item?.supportStatus === 'pending');
 
     if (Number(stats.pendingPasswordResetSupportRequests || 0) > 0) {
+      const trustedPending = pendingSupport.filter((item) => item?.supportMeta?.trustSignals?.sameDeviceTrusted).length;
       notifications.push({
         id: 'admin-reset-support-pending',
         level: 'warn',
         area: 'Admin',
         title: 'Pedidos de redefinicao pendentes',
-        message: `${Number(stats.pendingPasswordResetSupportRequests || pendingSupport.length || 0)} pedido(s) aguardando aprovacao manual.`,
+        message: `${Number(stats.pendingPasswordResetSupportRequests || pendingSupport.length || 0)} pedido(s) aguardando aprovacao manual.${trustedPending > 0 ? ` ${trustedPending} com aparelho confiavel.` : ''}`,
         count: Number(stats.pendingPasswordResetSupportRequests || pendingSupport.length || 0),
       });
     }

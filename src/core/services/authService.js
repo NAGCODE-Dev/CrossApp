@@ -73,7 +73,7 @@ export async function refreshSession() {
 }
 
 export async function requestPasswordReset(payload) {
-  return apiRequest('/auth/request-password-reset', { method: 'POST', body: payload });
+  return apiRequest('/auth/request-password-reset', { method: 'POST', body: withTrustedDevicePayload(payload) });
 }
 
 export async function confirmPasswordReset(payload) {

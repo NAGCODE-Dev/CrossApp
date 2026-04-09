@@ -293,6 +293,7 @@ export function createAdminOpsRouter() {
 
   router.post('/admin/password-reset-requests/:requestId/approve', adminRequired, async (req, res) => {
     const requestId = Number(req.params.requestId);
+    const durationMinutes = Math.min(Math.max(Number(req.body?.durationMinutes) || 120, 5), 120);
     if (!Number.isFinite(requestId) || requestId <= 0) {
       return res.status(400).json({ error: 'requestId inválido' });
     }
@@ -300,6 +301,7 @@ export function createAdminOpsRouter() {
     const request = await approvePasswordResetSupportRequest({
       requestId,
       approvedByUserId: req.user.userId,
+      durationMinutes,
     });
 
     if (!request) {
@@ -311,7 +313,11 @@ export function createAdminOpsRouter() {
       status: 'approved',
       userId: request.user_id,
       email: request.email,
-      payload: { requestId: request.id, approvedByUserId: req.user.userId },
+      payload: {
+        requestId: request.id,
+        approvedByUserId: req.user.userId,
+        durationMinutes,
+      },
     });
 
     return res.json({

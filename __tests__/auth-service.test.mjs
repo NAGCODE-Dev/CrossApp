@@ -144,6 +144,51 @@ test('signIn salva grant de dispositivo confiavel quando backend devolve trusted
   assert.equal(mod.getLastAuthEmail(), 'nagcode.contact@gmail.com');
 });
 
+test('requestPasswordReset envia contexto do aparelho junto com o email', async (t) => {
+  const storage = createStorageMock();
+  globalThis.localStorage = storage;
+  globalThis.window = {
+    location: {
+      href: 'https://crossapp.com/sports/cross/index.html',
+      origin: 'https://crossapp.com',
+      pathname: '/sports/cross/index.html',
+      search: '',
+      protocol: 'https:',
+      hostname: 'crossapp.com',
+    },
+    navigator: { userAgent: 'UnitTestBrowser/1.0' },
+    localStorage: storage,
+    __RYXEN_CONFIG__: {
+      apiBaseUrl: '/api',
+    },
+  };
+
+  let requestBody = null;
+  globalThis.fetch = async (_url, options) => {
+    requestBody = JSON.parse(options.body);
+    return {
+      ok: true,
+      status: 200,
+      async text() {
+        return JSON.stringify({ success: true, deliveryStatus: 'admin_review_pending' });
+      },
+    };
+  };
+
+  t.after(() => {
+    globalThis.window = originalWindow;
+    globalThis.localStorage = originalLocalStorage;
+    delete globalThis.fetch;
+  });
+
+  const mod = await import(`../src/core/services/authService.js?test=${Date.now()}-reset`);
+  await mod.requestPasswordReset({ email: 'nagcode.contact@gmail.com' });
+
+  assert.equal(requestBody.email, 'nagcode.contact@gmail.com');
+  assert.equal(typeof requestBody.deviceId, 'string');
+  assert.match(requestBody.deviceLabel, /UnitTestBrowser/);
+});
+
 test('signInWithTrustedDevice usa grant salvo no mesmo aparelho', async (t) => {
   const storage = createStorageMock();
   storage.setItem('ryxen-trusted-device-id', 'device-123');

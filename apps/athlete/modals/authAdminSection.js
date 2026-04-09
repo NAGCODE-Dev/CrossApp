@@ -39,7 +39,15 @@ export function renderAdminSection({ overview, admin, escapeHtml, formatDateShor
         </div>
         <div class="admin-userList">
           <div class="section-kicker">Liberacoes de redefinicao</div>
-          ${supportRequests.length ? supportRequests.map((request) => `
+          ${supportRequests.length ? supportRequests.map((request) => {
+            const supportMeta = request.supportMeta || {};
+            const trustSignals = supportMeta.trustSignals || {};
+            const supportLabel = trustSignals.sameDeviceTrusted
+              ? 'Aparelho confiavel'
+              : trustSignals.hasTrustedDeviceForEmail
+                ? 'Conta com aparelho confiavel'
+                : 'Sem aparelho confiavel';
+            return `
             <div class="admin-userRow">
               <div>
                 <div class="admin-userName">${escapeHtml(request.user_name || request.email || 'Solicitacao sem usuario')}</div>
@@ -48,6 +56,15 @@ export function renderAdminSection({ overview, admin, escapeHtml, formatDateShor
                   Status: ${escapeHtml(request.supportStatus || request.status || 'pending')}
                   ${request.created_at ? ` • pediu em ${escapeHtml(formatDateShort(request.created_at))}` : ''}
                   ${request.approved_at ? ` • aprovado em ${escapeHtml(formatDateShort(request.approved_at))}` : ''}
+                </div>
+                <div class="account-hint">
+                  Origem: ${escapeHtml(supportMeta.source || request.source || 'email_delivery_failed')}
+                  ${supportMeta.attemptCount ? ` • tentativa ${Number(supportMeta.attemptCount)}` : ''}
+                  ${supportMeta.requestedAt ? ` • ultima solicitacao ${escapeHtml(formatDateShort(supportMeta.requestedAt))}` : ''}
+                </div>
+                <div class="account-hint">
+                  ${escapeHtml(supportLabel)}
+                  ${trustSignals.recentLoginOnSameDevice ? ' • login recente no mesmo aparelho' : ''}
                 </div>
                 ${request.last_error ? `
                   <div class="account-hint" style="color:#f3c87b;">
@@ -59,12 +76,14 @@ export function renderAdminSection({ overview, admin, escapeHtml, formatDateShor
                 <div class="admin-userMeta">${escapeHtml(request.supportStatus || request.status || 'pending')}</div>
                 <div class="admin-userActions">
                   <button class="btn-secondary" data-action="admin:approve-reset-support" data-request-id="${Number(request.id)}" type="button">Liberar</button>
+                  <button class="btn-secondary" data-action="admin:approve-reset-support-short" data-request-id="${Number(request.id)}" type="button">Liberar 15 min</button>
                   <button class="btn-secondary" data-action="admin:deny-reset-support" data-request-id="${Number(request.id)}" type="button">Negar</button>
                   <button class="btn-secondary" data-action="admin:manual-reset" data-user-id="${Number(request.user_id || 0)}" data-user-email="${escapeHtml(request.email || '')}" type="button">Gerar codigo</button>
                 </div>
               </div>
             </div>
-          `).join('') : `
+          `;
+          }).join('') : `
             <p class="account-hint">Nenhuma liberacao pendente no momento.</p>
           `}
         </div>

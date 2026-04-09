@@ -1,4 +1,4 @@
-import { createEmptyPasswordResetState } from './authResetActions.js';
+import { clearPasswordResetSupportPolling, createEmptyPasswordResetState } from './authResetActions.js';
 import { hasTrustedDeviceGrant } from '../../../../src/core/services/authService.js';
 
 export async function handleAthleteAuthFlowAction(action, context) {
@@ -17,6 +17,7 @@ export async function handleAthleteAuthFlowAction(action, context) {
 
   switch (action) {
     case 'auth:switch': {
+      clearPasswordResetSupportPolling();
       const mode = element.dataset.mode === 'signup' ? 'signup' : 'signin';
       await applyUiPatch(
         (state) => ({

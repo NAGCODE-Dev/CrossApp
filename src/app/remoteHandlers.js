@@ -144,8 +144,8 @@ export function createRemoteHandlers({
       return { success: true, data };
     },
 
-    async handleApprovePasswordResetSupportRequest(requestId) {
-      const data = await approvePasswordResetSupportRequest(requestId);
+    async handleApprovePasswordResetSupportRequest(requestId, durationMinutes = 120) {
+      const data = await approvePasswordResetSupportRequest(requestId, durationMinutes);
       return { success: true, data };
     },
 

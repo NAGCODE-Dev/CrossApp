@@ -34,9 +34,10 @@ export async function createManualPasswordReset(userId) {
   });
 }
 
-export async function approvePasswordResetSupportRequest(requestId) {
+export async function approvePasswordResetSupportRequest(requestId, durationMinutes = 120) {
   return apiRequest(`/admin/password-reset-requests/${Number(requestId)}/approve`, {
     method: 'POST',
+    body: { durationMinutes },
   });
 }
 
