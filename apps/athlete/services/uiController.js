@@ -15,17 +15,14 @@ export async function createAthleteUiStateController({ createStorage }) {
   let uiState = normalizeAthleteUiState((await uiStorage.get('state')) || {});
   let uiSyncTimeout = null;
   let uiPersistTimeout = null;
+  let remoteRestoreTimeout = null;
   const measurementSync = createMeasurementSyncScheduler({
     getAppBridge,
     initialHash: getMeasurementSyncHash(uiState?.athleteOverview?.measurements),
   });
   await uiStorage.set('state', uiState);
 
-  const remoteUiState = await restoreUiStateFromAccount();
-  if (remoteUiState) {
-    uiState = normalizeAthleteUiState({ ...uiState, ...remoteUiState });
-    await uiStorage.set('state', uiState);
-  }
+  queueRemoteUiRestore();
 
   function scheduleUiStatePersist(nextState) {
     clearTimeout(uiPersistTimeout);
@@ -89,9 +86,28 @@ export async function createAthleteUiStateController({ createStorage }) {
     setUiState,
     patchUiState,
     destroy() {
+      clearTimeout(remoteRestoreTimeout);
       clearTimeout(uiSyncTimeout);
       clearTimeout(uiPersistTimeout);
       measurementSync.clear();
     },
   };
+
+  function queueRemoteUiRestore() {
+    clearTimeout(remoteRestoreTimeout);
+    remoteRestoreTimeout = window.setTimeout(() => {
+      void restoreRemoteUiState();
+    }, 40);
+  }
+
+  async function restoreRemoteUiState() {
+    try {
+      const remoteUiState = await restoreUiStateFromAccount();
+      if (!remoteUiState) return;
+      uiState = normalizeAthleteUiState({ ...uiState, ...remoteUiState });
+      await uiStorage.set('state', uiState);
+    } catch {
+      // no-op
+    }
+  }
 }

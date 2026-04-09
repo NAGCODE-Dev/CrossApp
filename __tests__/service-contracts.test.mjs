@@ -8,7 +8,7 @@ const SW_PATH = new URL('../sw.js', import.meta.url);
 
 async function loadServiceWorkerContracts() {
   const swSource = await readFile(SW_PATH, 'utf8');
-  const script = `${swSource}\n;globalThis.__SW_TEST__ = { CORE_ASSETS, resolveNavigationFallback };`;
+  const script = `${swSource}\n;globalThis.__SW_TEST__ = { APP_SHELL_ASSETS, STATIC_RUNTIME_ASSETS, OPTIONAL_LAZY_ASSETS, CORE_ASSETS, resolveNavigationFallback };`;
   const listeners = new Map();
   const self = {
     addEventListener(type, handler) {
@@ -39,7 +39,7 @@ test('gymService exporta getAthleteDashboard', async () => {
 });
 
 test('service worker referencia entrypoints atuais dos esportes e shells principais', async () => {
-  const { CORE_ASSETS } = await loadServiceWorkerContracts();
+  const { CORE_ASSETS, APP_SHELL_ASSETS, STATIC_RUNTIME_ASSETS } = await loadServiceWorkerContracts();
 
   const requiredEntries = [
     './config.js',
@@ -62,6 +62,36 @@ test('service worker referencia entrypoints atuais dos esportes e shells princip
 
   for (const entry of requiredEntries) {
     assert.ok(CORE_ASSETS.includes(entry), `Entry ausente no CORE_ASSETS: ${entry}`);
+  }
+  assert.ok(APP_SHELL_ASSETS.includes('./sports/cross/index.html'));
+  assert.ok(STATIC_RUNTIME_ASSETS.includes('./packages/shared-web/runtime.js'));
+});
+
+test('service worker mantém libs pesadas fora do pre-cache principal', async () => {
+  const { CORE_ASSETS, OPTIONAL_LAZY_ASSETS } = await loadServiceWorkerContracts();
+
+  const lazyOnly = [
+    './src/core/services/apiClient.js',
+    './src/core/services/authService.js',
+    './src/core/services/subscriptionService.js',
+    './src/core/services/telemetryService.js',
+    './src/core/usecases/backupData.js',
+  ];
+
+  for (const entry of lazyOnly) {
+    assert.ok(OPTIONAL_LAZY_ASSETS.includes(entry), `Entry ausente no OPTIONAL_LAZY_ASSETS: ${entry}`);
+    assert.equal(CORE_ASSETS.includes(entry), false, `Entry pesada não deveria estar no CORE_ASSETS: ${entry}`);
+  }
+
+  const heavyEntries = [
+    './src/adapters/media/ocrReader.js',
+    './src/adapters/media/videoTextReader.js',
+    './src/libs/pdf.mjs',
+    './src/libs/pdf.worker.mjs',
+  ];
+
+  for (const entry of heavyEntries) {
+    assert.equal(CORE_ASSETS.includes(entry), false, `Entry pesada não deveria estar no pre-cache: ${entry}`);
   }
 });
 

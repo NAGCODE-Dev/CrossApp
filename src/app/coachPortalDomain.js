@@ -1,9 +1,9 @@
 function createTimedCache() {
-  return { key: '', value: null, task: null, at: 0 };
+  return { key: '', value: null, task: null, snapshotAt: 0, networkAt: 0 };
 }
 
 function isFresh(cache, key, maxAgeMs) {
-  return cache.key === key && cache.value && (Date.now() - cache.at) < maxAgeMs;
+  return cache.key === key && cache.value && (Date.now() - cache.networkAt) < maxAgeMs;
 }
 
 export function createCoachPortalDomain({
@@ -19,6 +19,16 @@ export function createCoachPortalDomain({
     coachCache = createTimedCache();
   }
 
+  function buildCacheEntry(cacheKey, value) {
+    return {
+      key: cacheKey,
+      value,
+      task: null,
+      snapshotAt: Date.now(),
+      networkAt: Date.now(),
+    };
+  }
+
   async function loadCoachSnapshot(profileEmail, selectedGymId, { force = false } = {}) {
     const email = String(profileEmail || '').trim().toLowerCase();
     if (!email) {
@@ -26,7 +36,7 @@ export function createCoachPortalDomain({
     }
 
     const cacheKey = `${email}::${selectedGymId || 'default'}`;
-    if (!force && isFresh(coachCache, cacheKey, 15000)) return coachCache.value;
+    if (!force && isFresh(coachCache, cacheKey, 20000)) return coachCache.value;
     if (!force && coachCache.key === cacheKey && coachCache.task) return coachCache.task;
 
     coachCache.key = cacheKey;
@@ -47,7 +57,7 @@ export function createCoachPortalDomain({
         status: 'ready',
         error: '',
       };
-      coachCache = { key: cacheKey, value, task: null, at: Date.now() };
+      coachCache = buildCacheEntry(cacheKey, value);
       return value;
     })();
 
@@ -57,5 +67,17 @@ export function createCoachPortalDomain({
   return {
     invalidateCoachCache,
     loadCoachSnapshot,
+    peekCoachSnapshot(profileEmail, selectedGymId) {
+      const email = String(profileEmail || '').trim().toLowerCase();
+      if (!email) return null;
+      const cacheKey = `${email}::${selectedGymId || 'default'}`;
+      return coachCache.key === cacheKey && coachCache.value ? coachCache.value : null;
+    },
+    isCoachSnapshotFresh(profileEmail, selectedGymId) {
+      const email = String(profileEmail || '').trim().toLowerCase();
+      if (!email) return false;
+      const cacheKey = `${email}::${selectedGymId || 'default'}`;
+      return isFresh(coachCache, cacheKey, 20000);
+    },
   };
 }

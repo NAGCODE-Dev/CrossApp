@@ -1,9 +1,9 @@
 function createTimedCache() {
-  return { key: '', value: null, task: null, at: 0 };
+  return { key: '', value: null, task: null, snapshotAt: 0, networkAt: 0 };
 }
 
 function isFresh(cache, key, maxAgeMs) {
-  return cache.key === key && cache.value && (Date.now() - cache.at) < maxAgeMs;
+  return cache.key === key && cache.value && (Date.now() - cache.networkAt) < maxAgeMs;
 }
 
 function emptyBlockState() {
@@ -25,6 +25,20 @@ export function createAthleteOverviewDomain({
     athleteSummaryCache = createTimedCache();
     athleteResultsCache = createTimedCache();
     athleteWorkoutsCache = createTimedCache();
+  }
+
+  function readSnapshot(cache, key) {
+    return cache.key === key && cache.value ? cache.value : null;
+  }
+
+  function buildCacheEntry(cacheKey, value) {
+    return {
+      key: cacheKey,
+      value,
+      task: null,
+      snapshotAt: Date.now(),
+      networkAt: Date.now(),
+    };
   }
 
   function buildAthleteOverviewPatch(currentOverview, partial = {}, block, status = 'ready', error = '') {
@@ -76,7 +90,7 @@ export function createAthleteOverviewDomain({
       };
     }
     const cacheKey = `${email}::summary`;
-    if (!force && isFresh(athleteSummaryCache, cacheKey, 15000)) return athleteSummaryCache.value;
+    if (!force && isFresh(athleteSummaryCache, cacheKey, 20000)) return athleteSummaryCache.value;
     if (!force && athleteSummaryCache.key === cacheKey && athleteSummaryCache.task) return athleteSummaryCache.task;
 
     athleteSummaryCache.key = cacheKey;
@@ -88,7 +102,7 @@ export function createAthleteOverviewDomain({
         personalSubscription: null,
         gymAccess: [],
       };
-      athleteSummaryCache = { key: cacheKey, value, task: null, at: Date.now() };
+      athleteSummaryCache = buildCacheEntry(cacheKey, value);
       return value;
     })();
     return athleteSummaryCache.task;
@@ -108,7 +122,7 @@ export function createAthleteOverviewDomain({
       };
     }
     const cacheKey = `${email}::results`;
-    if (!force && isFresh(athleteResultsCache, cacheKey, 15000)) return athleteResultsCache.value;
+    if (!force && isFresh(athleteResultsCache, cacheKey, 30000)) return athleteResultsCache.value;
     if (!force && athleteResultsCache.key === cacheKey && athleteResultsCache.task) return athleteResultsCache.task;
 
     athleteResultsCache.key = cacheKey;
@@ -123,7 +137,7 @@ export function createAthleteOverviewDomain({
         runningHistory: [],
         strengthHistory: [],
       };
-      athleteResultsCache = { key: cacheKey, value, task: null, at: Date.now() };
+      athleteResultsCache = buildCacheEntry(cacheKey, value);
       return value;
     })();
     return athleteResultsCache.task;
@@ -133,14 +147,14 @@ export function createAthleteOverviewDomain({
     const email = String(profileEmail || '').trim().toLowerCase();
     if (!email) return { recentWorkouts: [] };
     const cacheKey = `${email}::workouts`;
-    if (!force && isFresh(athleteWorkoutsCache, cacheKey, 15000)) return athleteWorkoutsCache.value;
+    if (!force && isFresh(athleteWorkoutsCache, cacheKey, 30000)) return athleteWorkoutsCache.value;
     if (!force && athleteWorkoutsCache.key === cacheKey && athleteWorkoutsCache.task) return athleteWorkoutsCache.task;
 
     athleteWorkoutsCache.key = cacheKey;
     athleteWorkoutsCache.task = (async () => {
       const result = await measureAsync('account.workouts', () => getAthleteWorkoutsRecent());
       const value = result?.data || { recentWorkouts: [] };
-      athleteWorkoutsCache = { key: cacheKey, value, task: null, at: Date.now() };
+      athleteWorkoutsCache = buildCacheEntry(cacheKey, value);
       return value;
     })();
     return athleteWorkoutsCache.task;
@@ -152,5 +166,32 @@ export function createAthleteOverviewDomain({
     loadAthleteSummaryBlock,
     loadAthleteResultsBlock,
     loadAthleteWorkoutsBlock,
+    peekAthleteSummaryBlock(profileEmail) {
+      const email = String(profileEmail || '').trim().toLowerCase();
+      if (!email) return null;
+      return readSnapshot(athleteSummaryCache, `${email}::summary`);
+    },
+    peekAthleteResultsBlock(profileEmail) {
+      const email = String(profileEmail || '').trim().toLowerCase();
+      if (!email) return null;
+      return readSnapshot(athleteResultsCache, `${email}::results`);
+    },
+    peekAthleteWorkoutsBlock(profileEmail) {
+      const email = String(profileEmail || '').trim().toLowerCase();
+      if (!email) return null;
+      return readSnapshot(athleteWorkoutsCache, `${email}::workouts`);
+    },
+    isAthleteSummaryFresh(profileEmail) {
+      const email = String(profileEmail || '').trim().toLowerCase();
+      return !!email && isFresh(athleteSummaryCache, `${email}::summary`, 20000);
+    },
+    isAthleteResultsFresh(profileEmail) {
+      const email = String(profileEmail || '').trim().toLowerCase();
+      return !!email && isFresh(athleteResultsCache, `${email}::results`, 30000);
+    },
+    isAthleteWorkoutsFresh(profileEmail) {
+      const email = String(profileEmail || '').trim().toLowerCase();
+      return !!email && isFresh(athleteWorkoutsCache, `${email}::workouts`, 30000);
+    },
   };
 }
