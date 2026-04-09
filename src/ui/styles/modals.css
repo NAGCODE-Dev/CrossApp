@@ -40,6 +40,14 @@
     letter-spacing: -0.03em;
   }
 
+  .modal-titleGroup {
+    @apply grid gap-1;
+  }
+
+  .modal-kicker {
+    @apply text-[0.64rem] font-bold tracking-[0.06em] text-ryxen-text-muted;
+  }
+
   .modal-close {
     @apply h-10 w-10 rounded-[14px] border border-white/10 text-ryxen-text;
     background:
@@ -54,6 +62,21 @@
 
   .modal-body-auth {
     @apply grid justify-items-center gap-4;
+  }
+
+  .modal-intro {
+    @apply grid gap-2 rounded-[20px] border border-white/10 p-4;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.012)),
+      color-mix(in srgb, var(--bg-surface) 88%, var(--bg-surface-2) 12%);
+  }
+
+  .modal-intro-compact {
+    @apply px-4 py-3;
+  }
+
+  .modal-intro .account-hint {
+    @apply m-0;
   }
 
   .auth-form,
@@ -74,6 +97,15 @@
 
   .settings-layout {
     @apply gap-3.5;
+  }
+
+  .auth-inlineSectionHead {
+    @apply grid gap-1;
+  }
+
+  .auth-inlineSectionHead strong {
+    @apply text-[0.92rem] leading-[1.2];
+    letter-spacing: -0.02em;
   }
 
   .settings-section {
@@ -112,8 +144,10 @@
 
   .auth-switch .btn-secondary.isSelected,
   .btn-secondary.isSelected {
-    background: rgba(255, 255, 255, 0.08);
-    border-color: rgba(255, 255, 255, 0.16);
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.055), rgba(255,255,255,0.02)),
+      rgba(28, 35, 45, 0.92);
+    border-color: rgba(255, 255, 255, 0.14);
     color: var(--text-primary);
   }
 
@@ -332,17 +366,18 @@
 
 .auth-resetToggle {
   justify-self: start;
-  min-height: auto;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--text-muted);
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.012)),
+    rgba(22, 28, 36, 0.78);
+  color: var(--text-secondary);
   font-weight: 600;
-  font-size: 0.78rem;
+  font-size: 0.76rem;
   text-align: left;
-  text-decoration: underline;
-  text-decoration-color: rgba(148, 163, 184, 0.28);
-  text-underline-offset: 0.18em;
+  border-radius: 999px;
+  text-decoration: none;
 }
 
 .auth-resetToggle:hover {
@@ -361,21 +396,21 @@
 
 .auth-supportNotice {
   display: grid;
-  gap: 4px;
-  padding: 12px 14px;
+  gap: 5px;
+  padding: 13px 14px;
   border-radius: 16px;
   border: 1px solid rgba(245, 158, 11, 0.24);
-  background: rgba(245, 158, 11, 0.08);
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.09), rgba(245, 158, 11, 0.05));
 }
 
 .auth-supportNotice.isApproved {
   border-color: rgba(34, 197, 94, 0.24);
-  background: rgba(34, 197, 94, 0.08);
+  background: linear-gradient(180deg, rgba(34, 197, 94, 0.09), rgba(34, 197, 94, 0.05));
 }
 
 .auth-supportNotice.isDenied {
   border-color: rgba(248, 113, 113, 0.24);
-  background: rgba(239, 68, 68, 0.08);
+  background: linear-gradient(180deg, rgba(239, 68, 68, 0.09), rgba(239, 68, 68, 0.05));
 }
 
 .auth-resetMeta {
@@ -408,8 +443,10 @@
   padding: 17px 18px;
   text-align: left;
   box-shadow: none;
-  border-color: rgba(96, 165, 250, 0.14);
-  background: linear-gradient(180deg, rgba(37, 99, 235, 0.1), rgba(59, 130, 246, 0.035));
+  border-color: rgba(168, 194, 247, 0.12);
+  background:
+    linear-gradient(180deg, rgba(168, 194, 247, 0.08), rgba(168, 194, 247, 0.025)),
+    rgba(20, 25, 33, 0.72);
 }
 
 .auth-intro-auth .account-hint {
@@ -425,13 +462,15 @@
   border-radius: 18px;
   border: 1px solid rgba(148, 163, 184, 0.12);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.015)),
-    linear-gradient(180deg, rgba(31, 41, 55, 0.48), rgba(17, 24, 39, 0.72));
+    linear-gradient(180deg, rgba(255, 255, 255, 0.032), rgba(255, 255, 255, 0.012)),
+    linear-gradient(180deg, rgba(31, 40, 52, 0.48), rgba(18, 24, 33, 0.72));
 }
 
 .reset-previewLink {
   color: var(--text-primary);
-  text-decoration: none;
+  text-decoration: underline;
+  text-decoration-color: rgba(255,255,255,0.18);
+  text-underline-offset: 0.18em;
   font-size: 0.84rem;
   font-weight: 600;
 }

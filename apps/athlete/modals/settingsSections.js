@@ -69,8 +69,8 @@ export function renderSettingsDataSection() {
     subtitle: 'Ferramentas para guardar ou recuperar seu app.',
     content: `
       <div class="settings-actions settings-actions-grid">
-        <button class="btn-secondary" data-action="backup:export" type="button">🧰 Fazer backup</button>
-        <button class="btn-secondary" data-action="backup:import" type="button">♻️ Restaurar backup</button>
+        <button class="btn-secondary" data-action="backup:export" type="button">Fazer backup</button>
+        <button class="btn-secondary" data-action="backup:import" type="button">Restaurar backup</button>
       </div>
     `,
   });
@@ -83,7 +83,7 @@ export function renderSettingsAdvancedSection() {
     danger: true,
     content: `
       <div class="settings-actions">
-        <button class="btn-secondary btn-dangerSoft" data-action="pdf:clear" type="button">🗑️ Limpar dados do app</button>
+        <button class="btn-secondary btn-dangerSoft" data-action="pdf:clear" type="button">Limpar dados do app</button>
       </div>
     `,
   });
@@ -95,10 +95,9 @@ export function renderSettingsAboutSection() {
     subtitle: 'Informações legais e privacidade.',
     content: `
       <div class="settings-actions settings-actions-grid">
-        <a class="btn-secondary settings-linkBtn" href="/privacy.html" target="_blank" rel="noopener noreferrer">🔐 Privacidade</a>
-        <a class="btn-secondary settings-linkBtn" href="/terms.html" target="_blank" rel="noopener noreferrer">📄 Termos</a>
+        <a class="btn-secondary settings-linkBtn" href="/privacy.html" target="_blank" rel="noopener noreferrer">Privacidade</a>
+        <a class="btn-secondary settings-linkBtn" href="/terms.html" target="_blank" rel="noopener noreferrer">Termos</a>
       </div>
     `,
   });
 }
-

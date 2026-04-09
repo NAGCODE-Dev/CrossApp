@@ -20,7 +20,10 @@ export function renderAthleteImportModal(state = {}, helpers = {}) {
     <div class="modal-overlay isOpen">
       <div class="modal-container">
         <div class="modal-header">
-          <h2 class="modal-title">Adicionar treino</h2>
+          <div class="modal-titleGroup">
+            <span class="modal-kicker">Importação</span>
+            <h2 class="modal-title">Adicionar treino</h2>
+          </div>
           <button class="modal-close" data-action="modal:close" type="button" ${importBusy ? 'disabled aria-disabled="true"' : ''}>✕</button>
         </div>
         <div class="modal-body modal-body-auth">

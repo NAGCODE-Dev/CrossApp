@@ -53,7 +53,10 @@ export function renderAuthenticatedAccountView({
     <div class="modal-overlay modal-overlay-auth isOpen" id="ui-authModalBackdrop">
       <div class="modal-container modal-container-auth">
       <div class="modal-header">
-        <h2 class="modal-title">👤 Sua conta</h2>
+        <div class="modal-titleGroup">
+          <span class="modal-kicker">Conta</span>
+          <h2 class="modal-title">Sua conta</h2>
+        </div>
           <button class="modal-close" data-action="modal:close" type="button">✕</button>
         </div>
 

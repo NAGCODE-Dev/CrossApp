@@ -4,13 +4,20 @@ export function renderAthletePrsModal(prs = {}, helpers = {}) {
 
   return `
     <div class="modal-overlay isOpen" id="ui-prsModalBackdrop">
-      <div class="modal-container">
+      <div class="modal-container modal-container-prs">
         <div class="modal-header">
-          <h2 class="modal-title">🎯 Personal Records</h2>
+          <div class="modal-titleGroup">
+            <span class="modal-kicker">Cargas</span>
+            <h2 class="modal-title">Personal Records</h2>
+          </div>
           <button class="modal-close" data-action="modal:close" type="button">✕</button>
         </div>
 
         <div class="modal-body">
+          <div class="modal-intro modal-intro-compact">
+            <p class="account-hint">Guarde suas referências de força para o app calcular melhor as cargas do treino.</p>
+          </div>
+
           <div class="pr-search">
             <input
               type="text"
@@ -22,15 +29,15 @@ export function renderAthletePrsModal(prs = {}, helpers = {}) {
 
           <div class="pr-actions">
             <button class="btn-secondary" data-action="prs:export" type="button">
-              💾 Exportar
+              Exportar
             </button>
 
             <button class="btn-secondary" data-action="prs:import-file" type="button">
-              📁 Importar arquivo
+              Importar arquivo
             </button>
 
             <button class="btn-secondary" data-action="prs:import" type="button">
-              📋 Colar JSON
+              Colar JSON
             </button>
           </div>
 
@@ -92,7 +99,7 @@ export function renderAthletePrsModal(prs = {}, helpers = {}) {
               min="0"
             />
             <button class="btn-primary" data-action="prs:add" type="button">
-              ➕ Adicionar
+              Adicionar
             </button>
           </div>
         </div>

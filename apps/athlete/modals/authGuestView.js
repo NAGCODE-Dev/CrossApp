@@ -21,7 +21,10 @@ export function renderGuestAuthView({
     <div class="modal-overlay modal-overlay-auth isOpen" id="ui-authModalBackdrop">
       <div class="modal-container modal-container-auth">
         <div class="modal-header">
-          <h2 class="modal-title">${isSignup ? 'Criar conta' : 'Entrar'}</h2>
+          <div class="modal-titleGroup">
+            <span class="modal-kicker">${isSignup ? 'Cadastro' : 'Acesso'}</span>
+            <h2 class="modal-title">${isSignup ? 'Criar conta' : 'Entrar'}</h2>
+          </div>
           <button class="modal-close" data-action="modal:close" type="button">✕</button>
         </div>
 
