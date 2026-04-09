@@ -38,7 +38,7 @@ export function renderWorkoutSpecialLine(line, lineId, { escapeHtml }) {
                 data-seconds="${restSeconds}"
                 type="button"
               >
-                Popup ${formatRestLabel(restSeconds)}
+                Timer ${formatRestLabel(restSeconds)}
               </button>
               <button
                 class="btn-timer btn-timer-secondary"
@@ -47,7 +47,7 @@ export function renderWorkoutSpecialLine(line, lineId, { escapeHtml }) {
                 data-seconds="${restSeconds}"
                 type="button"
               >
-                Tela cheia
+                Cheia
               </button>
             </div>
           ` : ''}
