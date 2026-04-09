@@ -143,6 +143,7 @@ export function shouldSkipLine(line) {
     lower.includes('licensed to') ||
     lower.includes('hp1570') ||
     lower.includes('www.bsbstrong.com') ||
+    lower.includes('bsbstrong.com') ||
     lower.startsWith('#') ||
     lower.includes('#trainwithapurpose') ||
     upper === 'BSB' ||
@@ -230,7 +231,7 @@ export function parseWeekText(weekText, weekNumber) {
     const blockDescriptor = timedWodFormatLine
       ? null
       : detectStructuredBlock(line, nextMeaningfulLine, {
-          allowInferred: !currentBlock || currentBlock === 'GYMNASTICS' || currentBlock === 'STRENGTH',
+          allowInferred: !currentBlock || currentBlock === 'GYMNASTICS' || currentBlock === 'STRENGTH' || currentBlock === 'ACCESSORIES',
           nextLines: nextMeaningfulLines,
         });
     if (blockDescriptor) {
@@ -364,6 +365,7 @@ function findNextMeaningfulLines(lines, startIndex, count = 2) {
 function detectStructuredBlock(line, nextLine = '', options = {}) {
   const { allowInferred = true, nextLines = [] } = options;
   const upper = line.trim().toUpperCase();
+  if (isStrengthSchemeLine(line) || isAccessorySchemeLine(line)) return null;
   const basicBlockType = detectBlockType(line);
   if (basicBlockType && !detectPeriodName(line)) {
     return {
@@ -393,6 +395,10 @@ function detectStructuredBlock(line, nextLine = '', options = {}) {
     return { type: 'ACCESSORIES', title: line.trim(), includeLine: false };
   }
 
+  if (allowInferred && looksLikeAccessoryHeader(line, nextLine, nextLines)) {
+    return { type: 'ACCESSORIES', title: line.trim(), includeLine: true };
+  }
+
   if (allowInferred && looksLikeStrengthHeader(line, nextLine, nextLines)) {
     return { type: 'STRENGTH', title: line.trim(), includeLine: true };
   }
@@ -402,13 +408,30 @@ function detectStructuredBlock(line, nextLine = '', options = {}) {
 
 function looksLikeStrengthHeader(line, nextLine = '', nextLines = []) {
   const upper = line.trim().toUpperCase();
-  if (!upper || /[a-zà-ÿ]/.test(line)) return false;
+  const sanitizedLine = stripParentheticalSegments(line);
+  if (!upper || /[a-zà-ÿ]/.test(sanitizedLine)) return false;
   if (detectDayName(line) || detectPeriodName(line) || shouldSkipLine(line)) return false;
   if (isCadenceLine(line)) return false;
   if (/^OBJETIVO\b|^REST\b|^RECOVERY\b/.test(upper)) return false;
   if (!/[A-Z]/.test(upper)) return false;
   const candidates = [nextLine, ...nextLines].filter(Boolean);
   return candidates.some((candidate) => isStrengthSchemeLine(candidate) || isAccessorySchemeLine(candidate) || isCadenceLine(candidate));
+}
+
+function looksLikeAccessoryHeader(line, nextLine = '', nextLines = []) {
+  const upper = line.trim().toUpperCase();
+  const sanitizedLine = stripParentheticalSegments(line);
+  if (!upper || /[a-zà-ÿ]/.test(sanitizedLine)) return false;
+  if (detectDayName(line) || detectPeriodName(line) || shouldSkipLine(line)) return false;
+  if (/^OBJETIVO\b|^REST\b|^RECOVERY\b|^FLOW\b|^DIRETO PARA\b/.test(upper)) return false;
+  if (!/[A-Z]/.test(upper)) return false;
+  const candidates = [nextLine, ...nextLines].filter(Boolean);
+  return candidates.some((candidate) => isAccessorySchemeLine(candidate))
+    && !candidates.some((candidate) => isStrengthSchemeLine(candidate) || isCadenceLine(candidate));
+}
+
+function stripParentheticalSegments(line = '') {
+  return String(line || '').replace(/\([^)]*\)/g, '').trim();
 }
 
 function isStrengthSchemeLine(line = '') {
@@ -423,7 +446,7 @@ function isStrengthSchemeLine(line = '') {
 }
 
 function isAccessorySchemeLine(line = '') {
-  return /^\d+\s*x\s*\d+$/i.test(line.trim());
+  return /^\d+\s*x\s*\d+(?:\s*\([^)]*\))?$/i.test(line.trim());
 }
 
 function isCadenceLine(line = '') {
@@ -559,7 +582,17 @@ function parseStructuredBlockContent({ type, title, period, lines, hints = {} })
     }
 
     if (/^\*+/.test(line)) {
-      items.push({ type: 'note', text: line.trim(), raw: line });
+      const restFromNote = parseRestLine(line);
+      if (restFromNote) {
+        items.push(restFromNote);
+        continue;
+      }
+      const noteLines = [line.trim()];
+      while (index + 1 < lines.length && isNoteContinuationLine(lines[index + 1])) {
+        noteLines.push(String(lines[index + 1] || '').trim());
+        index += 1;
+      }
+      items.push({ type: 'note', text: noteLines.join(' ').replace(/\s+/g, ' ').trim(), raw: line });
       continue;
     }
 
@@ -591,12 +624,21 @@ function parseStructuredBlockContent({ type, title, period, lines, hints = {} })
       continue;
     }
 
+    if (String(type || '').toUpperCase() === 'ACCESSORIES' && isAccessorySchemeLine(line)) {
+      const accessory = parseAccessoryLine(line);
+      if (accessory) {
+        items.push(accessory);
+        continue;
+      }
+    }
+
     if (isAccessorySchemeLine(line)) {
-      const match = line.trim().match(/^(\d+)\s*x\s*(\d+)$/i);
+      const match = line.trim().match(/^(\d+)\s*x\s*(\d+)(?:\s*\(([^)]*)\))?$/i);
       items.push({
         type: 'scheme',
         sets: Number(match[1]),
         reps: Number(match[2]),
+        notes: String(match[3] || '').trim() || '',
         raw: line,
       });
       continue;
@@ -862,7 +904,7 @@ function roundKg(value) {
 }
 
 function parseRestLine(line) {
-  const upper = String(line || '').trim().toUpperCase();
+  const upper = String(line || '').trim().replace(/^\*+/, '').trim().toUpperCase();
   const restMatch = upper.match(/^(?:(\d+)\s*['’`´]\s*)?REST(?:\s+TOTAL)?(?:\s+(\d+)\s*['’`´])?$/);
   if (restMatch) {
     const minutes = Number(restMatch[1] || restMatch[2] || 0);
@@ -914,6 +956,20 @@ function parseStrengthSchemeLine(line) {
   const repeatCount = repeatMatch ? Number(repeatMatch[2] || repeatMatch[3]) : null;
   const base = repeatMatch ? repeatMatch[1] : compact;
   const percentMatch = base.match(/@(\d+(?:\.\d+)?)%/i);
+  const repeatedSetPairMatch = base.match(/^(\d+)x(\d+)@(\d+(?:\.\d+)?)%\+(\d+)$/i);
+  if (repeatedSetPairMatch) {
+    return {
+      type: 'strength_scheme',
+      raw,
+      scheme: `${repeatedSetPairMatch[1]}x${repeatedSetPairMatch[2]}@${repeatedSetPairMatch[3]}%+${repeatedSetPairMatch[4]}`,
+      sets: Number(repeatedSetPairMatch[1]),
+      reps: Number(repeatedSetPairMatch[2]),
+      pairedReps: Number(repeatedSetPairMatch[4]),
+      percent: Number(repeatedSetPairMatch[3]),
+      repeatCount,
+    };
+  }
+
   const repeatedSetMatch = base.match(/^(\d+)x(\d+)@(\d+(?:\.\d+)?)%$/i);
   if (repeatedSetMatch) {
     return {
@@ -1178,6 +1234,19 @@ function isGoalContinuationLine(line = '') {
   if (detectStructuredBlock(raw, '') || isCadenceLine(raw) || isStrengthSchemeLine(raw) || isAccessorySchemeLine(raw)) return false;
   if (/^\(?\s*\d+\s*X\s*\)?$/i.test(raw)) return false;
   if (/^(REST|RECOVERY|OBJETIVO|FLOW|DIRETO PARA)\b/i.test(raw)) return false;
+  return true;
+}
+
+function isNoteContinuationLine(line = '') {
+  const raw = String(line || '').trim();
+  const sanitized = stripParentheticalSegments(raw);
+  if (!raw) return false;
+  if (/^https?:\/\//i.test(raw)) return false;
+  if (detectDayName(raw) || detectPeriodName(raw) || detectBlockType(raw)) return false;
+  if (detectStructuredBlock(raw, '') || isCadenceLine(raw) || isStrengthSchemeLine(raw) || isAccessorySchemeLine(raw)) return false;
+  if (/^\(?\s*\d+\s*X\s*\)?$/i.test(raw)) return false;
+  if (/^(REST|RECOVERY|OBJETIVO|FLOW|DIRETO PARA)\b/i.test(raw)) return false;
+  if (sanitized && sanitized === sanitized.toUpperCase() && /[A-ZÀ-Ý]/.test(sanitized)) return false;
   return true;
 }
 

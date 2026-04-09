@@ -433,3 +433,142 @@ WOD
   assert.equal(saturdayAfternoon.parsed.items.filter((item) => item.type === 'rest').length, 2);
   assert.equal(saturdayAfternoon.parsed.items.filter((item) => item.type === 'rounds').length, 3);
 });
+
+test('parser deixa terca, sexta e sabado do pdf 7 mais limpos', () => {
+  const text = `
+SEMANA 19
+TERÇA
+POWER SNATCH(pausa na recepção) + HIGH HANG SQUAT SNATCH
+10+5@30%
+8+4@35%
+6+3@40%
+4+2@45%
+*2 segundos de pausa
+*high hang não tem flexão de quadril para iniciar o movimento, somente flexão de joelhos.
+POWER SNATCH(Pausa abaixo dos joelhos) + HANG SQUAT SNATCH
+1+1@50%
+1+1@55%
+1+1@60%
+1+1@65%
+*2 segundos de pausa
+POWER SNATCH + LOW HANG SQUAT SNATCH
+1+1@70%
+1+1@75%
+1+1@80%
+1+1@82%
+SQUAT SNATCH
+A CADA 60 SEC
+1@85% (x5)
+POWER CLEAN(pausa na recepção) + FRONT SQUATS + PUSH PRESS
+5+1+1@30%
+5+1+1@35%
+5+1+1@40%
+5+1+1@45%
+*2 segundos de pausa
+SQUAT CLEAN AND JERK
+1+2@50%
+1+2@55%
+1+2@60%
+1+2@65%
+1+2@70%
+1+2@75%
+1+2@80%
+1+2@82%
+SQUAT CLEAN AND JERK
+1+1@85% (x3)
+FRONT SQUATS + HURDLE JUMP
+5x4@ 85% +3
+***3\` rest between sets
+*A pliometria deve ser feita imediatamente após cada set de agachamento
+BACK LOADED BULGARIAN SQUAT
+3x5(cada perna)
+SINGLE LEG DB BOX STEP UP
+3x8 (cada perna)
+SINGLE LEG GHD HIP EXTENSION
+4x12
+STRICT HSPU
+Acumular 40 reps quebrando o mínimo possível
+
+SEX
+POWER CLEAN + FRONT SQUAT + SHOULDER PRESS
+5+1+2@30%
+4+1+2@35%
+3+1+2@40%
+2+1+2@45%
+POWER CLEAN +SQUAT CLEAN + PUSH PRESS
+1+1+1@50%
+1+1+1@55%
+1+1+1@60%
+POWER CLEAN + HANG SQUAT CLEAN + JERK
+1+1+1@65%
+1+1+1@70%
+1+1+1@75%
+1+1+1@78%
+1+1+1@80%
+1+1+1@82%
+SQUAT CLEAN + JERK
+EVERY 60 seg (x3)
+1+1@85%
+STAGE CLEAN PULL
+1@95% x 3
+POWER SNATCH + SQUAT SNATCH
+10+5@30%
+8+4@35%
+6+3@40%
+4+2@45%
+POWER SNATCH + HANG SQUAT SNATCH
+1+1@50%
+1+1@55%
+1+1@60%
+1+1@65%
+POWER SNATCH + LOW HANG SQUAT SNATCH
+1+1@70%
+1+1@75%
+1+1@80%
+1+1@82%
+SQUAT SNATCH
+A CADA 60 SEC
+1@85% x4
+BACK SQUATS + SEATED BOX JUMP
+5x4 @85%
+*3\` rest between sets
+*A pliometria deve ser feita imediatamente após cada set de agachamento
+BACK LOADED DEFICIT REVERSE LUNGE
+4x8
+BANDED GHD REVERSE HYPER
+3x30
+
+SAB
+TARDE
+WOD
+(2x)
+50 DUs
+5 POWER CLEAN AND JERK 175/115lbs
+5 BMUs
+*se mesmo aos sábados você não consegue treinar em 2 períodos, escolha o wod que for mais
+desafiador para você.
+  `.trim();
+
+  const weeks = parseMultiWeekPdf(text);
+  const tuesday = weeks[0].workouts.find((workout) => workout.day === 'Terça');
+  const friday = weeks[0].workouts.find((workout) => workout.day === 'Sexta');
+  const saturday = weeks[0].workouts.find((workout) => workout.day === 'Sábado');
+
+  assert.equal(tuesday.blocks[0].type, 'STRENGTH');
+  assert.equal(tuesday.blocks[0].title.includes('POWER SNATCH'), true);
+  assert.equal(tuesday.blocks.some((block) => block.title === 'POWER SNATCH(Pausa abaixo dos joelhos) + HANG SQUAT SNATCH'), true);
+  assert.equal(tuesday.blocks.some((block) => block.title === 'POWER CLEAN(pausa na recepção) + FRONT SQUATS + PUSH PRESS'), true);
+  assert.equal(tuesday.blocks.some((block) => block.type === 'ACCESSORIES' && block.title === 'BACK LOADED BULGARIAN SQUAT'), true);
+
+  const frontSquatJump = tuesday.blocks.find((block) => block.title === 'FRONT SQUATS + HURDLE JUMP');
+  assert.ok(frontSquatJump);
+  assert.equal(frontSquatJump.parsed.strength.sets[0].pairedReps, 3);
+
+  assert.equal(friday.blocks.some((block) => block.type === 'ACCESSORIES' && block.title === 'BACK LOADED DEFICIT REVERSE LUNGE'), true);
+  assert.equal(friday.blocks.some((block) => block.type === 'ACCESSORIES' && block.title === 'BANDED GHD REVERSE HYPER'), true);
+
+  const saturdayNote = saturday.blocks[0].parsed.items.find((item) => item.type === 'note');
+  assert.ok(saturdayNote);
+  assert.match(saturdayNote.text, /desafiador para você/i);
+  assert.equal(saturday.blocks[0].parsed.items.some((item) => item.type === 'movement' && /desafiador/.test(item.name || '')), false);
+});
