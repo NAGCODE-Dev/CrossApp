@@ -12,7 +12,7 @@ test('toWorkoutBlocks converte sections para blocks', () => {
   const workout = {
     day: 'Segunda',
     sections: [
-      { type: 'A', lines: ['BACK SQUAT'] },
+      { type: 'A', lines: ['BACK SQUAT'], period: 'manhã', parsed: { format: 'amrap' } },
     ],
   };
 
@@ -20,13 +20,15 @@ test('toWorkoutBlocks converte sections para blocks', () => {
   assert.equal(result.day, 'Segunda');
   assert.equal(result.blocks.length, 1);
   assert.equal(result.blocks[0].type, 'A');
+  assert.equal(result.blocks[0].period, 'manhã');
+  assert.equal(result.blocks[0].parsed.format, 'amrap');
 });
 
 test('toWorkoutSections converte blocks para sections', () => {
   const workout = {
     day: 'Terca',
     blocks: [
-      { type: 'B', lines: ['DEADLIFT'] },
+      { type: 'B', lines: ['DEADLIFT'], period: 'tarde', parsed: { rounds: 4 } },
     ],
   };
 
@@ -34,6 +36,8 @@ test('toWorkoutSections converte blocks para sections', () => {
   assert.equal(result.day, 'Terca');
   assert.equal(result.sections.length, 1);
   assert.equal(result.sections[0].type, 'B');
+  assert.equal(result.sections[0].period, 'tarde');
+  assert.equal(result.sections[0].parsed.rounds, 4);
 });
 
 test('normalizeWorkoutBlocks preserva linhas calculadas e normaliza objetos simples', () => {

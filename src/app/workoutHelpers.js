@@ -25,6 +25,7 @@ export function toWorkoutBlocks(workout) {
   return {
     day: workout.day,
     blocks: (workout.sections || []).map((section) => ({
+      ...section,
       type: section.type || 'DEFAULT',
       lines: section.lines || [],
     })),
@@ -35,6 +36,7 @@ export function toWorkoutSections(workout) {
   return {
     day: workout.day,
     sections: (workout.blocks || []).map((block) => ({
+      ...block,
       type: block.type || 'DEFAULT',
       lines: block.lines || [],
     })),

@@ -67,3 +67,49 @@ DEADLIFT
   assert.equal(weeks[0].weekNumber, 19);
   assert.equal(weeks[1].weekNumber, 20);
 });
+
+test('parser rico preserva compatibilidade e adiciona metadados de sessão/carga', () => {
+  const text = `
+SEMANA 19
+QUARTA
+MANHÃ
+WOD
+4X
+10 SINGLE DB BOX STEP OVER (50-60CM) 50-35LBS
+20 WBs 20-14lbs
+80 DUs
+3' RECOVERY ROW
+1' REST TOTAL
+OBJETIVO = Sub 3'30 por round
+TARDE
+WOD
+12' AMRAP
+10 ALT DB POWER SNATCH 50-35lbs
+10m SINGLE DB OH WALKING LUNGE (alt como quiser)
+5 MUs (ou 5 BMU)
+OBJETIVO = acima de 7 rounds
+  `.trim();
+
+  const weeks = parseMultiWeekPdf(text);
+  assert.equal(weeks.length, 1);
+  assert.equal(weeks[0].workouts.length, 1);
+
+  const workout = weeks[0].workouts[0];
+  assert.equal(workout.day, 'Quarta');
+  assert.equal(Array.isArray(workout.blocks), true);
+  assert.equal(workout.blocks.length, 2);
+  assert.equal(workout.blocks[0].period, 'manhã');
+  assert.equal(workout.blocks[1].period, 'tarde');
+  assert.equal(workout.blocks[0].lines.includes("4X"), true);
+  assert.equal(workout.blocks[0].parsed.rounds, 4);
+  assert.equal(workout.blocks[1].parsed.format, 'amrap');
+  assert.equal(workout.blocks[1].parsed.timeCapMinutes, 12);
+  assert.equal(workout.blocks[0].parsed.goal, "Sub 3'30 por round");
+
+  const firstMovement = workout.blocks[0].parsed.items.find((item) => item.type === 'movement');
+  assert.equal(firstMovement.load.maleLb, 50);
+  assert.equal(firstMovement.load.femaleLb, 35);
+  assert.equal(firstMovement.load.maleKg, 22.7);
+  assert.equal(firstMovement.boxHeightCm.min, 50);
+  assert.equal(firstMovement.boxHeightCm.max, 60);
+});
