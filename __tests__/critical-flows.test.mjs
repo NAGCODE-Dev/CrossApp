@@ -113,3 +113,59 @@ OBJETIVO = acima de 7 rounds
   assert.equal(firstMovement.boxHeightCm.min, 50);
   assert.equal(firstMovement.boxHeightCm.max, 60);
 });
+
+test('parser rico reconhece strength, accessories, gymnastics e engine com mais precisão', () => {
+  const text = `
+SEMANA 19
+QUARTA
+LOW INTENSITY ROW
+3X
+15 MIN
+3 MIN REST
+Frequência cardíaca jamais acima de 180 - idade
+TARDE
+*Treinos de ginástica são por qualidade e não por tempo
+GYMNASTICS 1
+4X
+5 STRICT PULL UPS PEGADA SUPINADA
+10 GHD SIT UPs
+5 BMUs
+RECOVERY ROW(O TEMPO QUE FOR NECESSÁRIO)
+CLEAN PULL + LOW HANG SQUAT CLEAN + PUSH PRESS
+1+1+1@?
+1+1+1@?
+FRONT SQUAT + DB VERTICAL JUMP
+9@?+2
+REST 3'
+ACESSORIOS
+BULGARIAN DL (não precisa ser pesado) 3x10
+ROWER HAMSTRING BRIDGES 3x15
+SUPINO PEGADA FECHADA 4x8
+  `.trim();
+
+  const weeks = parseMultiWeekPdf(text);
+  const workout = weeks[0].workouts[0];
+
+  const engineBlock = workout.blocks.find((block) => block.type === 'ENGINE');
+  assert.ok(engineBlock);
+  assert.equal(engineBlock.parsed.engine.rounds, 3);
+  assert.equal(engineBlock.parsed.engine.workMinutes, 15);
+  assert.equal(engineBlock.parsed.engine.restMinutes, 3);
+  assert.equal(engineBlock.parsed.engine.constraints[0].formula, '180 - age');
+
+  const gymnasticsBlock = workout.blocks.find((block) => block.type === 'GYMNASTICS');
+  assert.ok(gymnasticsBlock);
+  assert.equal(gymnasticsBlock.parsed.gymnastics.rounds, 4);
+  assert.equal(gymnasticsBlock.parsed.gymnastics.movements[0].reps, 5);
+
+  const strengthBlocks = workout.blocks.filter((block) => block.type === 'STRENGTH');
+  assert.equal(strengthBlocks.length >= 2, true);
+  assert.equal(strengthBlocks[0].parsed.strength.sets[0].scheme, '1+1+1');
+  assert.equal(strengthBlocks[1].parsed.strength.sets[0].pairedReps, 2);
+
+  const accessoriesBlock = workout.blocks.find((block) => block.type === 'ACCESSORIES');
+  assert.ok(accessoriesBlock);
+  assert.equal(accessoriesBlock.parsed.accessories.length, 3);
+  assert.equal(accessoriesBlock.parsed.accessories[0].sets, 3);
+  assert.equal(accessoriesBlock.parsed.accessories[0].reps, 10);
+});
