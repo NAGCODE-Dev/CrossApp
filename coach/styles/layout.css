@@ -140,6 +140,36 @@
   gap: 16px;
 }
 
+.operation-shellLayout {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+  align-items: start;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.operation-primaryRail,
+.operation-secondaryRail {
+  min-width: 0;
+}
+
+.operation-card {
+  gap: 14px;
+}
+
+.operation-form {
+  gap: 12px;
+}
+
+.operation-selectionGrid {
+  max-height: 320px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
 .library-shellLayout {
   grid-template-columns: minmax(280px, 0.9fr) minmax(0, 1.3fr);
   align-items: start;
@@ -330,6 +360,11 @@
 .benchmark-item,
 .competition-item,
 .leaderboard-item {
+  gap: 8px;
+}
+
+.member-item,
+.group-item {
   gap: 8px;
 }
 

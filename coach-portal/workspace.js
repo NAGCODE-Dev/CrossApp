@@ -1126,173 +1126,200 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
         })
       ),
       React.createElement('section', { className: 'grid portal-grid', hidden: !(isOperationSection || isProgrammingSection || isLibrarySection) },
-        React.createElement('div', { className: 'card', hidden: !isOperationSection },
-          React.createElement('h3', null, 'Gyms'),
-          React.createElement('div', { className: 'stack list-block' },
-            showSkeleton
-              ? portalSkeletonList(3)
-              : dashboard.gyms.map((gym) =>
-              React.createElement('button', {
-                key: gym.id,
-                className: `list-item ${dashboard.selectedGymId === gym.id ? 'selected' : ''}`,
-                onClick: () => handleSelectGym(gym.id),
-              },
-                React.createElement('strong', null, gym.name),
-                React.createElement('span', null, `${gym.role} • ${gym.access?.warning || 'Acesso OK'}`)
-              )
+        React.createElement('div', { className: 'card wide operation-shellLayout', hidden: !isOperationSection },
+          React.createElement('div', { className: 'stack operation-primaryRail' },
+            React.createElement('div', { className: 'card nested-card operation-card' },
+              React.createElement('div', { className: 'publish-formSectionHead' },
+                React.createElement('div', { className: 'eyebrow' }, 'Gyms'),
+                React.createElement('strong', null, 'Estrutura principal')
               ),
-            dashboard.gyms.length === 0 ? React.createElement('p', { className: 'muted' }, 'Nenhum gym criado ainda.') : null
-          ),
-          React.createElement('form', { className: 'stack', onSubmit: handleCreateGym },
-            React.createElement('input', {
-              className: 'field',
-              placeholder: 'Nome do gym',
-              value: forms.gymName,
-              onChange: (e) => setForms((prev) => ({ ...prev, gymName: e.target.value })),
-            }),
-            React.createElement('input', {
-              className: 'field',
-              placeholder: 'slug-do-gym',
-              value: forms.gymSlug,
-              onChange: (e) => setForms((prev) => ({ ...prev, gymSlug: e.target.value })),
-            }),
-            React.createElement('button', { className: 'btn btn-secondary', type: 'submit', disabled: loading }, 'Criar gym')
-          )
-        ),
-        React.createElement('div', { className: 'card', hidden: !isOperationSection },
-          React.createElement('h3', null, selectedGym ? `Membros de ${selectedGym.name}` : 'Membros'),
-          React.createElement('div', { className: 'stack list-block' },
-            showSkeleton
-              ? portalSkeletonList(3)
-              : dashboard.members.map((member) =>
-              React.createElement('div', { key: member.id, className: 'list-item static' },
-                React.createElement('strong', null, member.name || member.email || member.pending_email || 'Convidado'),
-                React.createElement('span', null, `${member.role} • ${member.status}`)
-              )
+              React.createElement('div', { className: 'stack list-block' },
+                showSkeleton
+                  ? portalSkeletonList(3)
+                  : dashboard.gyms.map((gym) =>
+                  React.createElement('button', {
+                    key: gym.id,
+                    className: `list-item ${dashboard.selectedGymId === gym.id ? 'selected' : ''}`,
+                    onClick: () => handleSelectGym(gym.id),
+                  },
+                    React.createElement('strong', null, gym.name),
+                    React.createElement('span', null, `${gym.role} • ${gym.access?.warning || 'Acesso OK'}`)
+                  )
+                  ),
+                dashboard.gyms.length === 0 ? React.createElement('p', { className: 'muted' }, 'Nenhum gym criado ainda.') : null
               ),
-            dashboard.members.length === 0 ? React.createElement('p', { className: 'muted' }, 'Selecione um gym para carregar membros.') : null
-          ),
-          React.createElement('form', { className: 'stack', onSubmit: handleAddMember },
-            React.createElement('input', {
-              className: 'field',
-              type: 'email',
-              placeholder: 'Email do membro',
-              value: forms.memberEmail,
-              onChange: (e) => setForms((prev) => ({ ...prev, memberEmail: e.target.value })),
-            }),
-            React.createElement('select', {
-              className: 'field',
-              value: forms.memberRole,
-              onChange: (e) => setForms((prev) => ({ ...prev, memberRole: e.target.value })),
-            },
-              React.createElement('option', { value: 'athlete' }, 'athlete'),
-              React.createElement('option', { value: 'coach' }, 'coach')
+              React.createElement('form', { className: 'stack operation-form', onSubmit: handleCreateGym },
+                React.createElement('div', { className: 'publish-formSectionHead' },
+                  React.createElement('div', { className: 'eyebrow' }, 'Novo gym'),
+                  React.createElement('span', { className: 'muted' }, 'Crie um box sem sair da operação.')
+                ),
+                React.createElement('input', {
+                  className: 'field',
+                  placeholder: 'Nome do gym',
+                  value: forms.gymName,
+                  onChange: (e) => setForms((prev) => ({ ...prev, gymName: e.target.value })),
+                }),
+                React.createElement('input', {
+                  className: 'field',
+                  placeholder: 'slug-do-gym',
+                  value: forms.gymSlug,
+                  onChange: (e) => setForms((prev) => ({ ...prev, gymSlug: e.target.value })),
+                }),
+                React.createElement('button', { className: 'btn btn-secondary', type: 'submit', disabled: loading }, 'Criar gym')
+              )
             ),
-            React.createElement('button', { className: 'btn btn-secondary', type: 'submit', disabled: loading || !selectedGym }, 'Adicionar membro')
-          )
-        ),
-        React.createElement('div', { className: 'card', hidden: !isOperationSection },
-          React.createElement('h3', null, selectedGym ? `Grupos de ${selectedGym.name}` : 'Grupos'),
-          React.createElement('p', { className: 'muted' }, `Mostrando grupos de ${sportLabel(dashboard.selectedSportType)}.`),
-          React.createElement('div', { className: 'stack list-block' },
-            showSkeleton
-              ? portalSkeletonList(2)
-              : dashboard.groups.map((group) =>
-              React.createElement('div', { key: group.id, className: 'list-item static' },
-                React.createElement('strong', null, group.name),
-                React.createElement('span', null, `${group.member_count || group.members?.length || 0} atleta(s) • ${sportLabel(group.sport_type || dashboard.selectedSportType)}${group.description ? ` • ${group.description}` : ''}`)
-              )
+            React.createElement('div', { className: 'card nested-card operation-card' },
+              React.createElement('div', { className: 'publish-formSectionHead' },
+                React.createElement('div', { className: 'eyebrow' }, 'Membros'),
+                React.createElement('strong', null, selectedGym ? `Equipe de ${selectedGym.name}` : 'Equipe do gym')
               ),
-            dashboard.groups.length === 0 ? React.createElement('p', { className: 'muted' }, 'Crie grupos para blocos especiais e planilhas separadas.') : null
+              React.createElement('div', { className: 'stack list-block' },
+                showSkeleton
+                  ? portalSkeletonList(3)
+                  : dashboard.members.map((member) =>
+                  React.createElement('div', { key: member.id, className: 'list-item static member-item' },
+                    React.createElement('strong', null, member.name || member.email || member.pending_email || 'Convidado'),
+                    React.createElement('span', null, `${member.role} • ${member.status}`)
+                  )
+                  ),
+                dashboard.members.length === 0 ? React.createElement('p', { className: 'muted' }, 'Selecione um gym para carregar membros.') : null
+              ),
+              React.createElement('form', { className: 'stack operation-form', onSubmit: handleAddMember },
+                React.createElement('div', { className: 'publish-formSectionHead' },
+                  React.createElement('div', { className: 'eyebrow' }, 'Adicionar membro'),
+                  React.createElement('span', { className: 'muted' }, 'Convide atleta ou coach em poucos toques.')
+                ),
+                React.createElement('input', {
+                  className: 'field',
+                  type: 'email',
+                  placeholder: 'Email do membro',
+                  value: forms.memberEmail,
+                  onChange: (e) => setForms((prev) => ({ ...prev, memberEmail: e.target.value })),
+                }),
+                React.createElement('select', {
+                  className: 'field',
+                  value: forms.memberRole,
+                  onChange: (e) => setForms((prev) => ({ ...prev, memberRole: e.target.value })),
+                },
+                  React.createElement('option', { value: 'athlete' }, 'athlete'),
+                  React.createElement('option', { value: 'coach' }, 'coach')
+                ),
+                React.createElement('button', { className: 'btn btn-secondary', type: 'submit', disabled: loading || !selectedGym }, 'Adicionar membro')
+              )
+            )
           ),
-          React.createElement('form', { className: 'stack' , onSubmit: handleCreateGroup },
-            React.createElement('input', {
-              className: 'field',
-              placeholder: 'Nome do grupo',
-              value: forms.groupName,
-              onChange: (e) => setForms((prev) => ({ ...prev, groupName: e.target.value })),
-            }),
-            React.createElement('input', {
-              className: 'field',
-              placeholder: 'Descrição curta',
-              value: forms.groupDescription,
-              onChange: (e) => setForms((prev) => ({ ...prev, groupDescription: e.target.value })),
-            }),
-            React.createElement('div', { className: 'selection-grid' },
-              athleteMembers.length
-                ? athleteMembers.map((member) =>
-                    React.createElement('label', { key: member.id, className: 'check-row' },
-                      React.createElement('input', {
-                        type: 'checkbox',
-                        checked: forms.selectedGroupMemberIds.includes(member.id),
-                        onChange: () => toggleSelection('selectedGroupMemberIds', member.id),
-                      }),
-                      React.createElement('span', null,
-                        React.createElement('strong', null, member.name || member.email || member.pending_email || 'Atleta'),
-                        React.createElement('small', null, member.email || member.pending_email || '')
+          React.createElement('div', { className: 'stack operation-secondaryRail' },
+            React.createElement('div', { className: 'card nested-card operation-card' },
+              React.createElement('div', { className: 'publish-formSectionHead' },
+                React.createElement('div', { className: 'eyebrow' }, 'Grupos'),
+                React.createElement('strong', null, selectedGym ? `Grupos de ${selectedGym.name}` : 'Grupos')
+              ),
+              React.createElement('p', { className: 'muted' }, `Mostrando grupos de ${sportLabel(dashboard.selectedSportType)}.`),
+              React.createElement('div', { className: 'stack list-block' },
+                showSkeleton
+                  ? portalSkeletonList(2)
+                  : dashboard.groups.map((group) =>
+                  React.createElement('div', { key: group.id, className: 'list-item static group-item' },
+                    React.createElement('strong', null, group.name),
+                    React.createElement('span', null, `${group.member_count || group.members?.length || 0} atleta(s) • ${sportLabel(group.sport_type || dashboard.selectedSportType)}${group.description ? ` • ${group.description}` : ''}`)
+                  )
+                  ),
+                dashboard.groups.length === 0 ? React.createElement('p', { className: 'muted' }, 'Crie grupos para blocos especiais e planilhas separadas.') : null
+              ),
+              React.createElement('form', { className: 'stack operation-form', onSubmit: handleCreateGroup },
+                React.createElement('div', { className: 'publish-formSectionHead' },
+                  React.createElement('div', { className: 'eyebrow' }, 'Novo grupo'),
+                  React.createElement('span', { className: 'muted' }, 'Selecione atletas sem apertar a interface no celular.')
+                ),
+                React.createElement('input', {
+                  className: 'field',
+                  placeholder: 'Nome do grupo',
+                  value: forms.groupName,
+                  onChange: (e) => setForms((prev) => ({ ...prev, groupName: e.target.value })),
+                }),
+                React.createElement('input', {
+                  className: 'field',
+                  placeholder: 'Descrição curta',
+                  value: forms.groupDescription,
+                  onChange: (e) => setForms((prev) => ({ ...prev, groupDescription: e.target.value })),
+                }),
+                React.createElement('div', { className: 'selection-grid operation-selectionGrid' },
+                  athleteMembers.length
+                    ? athleteMembers.map((member) =>
+                        React.createElement('label', { key: member.id, className: 'check-row' },
+                          React.createElement('input', {
+                            type: 'checkbox',
+                            checked: forms.selectedGroupMemberIds.includes(member.id),
+                            onChange: () => toggleSelection('selectedGroupMemberIds', member.id),
+                          }),
+                          React.createElement('span', null,
+                            React.createElement('strong', null, member.name || member.email || member.pending_email || 'Atleta'),
+                            React.createElement('small', null, member.email || member.pending_email || '')
+                          )
+                        )
+                      )
+                    : React.createElement('p', { className: 'muted' }, 'Nenhum atleta ativo disponível.')
+                ),
+                React.createElement('button', { className: 'btn btn-secondary', type: 'submit', disabled: loading || !selectedGym || !forms.groupName }, 'Criar grupo')
+              )
+            ),
+            React.createElement('div', { className: 'card nested-card operation-card' },
+              React.createElement('h3', null, selectedGym ? `Insights de ${selectedGym.name}` : 'Insights do gym'),
+              React.createElement('p', { className: 'muted' }, `Métricas filtradas em ${sportLabel(dashboard.selectedSportType)}.`),
+              showSkeleton
+                ? React.createElement('div', { className: 'stack list-block' }, portalSkeletonList(4))
+                : dashboard.insights
+                ? React.createElement('div', { className: 'stack list-block' },
+                    React.createElement('div', { className: 'list-item static' },
+                      React.createElement('strong', null, 'Programação'),
+                      React.createElement('span', null, `${dashboard.insights.stats?.workouts || 0} treino(s) no total • ${dashboard.insights.stats?.workoutsNext7Days || 0} nos próximos 7 dias`)
+                    ),
+                    React.createElement('div', { className: 'list-item static' },
+                      React.createElement('strong', null, 'Competições'),
+                      React.createElement(
+                        'span',
+                        null,
+                        dashboard.features?.competitions
+                          ? `${dashboard.insights.stats?.competitions || 0} no total • ${dashboard.insights.stats?.upcomingCompetitions || 0} próximas`
+                          : 'Agenda de competições indisponível nesta versão'
+                      )
+                    ),
+                    React.createElement('div', { className: 'list-item static' },
+                      React.createElement('strong', null, 'Grupos'),
+                      React.createElement('span', null, `${dashboard.insights.stats?.groups || 0} grupo(s) ativos`)
+                    ),
+                    React.createElement('div', { className: 'list-item static' },
+                      React.createElement('strong', null, 'PRs sincronizados'),
+                      React.createElement(
+                        'span',
+                        null,
+                        dashboard.selectedSportType === 'cross'
+                          ? `${dashboard.insights.stats?.activePrs || 0} PR(s) ativos em ${dashboard.insights.stats?.athletesWithPrs || 0} atleta(s)`
+                          : 'Disponível ao visualizar o modo Cross'
+                      )
+                    ),
+                    React.createElement('div', { className: 'list-item static' },
+                      React.createElement('strong', null, 'Benchmarks mais usados'),
+                      React.createElement('span', null, (dashboard.insights.topBenchmarks || []).length ? dashboard.insights.topBenchmarks.map((item) => `${item.name} (${item.total})`).join(' • ') : 'Sem volume suficiente ainda')
+                    ),
+                    React.createElement('div', { className: 'list-item static' },
+                      React.createElement('strong', null, 'Últimos PRs'),
+                      React.createElement(
+                        'span',
+                        null,
+                        dashboard.selectedSportType === 'cross'
+                          ? ((dashboard.insights.recentPrs || []).length
+                            ? dashboard.insights.recentPrs
+                              .map((record) => `${record.athlete_name || record.athlete_email || 'Atleta'} • ${record.exercise} ${formatNumericValue(record.value)} ${record.unit || 'kg'}`)
+                              .join(' • ')
+                            : 'Nenhum PR sincronizado recentemente')
+                          : 'Troque para Cross para revisar PRs'
                       )
                     )
                   )
-                : React.createElement('p', { className: 'muted' }, 'Nenhum atleta ativo disponível.')
-            ),
-            React.createElement('button', { className: 'btn btn-secondary', type: 'submit', disabled: loading || !selectedGym || !forms.groupName }, 'Criar grupo')
+                : React.createElement('p', { className: 'muted' }, 'Selecione um gym para carregar métricas operacionais.')
+            )
           )
-        ),
-        React.createElement('div', { className: 'card', hidden: !isOperationSection },
-          React.createElement('h3', null, selectedGym ? `Insights de ${selectedGym.name}` : 'Insights do gym'),
-          React.createElement('p', { className: 'muted' }, `Métricas filtradas em ${sportLabel(dashboard.selectedSportType)}.`),
-          showSkeleton
-            ? React.createElement('div', { className: 'stack list-block' }, portalSkeletonList(4))
-            : dashboard.insights
-            ? React.createElement('div', { className: 'stack list-block' },
-                React.createElement('div', { className: 'list-item static' },
-                  React.createElement('strong', null, 'Programação'),
-                  React.createElement('span', null, `${dashboard.insights.stats?.workouts || 0} treino(s) no total • ${dashboard.insights.stats?.workoutsNext7Days || 0} nos próximos 7 dias`)
-                ),
-                React.createElement('div', { className: 'list-item static' },
-                  React.createElement('strong', null, 'Competições'),
-                  React.createElement(
-                    'span',
-                    null,
-                    dashboard.features?.competitions
-                      ? `${dashboard.insights.stats?.competitions || 0} no total • ${dashboard.insights.stats?.upcomingCompetitions || 0} próximas`
-                      : 'Agenda de competições indisponível nesta versão'
-                  )
-                ),
-                React.createElement('div', { className: 'list-item static' },
-                  React.createElement('strong', null, 'Grupos'),
-                  React.createElement('span', null, `${dashboard.insights.stats?.groups || 0} grupo(s) ativos`)
-                ),
-                React.createElement('div', { className: 'list-item static' },
-                  React.createElement('strong', null, 'PRs sincronizados'),
-                  React.createElement(
-                    'span',
-                    null,
-                    dashboard.selectedSportType === 'cross'
-                      ? `${dashboard.insights.stats?.activePrs || 0} PR(s) ativos em ${dashboard.insights.stats?.athletesWithPrs || 0} atleta(s)`
-                      : 'Disponível ao visualizar o modo Cross'
-                  )
-                ),
-                React.createElement('div', { className: 'list-item static' },
-                  React.createElement('strong', null, 'Benchmarks mais usados'),
-                  React.createElement('span', null, (dashboard.insights.topBenchmarks || []).length ? dashboard.insights.topBenchmarks.map((item) => `${item.name} (${item.total})`).join(' • ') : 'Sem volume suficiente ainda')
-                ),
-                React.createElement('div', { className: 'list-item static' },
-                  React.createElement('strong', null, 'Últimos PRs'),
-                  React.createElement(
-                    'span',
-                    null,
-                    dashboard.selectedSportType === 'cross'
-                      ? ((dashboard.insights.recentPrs || []).length
-                        ? dashboard.insights.recentPrs
-                          .map((record) => `${record.athlete_name || record.athlete_email || 'Atleta'} • ${record.exercise} ${formatNumericValue(record.value)} ${record.unit || 'kg'}`)
-                          .join(' • ')
-                        : 'Nenhum PR sincronizado recentemente')
-                      : 'Troque para Cross para revisar PRs'
-                  )
-                )
-              )
-            : React.createElement('p', { className: 'muted' }, 'Selecione um gym para carregar métricas operacionais.')
         ),
         React.createElement('div', { className: 'card wide', hidden: !isProgrammingSection },
         React.createElement('div', { className: 'portal-sectionHeader portal-sectionHeader-inline', id: 'programming' },
