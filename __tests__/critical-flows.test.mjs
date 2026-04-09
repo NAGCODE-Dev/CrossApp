@@ -572,3 +572,81 @@ desafiador para você.
   assert.match(saturdayNote.text, /desafiador para você/i);
   assert.equal(saturday.blocks[0].parsed.items.some((item) => item.type === 'movement' && /desafiador/.test(item.name || '')), false);
 });
+
+test('parser enriquece swim e low intensity mix nos pdfs reais da bsb', () => {
+  const text = `
+SEMANA 18
+QUARTA
+LOW INTENSITY MIX 1
+(4x)
+7 MIN ROW *
+2 LEGLESS
+LOW INTENSITY MIX 2
+(4x)
+7 MIN RUN **
+2 LEGLESS
+*60 watts abaixo do pace MÉDIO do seu teste de 20 min de remo.
+**1 min mais lento do que o seu pace no teste de 5km.
+
+TARDE
+(OPTIONAL)
+SWIM
+100m EASY WARM UP
+REST 4\`
+400m FOR TIME
+REST 5\`
+(8x)
+100m @400m pace
+REST 2\`
+(4x)
+12.5 forte e sem levantar a cabeça
+12.5 easy recovery
+*Tudo direto
+200m SO PERNADA COM PRANCHA E SEM PÉ DE PATO
+
+SEMANA 20
+SEGUNDA
+LOW INTENSITY MIX
+(10x)
+4 MIN ROW (60 watts abaixo da média do seu teste de 20min)
+12 GHD SIT UPs
+
+SEMANA 19
+QUARTA
+TARDE
+(OPTIONAL)
+SWIM
+1500m EASY
+  `.trim();
+
+  const weeks = parseMultiWeekPdf(text);
+  const week18 = weeks.find((week) => week.weekNumber === 18);
+  const week19 = weeks.find((week) => week.weekNumber === 19);
+  const week20 = weeks.find((week) => week.weekNumber === 20);
+
+  const week18Wednesday = week18.workouts.find((workout) => workout.day === 'Quarta');
+  const mix1 = week18Wednesday.blocks.find((block) => block.type === 'ENGINE' && block.title === 'LOW INTENSITY MIX 1');
+  const mix2 = week18Wednesday.blocks.find((block) => block.type === 'ENGINE' && block.title === 'LOW INTENSITY MIX 2');
+  const optional = week18Wednesday.blocks.find((block) => block.type === 'OPTIONAL');
+
+  assert.equal(mix1.parsed.engine.modality, 'row');
+  assert.equal(mix1.parsed.engine.movements.some((item) => item.name === 'legless' && item.reps === 2), true);
+  assert.equal(mix2.parsed.engine.modality, 'run');
+  assert.equal(mix2.parsed.engine.constraints.some((item) => item.metric === 'power' && item.deltaWatts === 60), true);
+  assert.equal(mix2.parsed.engine.constraints.some((item) => item.metric === 'pace' && item.deltaMinutes === 1), true);
+
+  assert.equal(optional.parsed.optional.modality, 'swim');
+  assert.equal(optional.parsed.optional.rounds, 8);
+  assert.equal(optional.parsed.optional.segments.some((segment) => segment.distanceMeters === 100 && segment.phase === 'warmup'), true);
+  assert.equal(optional.parsed.optional.segments.some((segment) => segment.distanceMeters === 400 && segment.format === 'for_time'), true);
+  assert.equal(optional.parsed.optional.segments.some((segment) => segment.distanceMeters === 100 && /400m pace/i.test(segment.paceTarget || '')), true);
+  assert.equal(optional.parsed.optional.segments.some((segment) => segment.distanceMeters === 200 && segment.drill === 'kick' && segment.equipment === 'board'), true);
+
+  const week20Mix = week20.workouts.find((workout) => workout.day === 'Segunda').blocks.find((block) => block.type === 'ENGINE');
+  assert.equal(week20Mix.parsed.engine.workMinutes, 4);
+  assert.equal(week20Mix.parsed.engine.modality, 'row');
+  assert.equal(week20Mix.parsed.engine.workNotes, '60 watts abaixo da média do seu teste de 20min');
+
+  const week19Optional = week19.workouts.find((workout) => workout.day === 'Quarta').blocks.find((block) => block.type === 'OPTIONAL');
+  assert.equal(week19Optional.parsed.optional.segments.some((segment) => segment.distanceMeters === 1500 && segment.intensity === 'easy'), true);
+});
