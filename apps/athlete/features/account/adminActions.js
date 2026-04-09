@@ -54,6 +54,47 @@ export async function handleAthleteAdminAction(action, context) {
       );
     }
 
+    case 'admin:manual-reset': {
+      const userId = Number(element.dataset.userId);
+      const userEmail = String(element.dataset.userEmail || '').trim();
+      if (!Number.isFinite(userId) || userId <= 0) {
+        throw new Error('Usuário inválido');
+      }
+
+      const confirmed = confirm(`Gerar um codigo manual de reset para ${userEmail || `#${userId}`}?`);
+      if (!confirmed) return true;
+
+      const result = await getAppBridge().createManualPasswordReset(userId);
+      const code = String(result?.data?.reset?.code || '').trim();
+      return refreshAdminOverview(code ? `Codigo manual gerado: ${code}` : 'Codigo manual gerado');
+    }
+
+    case 'admin:approve-reset-support': {
+      const requestId = Number(element.dataset.requestId);
+      if (!Number.isFinite(requestId) || requestId <= 0) {
+        throw new Error('Solicitação inválida');
+      }
+
+      const confirmed = confirm('Liberar redefinicao sem codigo para esta solicitacao?');
+      if (!confirmed) return true;
+
+      await getAppBridge().approvePasswordResetSupportRequest(requestId);
+      return refreshAdminOverview('Liberacao aprovada');
+    }
+
+    case 'admin:deny-reset-support': {
+      const requestId = Number(element.dataset.requestId);
+      if (!Number.isFinite(requestId) || requestId <= 0) {
+        throw new Error('Solicitação inválida');
+      }
+
+      const confirmed = confirm('Negar esta solicitacao de redefinicao?');
+      if (!confirmed) return true;
+
+      await getAppBridge().denyPasswordResetSupportRequest(requestId);
+      return refreshAdminOverview('Liberacao negada');
+    }
+
     case 'admin:delete-now': {
       const userId = Number(element.dataset.userId);
       const userEmail = String(element.dataset.userEmail || '').trim();

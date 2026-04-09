@@ -1,4 +1,5 @@
 export function renderAdminSection({ overview, admin, escapeHtml, formatDateShort }) {
+  const supportRequests = overview?.ops?.recentPasswordResetSupportRequests || [];
   return `
     <details class="account-fold account-section-admin">
       <summary class="account-foldSummary">
@@ -31,6 +32,41 @@ export function renderAdminSection({ overview, admin, escapeHtml, formatDateShor
             <span class="admin-statLabel">Exclusões pendentes</span>
             <span class="admin-statValue">${Number(overview?.stats?.pendingAccountDeletions || 0)}</span>
           </div>
+          <div class="admin-statCard">
+            <span class="admin-statLabel">Reset pendente</span>
+            <span class="admin-statValue">${Number(overview?.stats?.pendingPasswordResetSupportRequests || 0)}</span>
+          </div>
+        </div>
+        <div class="admin-userList">
+          <div class="section-kicker">Liberacoes de redefinicao</div>
+          ${supportRequests.length ? supportRequests.map((request) => `
+            <div class="admin-userRow">
+              <div>
+                <div class="admin-userName">${escapeHtml(request.user_name || request.email || 'Solicitacao sem usuario')}</div>
+                <div class="admin-userEmail">${escapeHtml(request.email || '')}</div>
+                <div class="account-hint">
+                  Status: ${escapeHtml(request.supportStatus || request.status || 'pending')}
+                  ${request.created_at ? ` • pediu em ${escapeHtml(formatDateShort(request.created_at))}` : ''}
+                  ${request.approved_at ? ` • aprovado em ${escapeHtml(formatDateShort(request.approved_at))}` : ''}
+                </div>
+                ${request.last_error ? `
+                  <div class="account-hint" style="color:#f3c87b;">
+                    Falha de entrega: ${escapeHtml(request.last_error)}
+                  </div>
+                ` : ''}
+              </div>
+              <div class="admin-userControls">
+                <div class="admin-userMeta">${escapeHtml(request.supportStatus || request.status || 'pending')}</div>
+                <div class="admin-userActions">
+                  <button class="btn-secondary" data-action="admin:approve-reset-support" data-request-id="${Number(request.id)}" type="button">Liberar</button>
+                  <button class="btn-secondary" data-action="admin:deny-reset-support" data-request-id="${Number(request.id)}" type="button">Negar</button>
+                  <button class="btn-secondary" data-action="admin:manual-reset" data-user-id="${Number(request.user_id || 0)}" data-user-email="${escapeHtml(request.email || '')}" type="button">Gerar codigo</button>
+                </div>
+              </div>
+            </div>
+          `).join('') : `
+            <p class="account-hint">Nenhuma liberacao pendente no momento.</p>
+          `}
         </div>
         <div class="admin-userList">
           ${(overview?.users || []).map((user) => `

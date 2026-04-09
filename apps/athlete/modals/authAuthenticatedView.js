@@ -4,6 +4,8 @@ import {
   renderCoachAccessSection,
 } from './authAccountSections.js';
 import { renderAdminSection } from './authAdminSection.js';
+import { renderAccountNotificationsSection } from './accountNotificationsSection.js';
+import { buildAthleteNotifications } from '../notifications.js';
 
 export function renderAuthenticatedAccountView({
   profile,
@@ -38,6 +40,14 @@ export function renderAuthenticatedAccountView({
   const canUseDeveloperTools = isDeveloperEmail(profile?.email);
   const renewAt = subscription?.renewAt || subscription?.renew_at || null;
   const hasActiveCoachSubscription = planStatus === 'active' && (planKey === 'pro' || planKey === 'coach');
+  const notifications = buildAthleteNotifications({
+    __ui: {
+      auth: {
+        profile,
+        admin,
+      },
+    },
+  });
 
   return `
     <div class="modal-overlay modal-overlay-auth isOpen" id="ui-authModalBackdrop">
@@ -79,6 +89,11 @@ export function renderAuthenticatedAccountView({
             canUseDeveloperTools,
             hasActiveCoachSubscription,
             gyms,
+          })}
+
+          ${renderAccountNotificationsSection({
+            notifications,
+            escapeHtml,
           })}
 
           ${isAdmin ? renderAdminSection({ overview, admin, escapeHtml, formatDateShort }) : ''}

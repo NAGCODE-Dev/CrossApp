@@ -34,6 +34,18 @@ export async function createManualPasswordReset(userId) {
   });
 }
 
+export async function approvePasswordResetSupportRequest(requestId) {
+  return apiRequest(`/admin/password-reset-requests/${Number(requestId)}/approve`, {
+    method: 'POST',
+  });
+}
+
+export async function denyPasswordResetSupportRequest(requestId) {
+  return apiRequest(`/admin/password-reset-requests/${Number(requestId)}/deny`, {
+    method: 'POST',
+  });
+}
+
 export async function requestAccountDeletion(userId) {
   return apiRequest(`/admin/users/${Number(userId)}/account-deletion/request`, {
     method: 'POST',

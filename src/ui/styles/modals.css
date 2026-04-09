@@ -308,6 +308,20 @@
   font-size: 0.78rem;
 }
 
+.auth-supportNotice {
+  display: grid;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(245, 158, 11, 0.24);
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.auth-supportNotice.isApproved {
+  border-color: rgba(34, 197, 94, 0.24);
+  background: rgba(34, 197, 94, 0.08);
+}
+
 .auth-resetIntro {
   display: grid;
   gap: 5px;

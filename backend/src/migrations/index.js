@@ -15,6 +15,7 @@ import { migration as enablePublicRlsLockdownMigration } from './015_enable_publ
 import { migration as fkIndexesAndIndexCleanupMigration } from './016_fk_indexes_and_index_cleanup.js';
 import { migration as operationalRetentionIndexesMigration } from './017_operational_retention_indexes.js';
 import { migration as appStateSyncIndexMigration } from './018_app_state_sync_index.js';
+import { migration as passwordResetSupportRequestsMigration } from './019_password_reset_support_requests.js';
 
 const MIGRATIONS = [
   baseSchemaMigration,
@@ -33,6 +34,7 @@ const MIGRATIONS = [
   fkIndexesAndIndexCleanupMigration,
   operationalRetentionIndexesMigration,
   appStateSyncIndexMigration,
+  passwordResetSupportRequestsMigration,
 ];
 
 export async function runMigrations() {

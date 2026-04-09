@@ -1,11 +1,16 @@
 function emptyPasswordResetState() {
   return {
     open: false,
+    step: 'request',
     email: '',
     code: '',
     previewCode: '',
     previewUrl: '',
     supportEmail: '',
+    supportRequestKey: '',
+    supportRequestStatus: '',
+    supportApprovedAt: '',
+    adminNotificationSent: false,
   };
 }
 
@@ -34,6 +39,7 @@ export async function handleAthleteModalAction(action, context) {
     element,
     applyUiState,
     applyUiPatch,
+    getAppBridge,
   } = context;
 
   switch (action) {
@@ -48,6 +54,15 @@ export async function handleAthleteModalAction(action, context) {
           }),
           { ensureGoogle: true, focusSelector: '#auth-email' },
         );
+        const profile = getAppBridge?.()?.getProfile?.()?.data || null;
+        if (profile?.is_admin || profile?.isAdmin) {
+          try {
+            const result = await getAppBridge().getAdminOverview({ limit: 25 });
+            await applyUiState({ admin: { overview: result?.data || null, query: '' } });
+          } catch (error) {
+            console.warn('Falha ao carregar painel admin:', error?.message || error);
+          }
+        }
         return true;
       }
       await applyUiState(

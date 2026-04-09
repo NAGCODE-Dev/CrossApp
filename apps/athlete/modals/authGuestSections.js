@@ -39,7 +39,10 @@ export function renderSignupVerificationBox({ signupVerification, escapeHtml }) 
 }
 
 export function renderPasswordResetBox({ reset, escapeHtml }) {
-  const resetStep = reset?.step === 'confirm' ? 'confirm' : 'request';
+  const resetStep = String(reset?.step || 'request');
+  const isCodeConfirm = resetStep === 'confirm';
+  const isSupportPending = resetStep === 'support_pending';
+  const isSupportConfirm = resetStep === 'support_confirm';
   return `
     <div class="auth-resetBox ${reset?.open ? 'isOpen' : ''}">
       <div class="auth-resetHeader">
@@ -61,10 +64,31 @@ export function renderPasswordResetBox({ reset, escapeHtml }) {
               Abrir preview do email
             </a>
           ` : ''}
-          <input class="add-input" id="reset-code" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="Código de 6 dígitos" value="${escapeHtml(reset.code || '')}" />
-          ${resetStep === 'confirm' ? '<input class="add-input" id="reset-password" type="password" autocomplete="new-password" placeholder="Nova senha" />' : ''}
+          ${!isSupportPending && !isSupportConfirm ? `
+            <input class="add-input" id="reset-code" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="Código de 6 dígitos" value="${escapeHtml(reset.code || '')}" />
+          ` : ''}
+          ${isCodeConfirm ? '<input class="add-input" id="reset-password" type="password" autocomplete="new-password" placeholder="Nova senha" />' : ''}
+          ${isSupportPending ? `
+            <div class="auth-supportNotice">
+              <strong>Suporte notificado</strong>
+              <p class="account-hint">Se o admin aprovar no app, você poderá redefinir sua senha aqui sem digitar código.</p>
+            </div>
+          ` : ''}
+          ${isSupportConfirm ? `
+            <div class="auth-supportNotice isApproved">
+              <strong>Redefinição liberada</strong>
+              <p class="account-hint">A aprovação já foi registrada. Agora é só definir sua nova senha.</p>
+            </div>
+            <input class="add-input" id="reset-password-support" type="password" autocomplete="new-password" placeholder="Nova senha" />
+          ` : ''}
           <div class="settings-actions auth-resetActions">
-            <button class="btn-primary" data-action="${resetStep === 'confirm' ? 'auth:reset-confirm' : 'auth:reset-verify'}" type="button">${resetStep === 'confirm' ? 'Salvar nova senha' : 'Validar código'}</button>
+            ${isSupportPending ? `
+              <button class="btn-primary" data-action="auth:reset-check-support" type="button">Verificar liberação</button>
+            ` : isSupportConfirm ? `
+              <button class="btn-primary" data-action="auth:reset-support-confirm" type="button">Salvar nova senha</button>
+            ` : `
+              <button class="btn-primary" data-action="${isCodeConfirm ? 'auth:reset-confirm' : 'auth:reset-request'}" type="button">${isCodeConfirm ? 'Salvar nova senha' : 'Enviar ou reenviar código'}</button>
+            `}
           </div>
           ${reset?.message ? `
             <p class="account-hint auth-resetStatus">${escapeHtml(reset.message)}</p>

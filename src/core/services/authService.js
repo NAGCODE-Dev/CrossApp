@@ -57,6 +57,14 @@ export async function confirmPasswordReset(payload) {
   return apiRequest('/auth/confirm-password-reset', { method: 'POST', body: payload });
 }
 
+export async function getPasswordResetSupportStatus(payload) {
+  return apiRequest('/auth/password-reset-support-status', { method: 'POST', body: payload });
+}
+
+export async function confirmPasswordResetSupport(payload) {
+  return apiRequest('/auth/confirm-password-reset-support', { method: 'POST', body: payload });
+}
+
 export async function signOut() {
   try {
     await apiRequest('/auth/signout', { method: 'POST' });

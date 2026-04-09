@@ -1,3 +1,5 @@
+import { getAthleteNotificationCount } from '../../notifications.js';
+
 export function renderAthleteAppShell({ escapeHtml, getAppLabel }) {
   const appLabel = getAppLabel();
   return `
@@ -37,6 +39,7 @@ export function renderAthleteAppShell({ escapeHtml, getAppLabel }) {
 
 export function renderAthleteHeaderAccount(state, { escapeHtml }) {
   const profile = state?.__ui?.auth?.profile || null;
+  const notificationCount = getAthleteNotificationCount(state);
 
   if (!profile?.email) {
     return '<button class="header-account-btn" data-action="modal:open" data-modal="auth" type="button">Entrar</button>';
@@ -46,6 +49,7 @@ export function renderAthleteHeaderAccount(state, { escapeHtml }) {
   return `
     <button class="header-account-btn isActive" data-action="modal:open" data-modal="auth" type="button">
       ${escapeHtml(displayName)}
+      ${notificationCount > 0 ? `<span class="header-accountBadge">${Math.min(notificationCount, 99)}</span>` : ''}
     </button>
   `;
 }

@@ -8,6 +8,13 @@ import { getRecentOpsEvents, logOpsEvent } from '../opsEvents.js';
 import { KIWIFY_WEBHOOK_TOKEN, KIWIFY_CLIENT_ID, KIWIFY_CLIENT_SECRET } from '../config.js';
 import { generateResetCode, hashResetCode } from '../passwordReset.js';
 import {
+  approvePasswordResetSupportRequest,
+  denyPasswordResetSupportRequest,
+  getPasswordResetSupportRequestStats,
+  getRecentPasswordResetSupportRequests,
+  getPasswordResetSupportRequestStatus,
+} from '../passwordResetSupport.js';
+import {
   deleteUserAccountNow,
   getPendingDeletionSummary,
   renderAccountDeletionResponseHtml,
@@ -62,7 +69,7 @@ export function createAdminOpsRouter() {
     const verify = String(req.query.verify || '').trim() === '1';
     const where = q ? `WHERE LOWER(email) LIKE $1 OR LOWER(COALESCE(name, '')) LIKE $1` : '';
     const params = q ? [`%${q}%`, limit] : [limit];
-    const [usersCount, activeSubs, pendingClaims, pendingDeletionCount, latestUsers, recentBillingClaims, recentOps, recentEmailJobs, mailerHealth] = await Promise.all([
+    const [usersCount, activeSubs, pendingClaims, pendingDeletionCount, latestUsers, recentBillingClaims, recentOps, recentEmailJobs, mailerHealth, supportRequestStats, recentPasswordResetSupportRequests] = await Promise.all([
       pool.query(`SELECT COUNT(*)::int AS total FROM users`),
       pool.query(`SELECT COUNT(*)::int AS total FROM subscriptions WHERE status = 'active'`),
       pool.query(`SELECT COUNT(*)::int AS total FROM billing_claims WHERE status = 'pending'`),
@@ -95,6 +102,8 @@ export function createAdminOpsRouter() {
       getRecentOpsEvents({ limit: 20 }),
       getRecentEmailJobs({ kind: 'password_reset', limit: 12 }),
       getMailerHealth({ verify }),
+      getPasswordResetSupportRequestStats(),
+      getRecentPasswordResetSupportRequests({ limit: 12 }),
     ]);
     const deletionByUserId = await getPendingDeletionSummary((latestUsers.rows || []).map((row) => row.id));
     const enrichedUsers = (latestUsers.rows || []).map((row) => ({
@@ -108,6 +117,7 @@ export function createAdminOpsRouter() {
         activeSubscriptions: activeSubs.rows[0]?.total || 0,
         pendingBillingClaims: pendingClaims.rows[0]?.total || 0,
         pendingAccountDeletions: pendingDeletionCount.rows[0]?.total || 0,
+        pendingPasswordResetSupportRequests: Number(supportRequestStats?.pending || 0),
       },
       users: enrichedUsers,
       ops: {
@@ -119,6 +129,10 @@ export function createAdminOpsRouter() {
         recentEmailJobs,
         recentBillingClaims: recentBillingClaims.rows,
         recentOps: recentOps,
+        recentPasswordResetSupportRequests: recentPasswordResetSupportRequests.map((request) => ({
+          ...request,
+          supportStatus: getPasswordResetSupportRequestStatus(request),
+        })),
       },
     });
   });
@@ -273,6 +287,70 @@ export function createAdminOpsRouter() {
       reset: {
         code,
         expiresAt,
+      },
+    });
+  });
+
+  router.post('/admin/password-reset-requests/:requestId/approve', adminRequired, async (req, res) => {
+    const requestId = Number(req.params.requestId);
+    if (!Number.isFinite(requestId) || requestId <= 0) {
+      return res.status(400).json({ error: 'requestId inválido' });
+    }
+
+    const request = await approvePasswordResetSupportRequest({
+      requestId,
+      approvedByUserId: req.user.userId,
+    });
+
+    if (!request) {
+      return res.status(404).json({ error: 'Solicitação não encontrada' });
+    }
+
+    await logOpsEvent({
+      kind: 'password_reset_support_request',
+      status: 'approved',
+      userId: request.user_id,
+      email: request.email,
+      payload: { requestId: request.id, approvedByUserId: req.user.userId },
+    });
+
+    return res.json({
+      success: true,
+      request: {
+        ...request,
+        supportStatus: getPasswordResetSupportRequestStatus(request),
+      },
+    });
+  });
+
+  router.post('/admin/password-reset-requests/:requestId/deny', adminRequired, async (req, res) => {
+    const requestId = Number(req.params.requestId);
+    if (!Number.isFinite(requestId) || requestId <= 0) {
+      return res.status(400).json({ error: 'requestId inválido' });
+    }
+
+    const request = await denyPasswordResetSupportRequest({
+      requestId,
+      deniedByUserId: req.user.userId,
+    });
+
+    if (!request) {
+      return res.status(404).json({ error: 'Solicitação não encontrada' });
+    }
+
+    await logOpsEvent({
+      kind: 'password_reset_support_request',
+      status: 'denied',
+      userId: request.user_id,
+      email: request.email,
+      payload: { requestId: request.id, deniedByUserId: req.user.userId },
+    });
+
+    return res.json({
+      success: true,
+      request: {
+        ...request,
+        supportStatus: getPasswordResetSupportRequestStatus(request),
       },
     });
   });
