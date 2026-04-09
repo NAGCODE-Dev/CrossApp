@@ -160,7 +160,7 @@ export function shouldSkipLine(line) {
  * @returns {Object} Estrutura de treino da semana
  */
 export function parseWeekText(weekText, weekNumber) {
-  const lines = removeEmptyLines(String(weekText || '').replace(/\r/g, '')).split('\n').map((l) => normalizeSpaces(l));
+  const lines = normalizeParserLines(weekText);
   const workouts = [];
   let currentDay = null;
   let currentBlock = null;
@@ -327,6 +327,30 @@ function findNextMeaningfulLine(lines, startIndex) {
   return '';
 }
 
+function normalizeParserLines(weekText) {
+  return removeEmptyLines(String(weekText || '').replace(/\r/g, ''))
+    .split('\n')
+    .map((line) => normalizeSpaces(line))
+    .flatMap((line) => splitDecoratedCompoundLine(line))
+    .map((line) => normalizeSpaces(line))
+    .filter(Boolean);
+}
+
+function splitDecoratedCompoundLine(line) {
+  const raw = String(line || '').trim();
+  if (!raw) return [];
+
+  const normalized = raw.replace(/[-]{2,}/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!normalized) return [];
+
+  const combinedMatch = normalized.match(/^(REST\s+\d+\s*['’`´]?)(?:\s+)(\(?\d+\s*X\)?|.+)$/i);
+  if (combinedMatch && /(?:FOR TIME|AMRAP|\(?\d+\s*X\)?)/i.test(combinedMatch[2])) {
+    return [combinedMatch[1].trim(), combinedMatch[2].trim()];
+  }
+
+  return [normalized];
+}
+
 function findNextMeaningfulLines(lines, startIndex, count = 2) {
   const result = [];
   for (let index = startIndex; index < lines.length && result.length < count; index += 1) {
@@ -362,6 +386,10 @@ function detectStructuredBlock(line, nextLine = '', options = {}) {
   }
 
   if (/^ACESS[ÓO]RIOS\b|^ACCESSORIES\b/.test(upper)) {
+    return { type: 'ACCESSORIES', title: line.trim(), includeLine: false };
+  }
+
+  if (/^CORE\b/.test(upper)) {
     return { type: 'ACCESSORIES', title: line.trim(), includeLine: false };
   }
 
@@ -514,7 +542,23 @@ function parseStructuredBlockContent({ type, title, period, lines, hints = {} })
       continue;
     }
 
-    if (/^\*+/.test(line) || /^FLOW\s*=/i.test(line) || /^DIRETO PARA$/i.test(upper)) {
+    const flowMatch = line.match(/^FLOW\s*=\s*(.+)$/i);
+    if (flowMatch) {
+      const flowLines = [flowMatch[1].trim()];
+      while (index + 1 < lines.length && isGoalContinuationLine(lines[index + 1])) {
+        flowLines.push(String(lines[index + 1] || '').trim());
+        index += 1;
+      }
+      items.push({ type: 'flow', text: flowLines.join(' ').replace(/\s+/g, ' ').trim(), raw: line });
+      continue;
+    }
+
+    if (/^DIRETO PARA$/i.test(upper)) {
+      items.push({ type: 'transition', text: 'Direto para', raw: line });
+      continue;
+    }
+
+    if (/^\*+/.test(line)) {
       items.push({ type: 'note', text: line.trim(), raw: line });
       continue;
     }
@@ -596,6 +640,7 @@ function parseStructuredBlockContent({ type, title, period, lines, hints = {} })
   const engineSummary = blockType === 'ENGINE' ? buildEngineSummary(items, { title }) : null;
   const gymnasticsSummary = blockType === 'GYMNASTICS' ? buildGymnasticsSummary(items, { title, rounds, quality }) : null;
   const strengthSummary = blockType === 'STRENGTH' ? buildStrengthSummary(items, { title }) : null;
+  const optionalSummary = blockType === 'OPTIONAL' ? buildOptionalSummary(items, { title }) : null;
 
   return {
     blockType: String(type || 'DEFAULT').toLowerCase(),
@@ -610,6 +655,7 @@ function parseStructuredBlockContent({ type, title, period, lines, hints = {} })
     engine: engineSummary,
     gymnastics: gymnasticsSummary,
     strength: strengthSummary,
+    optional: optionalSummary,
     items,
   };
 }
@@ -629,6 +675,21 @@ function parseMovementLine(line) {
       raw,
       reps: Number(accumulationMatch[1]),
       notes: String(accumulationMatch[2] || '').trim() || null,
+    };
+  }
+
+  const distanceForTimeMatch = raw.match(/^(\d+)\s*M\s+FOR TIME$/i);
+  if (distanceForTimeMatch) {
+    return {
+      type: 'movement',
+      raw,
+      distanceMeters: Number(distanceForTimeMatch[1]),
+      name: 'for time swim',
+      displayName: raw,
+      canonicalName: 'for time swim',
+      canonicalSlug: 'for-time-swim',
+      aliases: [],
+      format: 'for_time',
     };
   }
 
@@ -985,7 +1046,18 @@ function parseAccessoryLine(line) {
   const raw = String(line || '').trim();
   if (!raw) return null;
 
-  const match = raw.match(/^(.*?)\s+(\d+)\s*x\s*(\d+)$/i);
+  const schemeOnlyMatch = raw.match(/^(\d+)\s*x\s*(\d+)(?:\s*\(([^)]+)\))?$/i);
+  if (schemeOnlyMatch) {
+    return {
+      type: 'accessory_scheme',
+      sets: Number(schemeOnlyMatch[1]),
+      reps: Number(schemeOnlyMatch[2]),
+      notes: String(schemeOnlyMatch[3] || '').trim() || '',
+      raw,
+    };
+  }
+
+  const match = raw.match(/^(.*?)\s+(\d+)\s*x\s*(\d+)(?:\s*\(([^)]+)\))?$/i);
   if (match) {
     const normalized = normalizeMovementName(match[1].trim());
     return {
@@ -996,6 +1068,7 @@ function parseAccessoryLine(line) {
       canonicalSlug: normalized.canonicalSlug,
       sets: Number(match[2]),
       reps: Number(match[3]),
+      notes: String(match[4] || '').trim() || '',
       raw,
     };
   }
@@ -1012,17 +1085,39 @@ function parseAccessoryLine(line) {
 }
 
 function buildAccessoryItems(items) {
-  return items
-    .filter((item) => item.type === 'accessory_item')
-    .map((item) => ({
-      name: item.name,
-      displayName: item.displayName || item.name,
-      canonicalName: item.canonicalName || item.name,
-      canonicalSlug: item.canonicalSlug || null,
-      sets: item.sets,
-      reps: item.reps,
-      notes: extractParentheticalNote(item.name),
-    }));
+  const accessoryItems = [];
+
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index];
+    if (item.type === 'accessory_item') {
+      accessoryItems.push({
+        name: item.name,
+        displayName: item.displayName || item.name,
+        canonicalName: item.canonicalName || item.name,
+        canonicalSlug: item.canonicalSlug || null,
+        sets: item.sets,
+        reps: item.reps,
+        notes: item.notes || extractParentheticalNote(item.name),
+      });
+      continue;
+    }
+
+    if (item.type === 'accessory_name' && items[index + 1]?.type === 'accessory_scheme') {
+      const scheme = items[index + 1];
+      accessoryItems.push({
+        name: item.name,
+        displayName: item.displayName || item.name,
+        canonicalName: item.canonicalName || item.name,
+        canonicalSlug: item.canonicalSlug || null,
+        sets: scheme.sets,
+        reps: scheme.reps,
+        notes: scheme.notes || extractParentheticalNote(item.name),
+      });
+      index += 1;
+    }
+  }
+
+  return accessoryItems;
 }
 
 function buildEngineSummary(items, context = {}) {
@@ -1049,6 +1144,32 @@ function buildEngineSummary(items, context = {}) {
   };
 }
 
+function buildOptionalSummary(items, context = {}) {
+  const swimItems = items.filter((item) => item.type === 'movement' && /swim|warm up|pace/i.test(String(item.raw || item.name || '')));
+  const restItems = items.filter((item) => item.type === 'rest');
+  const roundsItem = items.find((item) => item.type === 'rounds');
+
+  if (!swimItems.length && !restItems.length && !roundsItem) return null;
+
+  return {
+    title: context.title || '',
+    modality: /swim/i.test([context.title, ...swimItems.map((item) => item.raw || item.name || '')].join(' ')) ? 'swim' : null,
+    rounds: roundsItem?.rounds || null,
+    segments: swimItems.map((item) => ({
+      name: item.name || '',
+      displayName: item.displayName || item.name || '',
+      distanceMeters: item.distanceMeters || null,
+      reps: item.reps || null,
+      format: item.format || null,
+      notes: item.notes || null,
+    })),
+    rests: restItems.map((item) => ({
+      durationMinutes: item.durationMinutes || null,
+      durationSeconds: item.durationSeconds || null,
+    })),
+  };
+}
+
 function isGoalContinuationLine(line = '') {
   const raw = String(line || '').trim();
   if (!raw) return false;
@@ -1056,7 +1177,7 @@ function isGoalContinuationLine(line = '') {
   if (detectDayName(raw) || detectPeriodName(raw) || detectBlockType(raw)) return false;
   if (detectStructuredBlock(raw, '') || isCadenceLine(raw) || isStrengthSchemeLine(raw) || isAccessorySchemeLine(raw)) return false;
   if (/^\(?\s*\d+\s*X\s*\)?$/i.test(raw)) return false;
-  if (/^(REST|RECOVERY|OBJETIVO)\b/i.test(raw)) return false;
+  if (/^(REST|RECOVERY|OBJETIVO|FLOW|DIRETO PARA)\b/i.test(raw)) return false;
   return true;
 }
 

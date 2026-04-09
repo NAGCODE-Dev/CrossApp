@@ -356,3 +356,80 @@ BACK SQUATS
   assert.equal(friday.blocks[0].parsed.strength.sets[0].reps, 4);
   assert.equal(friday.blocks[0].parsed.strength.sets[0].percent, 82);
 });
+
+test('parser lida melhor com optional swim, core e blocos longos do sabado', () => {
+  const text = `
+SEMANA 18
+QUARTA
+CORE
+GHD TORTURE TWIST
+3x8(3 seg de pausa cada lado)
+
+TARDE
+(OPTIONAL)
+SWIM
+100m EASY WARM UP
+------REST 4\`---400m FOR TIME
+REST 5\`
+(8x)
+100m @400m pace
+REST 2\`
+
+SAB
+MANHÃ
+WOD
+(2x)
+9 SHSPU
+15m DB WALKING LUNGE(50/35lbs)(7.5m + 7.5m)
+21 BOX JUMP OVER(60/50cm)(descendo na passada)
+Direto para
+(2x)
+9 SHSPU
+15m REGIONALS WALKING LUNGE(50/35lbs)(7.5m + 7.5m)
+21 BOX JUMP OVER(60/50cm)(descendo na passada)
+Objetivo= Sub 14\`
+FLOW= Não tem descanso entre os blocos. São 2 rounds do primeiro bloco seguidos por 2
+rounds do segundo bloco seguidos por 2 rounds do último bloco
+
+TARDE
+WOD
+(2x)
+50 DUs
+5 POWER CLEAN AND JERK 135/95lbs
+3 BMUs
+---REST 3\`--(2x)
+50 DUs
+5 POWER CLEAN AND JERK 155/105lbs
+4 BMUs
+---REST 3\`--(2x)
+50 DUs
+15 DL 225/155lbs
+6 BMUs
+  `.trim();
+
+  const weeks = parseMultiWeekPdf(text);
+  const wednesday = weeks[0].workouts.find((workout) => workout.day === 'Quarta');
+  const saturday = weeks[0].workouts.find((workout) => workout.day === 'Sábado');
+
+  const coreBlock = wednesday.blocks.find((block) => block.type === 'ACCESSORIES');
+  const optionalBlock = wednesday.blocks.find((block) => block.type === 'OPTIONAL');
+  assert.ok(coreBlock);
+  assert.equal(coreBlock.parsed.accessories[0].sets, 3);
+  assert.equal(coreBlock.parsed.accessories[0].reps, 8);
+  assert.match(coreBlock.parsed.accessories[0].notes, /3 seg de pausa/i);
+
+  assert.ok(optionalBlock);
+  assert.equal(optionalBlock.parsed.optional.modality, 'swim');
+  assert.equal(optionalBlock.parsed.optional.segments.some((segment) => segment.distanceMeters === 100), true);
+  assert.equal(optionalBlock.parsed.optional.rests.some((rest) => rest.durationMinutes === 4), true);
+  assert.equal(optionalBlock.parsed.items.some((item) => item.type === 'rounds' && item.rounds === 8), true);
+
+  assert.equal(saturday.blocks[0].parsed.items.some((item) => item.type === 'transition'), true);
+  const flowItem = saturday.blocks[0].parsed.items.find((item) => item.type === 'flow');
+  assert.ok(flowItem);
+  assert.match(flowItem.text, /2 rounds do último bloco/i);
+
+  const saturdayAfternoon = saturday.blocks[1];
+  assert.equal(saturdayAfternoon.parsed.items.filter((item) => item.type === 'rest').length, 2);
+  assert.equal(saturdayAfternoon.parsed.items.filter((item) => item.type === 'rounds').length, 3);
+});
