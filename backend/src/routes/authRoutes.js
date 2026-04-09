@@ -20,6 +20,7 @@ import { getAuthCodeDeliveryCapability, sendPasswordResetEmail, sendSignupVerifi
 import { logOpsEvent } from '../opsEvents.js';
 import { generateResetCode, hashResetCode, isResetCodeExpired } from '../passwordReset.js';
 import {
+  buildPasswordResetSupportRequestMeta,
   completePasswordResetSupportRequest,
   createPasswordResetSupportRequest,
   getPasswordResetSupportRequestByKey,
@@ -49,13 +50,23 @@ function buildDeveloperPreviewResponse({ response = {}, code, error = null, tran
   };
 }
 
-function buildPasswordResetSupportResponse({ response = {}, request = null }) {
+async function buildPasswordResetSupportResponse({ response = {}, request = null, supportMeta = null, message = null }) {
+  const meta = supportMeta || await buildPasswordResetSupportRequestMeta(request);
   return {
     ...response,
     deliveryStatus: 'admin_review_pending',
-    message: 'Nao conseguimos entregar o codigo por email. O pedido foi enviado para liberacao do suporte no app.',
+    message: message || 'Nao conseguimos entregar o codigo por email. O pedido foi enviado para liberacao do suporte no app.',
     supportRequestKey: request?.request_key || '',
-    supportRequestStatus: request ? getPasswordResetSupportRequestStatus(request) : 'pending',
+    supportRequestStatus: meta.status || (request ? getPasswordResetSupportRequestStatus(request) : 'pending'),
+    supportRequestedAt: meta.requestedAt || '',
+    supportApprovedAt: meta.approvedAt || '',
+    supportDeniedAt: meta.deniedAt || '',
+    supportExpiresAt: meta.expiresAt || '',
+    canRetry: !!meta.canRetry,
+    retryAfterSeconds: Number(meta.retryAfterSeconds || 0),
+    trustSignals: meta.trustSignals || {},
+    supportSource: meta.source || '',
+    supportAttemptCount: Number(meta.attemptCount || 1),
   };
 }
 
@@ -415,6 +426,8 @@ export function createAuthRouter({ authRateLimit, resetRateLimit }) {
 
   router.post('/request-password-reset', resetRateLimit, async (req, res) => {
     const email = normalizeEmail(req.body?.email);
+    const deviceId = normalizeDeviceId(req.body?.deviceId);
+    const deviceLabel = normalizeDeviceLabel(req.body?.deviceLabel);
     if (!email) {
       return res.status(400).json({ error: 'email é obrigatório' });
     }
@@ -503,43 +516,65 @@ export function createAuthRouter({ authRateLimit, resetRateLimit }) {
         return res.json(buildDeveloperPreviewResponse({ response, code, error }));
       }
 
-      const supportRequest = await createPasswordResetSupportRequest({
-        userId: user.id,
-        email,
-        error,
-        payload: {
-          reason: 'password_reset_email_failed',
-          supportEmail: SUPPORT_EMAIL,
-        },
-      });
+      try {
+        const supportRequest = await createPasswordResetSupportRequest({
+          userId: user.id,
+          email,
+          error,
+          payload: {
+            reason: 'password_reset_email_failed',
+            supportEmail: SUPPORT_EMAIL,
+            deviceId,
+            deviceLabel,
+          },
+        });
+        const supportMeta = await buildPasswordResetSupportRequestMeta(supportRequest);
 
-      captureBackendError(error, {
-        tags: { feature: 'auth', source: 'password_reset_email' },
-        email,
-      });
-      console.error('[reset-email] failed', error);
-      await logOpsEvent({
-        kind: 'password_reset_email',
-        status: 'failed',
-        userId: user.id,
-        email,
-        payload: {
-          error: error?.message || String(error),
-          errorCode: error?.code || null,
-        },
-      });
-      await logOpsEvent({
-        kind: 'password_reset_support_request',
-        status: supportRequest ? 'created' : 'failed_to_create',
-        userId: user.id,
-        email,
-        payload: {
-          requestId: supportRequest?.id || null,
-          error: error?.message || String(error),
-          errorCode: error?.code || null,
-        },
-      });
-      return res.json(buildPasswordResetSupportResponse({ response, request: supportRequest }));
+        captureBackendError(error, {
+          tags: { feature: 'auth', source: 'password_reset_email' },
+          email,
+        });
+        console.error('[reset-email] failed', error);
+        await logOpsEvent({
+          kind: 'password_reset_email',
+          status: 'failed',
+          userId: user.id,
+          email,
+          payload: {
+            error: error?.message || String(error),
+            errorCode: error?.code || null,
+          },
+        });
+        await logOpsEvent({
+          kind: 'password_reset_support_request',
+          status: supportRequest ? 'created' : 'failed_to_create',
+          userId: user.id,
+          email,
+          payload: {
+            requestId: supportRequest?.id || null,
+            error: error?.message || String(error),
+            errorCode: error?.code || null,
+            trustSignals: supportMeta?.trustSignals || null,
+          },
+        });
+        return res.json(await buildPasswordResetSupportResponse({ response, request: supportRequest, supportMeta }));
+      } catch (supportError) {
+        if (String(supportError?.code || '').startsWith('support_request_')) {
+          const supportMeta = await buildPasswordResetSupportRequestMeta(supportError?.request || null);
+          return res.status(429).json(await buildPasswordResetSupportResponse({
+            response,
+            request: supportError?.request || null,
+            supportMeta: {
+              ...supportMeta,
+              canRetry: false,
+              retryAfterSeconds: Number(supportError?.retryAfterSeconds || supportMeta.retryAfterSeconds || 0),
+              retryAfterMs: Number(supportError?.retryAfterMs || supportMeta.retryAfterMs || 0),
+            },
+            message: supportError?.message || 'Aguarde um pouco antes de pedir outra liberacao.',
+          }));
+        }
+        throw supportError;
+      }
     }
 
     if (EXPOSE_RESET_CODE && isDeveloperEmail(email)) {
@@ -564,6 +599,7 @@ export function createAuthRouter({ authRateLimit, resetRateLimit }) {
     return res.json({
       success: true,
       status: getPasswordResetSupportRequestStatus(request),
+      ...(await buildPasswordResetSupportRequestMeta(request)),
       request: {
         id: request.id,
         email: request.email,
@@ -706,7 +742,10 @@ export function createAuthRouter({ authRateLimit, resetRateLimit }) {
       status: 'completed',
       userId: user.id,
       email,
-      payload: { requestId: request.id },
+      payload: {
+        requestId: request.id,
+        trustSignals: request?.payload?.trustSignals || null,
+      },
     });
 
     return res.json({ success: true });

@@ -78,8 +78,21 @@ export async function handleAthleteAdminAction(action, context) {
       const confirmed = confirm('Liberar redefinicao sem codigo para esta solicitacao?');
       if (!confirmed) return true;
 
-      await getAppBridge().approvePasswordResetSupportRequest(requestId);
+      await getAppBridge().approvePasswordResetSupportRequest(requestId, 120);
       return refreshAdminOverview('Liberacao aprovada');
+    }
+
+    case 'admin:approve-reset-support-short': {
+      const requestId = Number(element.dataset.requestId);
+      if (!Number.isFinite(requestId) || requestId <= 0) {
+        throw new Error('Solicitação inválida');
+      }
+
+      const confirmed = confirm('Liberar redefinicao por 15 minutos para esta solicitacao?');
+      if (!confirmed) return true;
+
+      await getAppBridge().approvePasswordResetSupportRequest(requestId, 15);
+      return refreshAdminOverview('Liberacao curta aprovada');
     }
 
     case 'admin:deny-reset-support': {

@@ -1,3 +1,5 @@
+import { clearPasswordResetSupportPolling } from '../features/account/authResetActions.js';
+
 function emptyPasswordResetState() {
   return {
     open: false,
@@ -26,6 +28,7 @@ async function closeModal(context) {
     return true;
   }
 
+  clearPasswordResetSupportPolling();
   await applyUiPatch((state) => ({
     ...state,
     modal: null,
@@ -46,6 +49,7 @@ export async function handleAthleteModalAction(action, context) {
     case 'modal:open': {
       const modal = element.dataset.modal || null;
       if (modal === 'auth') {
+        clearPasswordResetSupportPolling();
         await applyUiPatch(
           (state) => ({
             ...state,
