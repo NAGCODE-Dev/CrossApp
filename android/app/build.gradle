@@ -1,8 +1,38 @@
 apply plugin: 'com.android.application'
 
+def envOrProperty = { String key ->
+    def envValue = System.getenv(key)
+    if (envValue != null && envValue.toString().trim()) return envValue.toString().trim()
+    def propertyValue = project.findProperty(key)
+    return propertyValue != null && propertyValue.toString().trim() ? propertyValue.toString().trim() : null
+}
+
+def releaseStoreFilePath = envOrProperty('RYXEN_ANDROID_KEYSTORE_PATH')
+def releaseStorePassword = envOrProperty('RYXEN_ANDROID_KEYSTORE_PASSWORD')
+def releaseKeyAlias = envOrProperty('RYXEN_ANDROID_KEY_ALIAS')
+def releaseKeyPassword = envOrProperty('RYXEN_ANDROID_KEY_PASSWORD')
+def hasReleaseSigning = [
+    releaseStoreFilePath,
+    releaseStorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword,
+].every { it }
+
 android {
     namespace "com.nagcode.ryxen"
     compileSdk rootProject.ext.compileSdkVersion
+    signingConfigs {
+        if (hasReleaseSigning) {
+            release {
+                storeFile file(releaseStoreFilePath)
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+                enableV1Signing true
+                enableV2Signing true
+            }
+        }
+    }
     defaultConfig {
         applicationId "com.nagcode.ryxen"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -20,8 +50,15 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (hasReleaseSigning) {
+                signingConfig signingConfigs.release
+            }
         }
     }
+}
+
+if (!hasReleaseSigning) {
+    logger.lifecycle('Release signing not configured. Set RYXEN_ANDROID_KEYSTORE_PATH, RYXEN_ANDROID_KEYSTORE_PASSWORD, RYXEN_ANDROID_KEY_ALIAS and RYXEN_ANDROID_KEY_PASSWORD to generate a signed release/AAB.')
 }
 
 repositories {

@@ -61,15 +61,19 @@ No Android Studio:
 Debug APK:
 
 ```bash
-cd android
-./gradlew assembleDebug
+npm run android:assemble:debug
 ```
 
 Release APK:
 
 ```bash
-cd android
-./gradlew assembleRelease
+npm run android:assemble:release
+```
+
+Release AAB:
+
+```bash
+npm run android:bundle:release
 ```
 
 Artefatos atuais:
@@ -77,9 +81,40 @@ Artefatos atuais:
 ```txt
 android/app/build/outputs/apk/debug/app-debug.apk
 android/app/build/outputs/apk/release/app-release-unsigned.apk
+android/app/build/outputs/bundle/release/app-release.aab
 ```
 
-## 5. Auth local no emulador
+Se o signing de release não estiver configurado, o Gradle ainda consegue gerar artefatos de release sem assinatura para validação local.
+
+## 5. Signing de release por variáveis de ambiente
+
+Para gerar APK/AAB de release assinados, configure:
+
+```bash
+export RYXEN_ANDROID_KEYSTORE_PATH=/caminho/para/seu-keystore.jks
+export RYXEN_ANDROID_KEYSTORE_PASSWORD='sua-senha'
+export RYXEN_ANDROID_KEY_ALIAS='seu-alias'
+export RYXEN_ANDROID_KEY_PASSWORD='sua-senha-da-chave'
+```
+
+Depois rode:
+
+```bash
+npm run android:assemble:release
+npm run android:bundle:release
+```
+
+Observações:
+
+- `android/local.properties` é local da máquina e não deve ir para o git.
+- se as 4 variáveis acima não existirem, o projeto continua buildando release sem assinatura.
+- o caminho do SDK pode ficar em `android/local.properties` como:
+
+```properties
+sdk.dir=/home/nikolas/Android/Sdk
+```
+
+## 6. Auth local no emulador
 
 Para ambiente local, o Docker sobe com:
 
@@ -94,7 +129,7 @@ O smoke automatizado disponível é:
 npm run smoke:auth
 ```
 
-## 6. Quando usar backend publicado
+## 7. Quando usar backend publicado
 
 Se você quiser que o APK aponte para backend remoto em vez de `10.0.2.2`, configure:
 
@@ -113,7 +148,7 @@ window.__RYXEN_CONFIG__ = {
 };
 ```
 
-## 7. Google OAuth no app nativo
+## 8. Google OAuth no app nativo
 
 Para o fluxo de login com Google funcionar no APK:
 
@@ -124,7 +159,7 @@ Para o fluxo de login com Google funcionar no APK:
 
 Sem backend público, o login normal por email pode ser validado localmente, mas o OAuth Google tende a depender da infraestrutura externa.
 
-## 8. Paridade esperada com o PWA
+## 9. Paridade esperada com o PWA
 
 Hoje a base já cobre:
 
