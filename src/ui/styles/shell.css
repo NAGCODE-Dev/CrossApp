@@ -26,11 +26,15 @@
   }
 
   .header-account-btn {
-    @apply inline-flex min-h-[38px] max-w-[240px] items-center justify-center overflow-hidden text-ellipsis whitespace-nowrap rounded-full border border-white/10 bg-ryxen-soft px-3.5 text-[0.78rem] font-bold text-ryxen-text;
+    @apply relative inline-flex min-h-[38px] max-w-[240px] items-center justify-center overflow-hidden text-ellipsis whitespace-nowrap rounded-full border border-white/10 bg-ryxen-soft px-3.5 text-[0.78rem] font-bold text-ryxen-text;
   }
 
   .header-account-btn.isActive {
     background: var(--bg-soft-2);
+  }
+
+  .header-accountBadge {
+    @apply ml-2 inline-flex min-h-[22px] min-w-[22px] items-center justify-center rounded-full bg-amber-400 px-1.5 text-[0.68rem] font-extrabold text-[#1b1303];
   }
 
   .day-autoBtn,

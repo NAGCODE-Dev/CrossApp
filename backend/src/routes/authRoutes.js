@@ -19,6 +19,12 @@ import { authRequired, signToken } from '../auth.js';
 import { getAuthCodeDeliveryCapability, sendPasswordResetEmail, sendSignupVerificationEmail } from '../mailer.js';
 import { logOpsEvent } from '../opsEvents.js';
 import { generateResetCode, hashResetCode, isResetCodeExpired } from '../passwordReset.js';
+import {
+  completePasswordResetSupportRequest,
+  createPasswordResetSupportRequest,
+  getPasswordResetSupportRequestByKey,
+  getPasswordResetSupportRequestStatus,
+} from '../passwordResetSupport.js';
 import { captureBackendError } from '../sentry.js';
 import { attachPendingMembershipsToUser } from '../utils/gymUtils.js';
 import { attachPendingBillingClaimsToUser } from '../utils/subscriptionBilling.js';
@@ -39,6 +45,16 @@ function buildDeveloperPreviewResponse({ response = {}, code, error = null, tran
       error: error?.message || null,
       errorCode: error?.code || null,
     },
+  };
+}
+
+function buildPasswordResetSupportResponse({ response = {}, request = null }) {
+  return {
+    ...response,
+    deliveryStatus: 'admin_review_pending',
+    message: 'Nao conseguimos entregar o codigo por email. O pedido foi enviado para liberacao do suporte no app.',
+    supportRequestKey: request?.request_key || '',
+    supportRequestStatus: request ? getPasswordResetSupportRequestStatus(request) : 'pending',
   };
 }
 
@@ -428,6 +444,16 @@ export function createAuthRouter({ authRateLimit, resetRateLimit }) {
         return res.json(buildDeveloperPreviewResponse({ response, code, error }));
       }
 
+      const supportRequest = await createPasswordResetSupportRequest({
+        userId: user.id,
+        email,
+        error,
+        payload: {
+          reason: 'password_reset_email_failed',
+          supportEmail: SUPPORT_EMAIL,
+        },
+      });
+
       captureBackendError(error, {
         tags: { feature: 'auth', source: 'password_reset_email' },
         email,
@@ -443,13 +469,18 @@ export function createAuthRouter({ authRateLimit, resetRateLimit }) {
           errorCode: error?.code || null,
         },
       });
-      return res.status(503).json({
-        error: error?.code === 'smtp_send_timeout'
-          ? 'O envio do email demorou mais do que o esperado. Tente novamente em instantes.'
-          : 'Não foi possível enviar o email de recuperação',
-        supportEmail: SUPPORT_EMAIL,
-        retryAfterSeconds: 10,
+      await logOpsEvent({
+        kind: 'password_reset_support_request',
+        status: supportRequest ? 'created' : 'failed_to_create',
+        userId: user.id,
+        email,
+        payload: {
+          requestId: supportRequest?.id || null,
+          error: error?.message || String(error),
+          errorCode: error?.code || null,
+        },
       });
+      return res.json(buildPasswordResetSupportResponse({ response, request: supportRequest }));
     }
 
     if (EXPOSE_RESET_CODE && isDeveloperEmail(email)) {
@@ -457,6 +488,31 @@ export function createAuthRouter({ authRateLimit, resetRateLimit }) {
     }
 
     return res.json(response);
+  });
+
+  router.post('/password-reset-support-status', resetRateLimit, async (req, res) => {
+    const email = normalizeEmail(req.body?.email);
+    const requestKey = String(req.body?.requestKey || '').trim();
+    if (!email || !requestKey) {
+      return res.status(400).json({ error: 'email e requestKey são obrigatórios' });
+    }
+
+    const request = await getPasswordResetSupportRequestByKey({ email, requestKey });
+    if (!request) {
+      return res.status(404).json({ error: 'Solicitação não encontrada' });
+    }
+
+    return res.json({
+      success: true,
+      status: getPasswordResetSupportRequestStatus(request),
+      request: {
+        id: request.id,
+        email: request.email,
+        expiresAt: request.expires_at,
+        approvedAt: request.approved_at,
+        deniedAt: request.denied_at,
+      },
+    });
   });
 
   router.post('/confirm-password-reset', resetRateLimit, async (req, res) => {
@@ -537,6 +593,63 @@ export function createAuthRouter({ authRateLimit, resetRateLimit }) {
       email,
       payload: {},
     });
+    return res.json({ success: true });
+  });
+
+  router.post('/confirm-password-reset-support', resetRateLimit, async (req, res) => {
+    const email = normalizeEmail(req.body?.email);
+    const requestKey = String(req.body?.requestKey || '').trim();
+    const newPassword = String(req.body?.newPassword || '');
+
+    if (!email || !requestKey || !newPassword) {
+      return res.status(400).json({ error: 'email, requestKey e newPassword são obrigatórios' });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: 'A senha deve ter pelo menos 8 caracteres' });
+    }
+
+    const request = await getPasswordResetSupportRequestByKey({ email, requestKey });
+    const supportStatus = getPasswordResetSupportRequestStatus(request);
+    if (!request) {
+      return res.status(404).json({ error: 'Solicitação não encontrada' });
+    }
+
+    if (supportStatus === 'pending') {
+      return res.status(409).json({ error: 'Aguardando liberação do suporte' });
+    }
+
+    if (supportStatus === 'denied') {
+      return res.status(403).json({ error: 'A solicitação foi negada pelo suporte' });
+    }
+
+    if (supportStatus === 'expired') {
+      return res.status(410).json({ error: 'A liberação expirou. Gere uma nova solicitação.' });
+    }
+
+    if (supportStatus === 'completed') {
+      return res.status(409).json({ error: 'Essa liberação já foi utilizada' });
+    }
+
+    const foundUser = await pool.query(`SELECT id FROM users WHERE email = $1`, [email]);
+    const user = foundUser.rows[0];
+    if (!user) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await pool.query(`UPDATE users SET password_hash = $1 WHERE id = $2`, [passwordHash, user.id]);
+    await pool.query(`UPDATE password_reset_tokens SET consumed_at = NOW() WHERE user_id = $1 AND consumed_at IS NULL`, [user.id]);
+    await completePasswordResetSupportRequest({ requestId: request.id });
+
+    await logOpsEvent({
+      kind: 'password_reset_support_request',
+      status: 'completed',
+      userId: user.id,
+      email,
+      payload: { requestId: request.id },
+    });
+
     return res.json({ success: true });
   });
 

@@ -36,11 +36,19 @@ export function handleAthleteAuthEnterKey(event, context) {
   const authMode = ui.authMode === 'signup' ? 'signup' : 'signin';
   const reset = ui.passwordReset || {};
 
-  const trigger = reset?.open && reset?.step === 'confirm'
-    ? root.querySelector('[data-action="auth:reset-confirm"]')
-    : reset?.open
-      ? root.querySelector('[data-action="auth:reset-request"]')
-      : root.querySelector(`[data-action="auth:submit"][data-mode="${authMode}"]`);
+  let trigger = null;
+
+  if (reset?.open && reset?.step === 'confirm') {
+    trigger = root.querySelector('[data-action="auth:reset-confirm"]');
+  } else if (reset?.open && reset?.step === 'support_confirm') {
+    trigger = root.querySelector('[data-action="auth:reset-support-confirm"]');
+  } else if (reset?.open && reset?.step === 'support_pending') {
+    trigger = root.querySelector('[data-action="auth:reset-check-support"]');
+  } else if (reset?.open) {
+    trigger = root.querySelector('[data-action="auth:reset-request"]');
+  } else {
+    trigger = root.querySelector(`[data-action="auth:submit"][data-mode="${authMode}"]`);
+  }
 
   if (!trigger) return false;
 

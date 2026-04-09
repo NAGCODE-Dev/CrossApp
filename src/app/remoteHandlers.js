@@ -9,9 +9,11 @@ import {
   refreshSession,
   requestPasswordReset,
   confirmPasswordReset,
+  getPasswordResetSupportStatus,
+  confirmPasswordResetSupport,
   getStoredProfile,
 } from '../core/services/authService.js';
-import { activateCoachSubscription, createManualPasswordReset, deleteAccountNow, getAdminOpsHealth, getAdminOverview, reprocessBillingClaim, requestAccountDeletion, retryEmailJob } from '../core/services/adminService.js';
+import { activateCoachSubscription, approvePasswordResetSupportRequest, createManualPasswordReset, deleteAccountNow, denyPasswordResetSupportRequest, getAdminOpsHealth, getAdminOverview, reprocessBillingClaim, requestAccountDeletion, retryEmailJob } from '../core/services/adminService.js';
 import { openCheckout, getSubscriptionStatus, getEntitlements, activateMockSubscription } from '../core/services/subscriptionService.js';
 import {
   addGymMember,
@@ -89,6 +91,14 @@ export function createRemoteHandlers({
       return confirmPasswordReset(payload);
     },
 
+    async handleGetPasswordResetSupportStatus(payload) {
+      return getPasswordResetSupportStatus(payload);
+    },
+
+    async handleConfirmPasswordResetSupport(payload) {
+      return confirmPasswordResetSupport(payload);
+    },
+
     async handleSignOut() {
       await signOut();
       await clearCoachWorkoutFeed?.();
@@ -126,6 +136,16 @@ export function createRemoteHandlers({
 
     async handleCreateManualPasswordReset(userId) {
       const data = await createManualPasswordReset(userId);
+      return { success: true, data };
+    },
+
+    async handleApprovePasswordResetSupportRequest(requestId) {
+      const data = await approvePasswordResetSupportRequest(requestId);
+      return { success: true, data };
+    },
+
+    async handleDenyPasswordResetSupportRequest(requestId) {
+      const data = await denyPasswordResetSupportRequest(requestId);
       return { success: true, data };
     },
 
