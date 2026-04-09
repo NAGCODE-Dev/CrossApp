@@ -165,6 +165,8 @@ export function parseWeekText(weekText, weekNumber) {
   let currentBlock = null;
   let currentBlockTitle = '';
   let currentPeriod = null;
+  let currentBlockHints = {};
+  let pendingBlockHints = {};
   let currentLines = [];
   const flushCurrentBlock = () => {
     if (!currentDay || currentLines.length === 0) return;
@@ -177,7 +179,9 @@ export function parseWeekText(weekText, weekNumber) {
       title: currentBlockTitle,
       period: currentPeriod,
       lines: currentLines,
+      hints: currentBlockHints,
     }));
+    currentBlockHints = {};
   };
 
   for (let index = 0; index < lines.length; index += 1) {
@@ -193,6 +197,8 @@ export function parseWeekText(weekText, weekNumber) {
       currentBlock = null;
       currentBlockTitle = '';
       currentPeriod = null;
+      currentBlockHints = {};
+      pendingBlockHints = {};
       currentLines = [];
       continue;
     }
@@ -203,19 +209,33 @@ export function parseWeekText(weekText, weekNumber) {
       currentPeriod = period;
       currentBlock = null;
       currentBlockTitle = '';
+      currentBlockHints = {};
+      pendingBlockHints = {};
       currentLines = [];
       continue;
     }
 
     const nextMeaningfulLine = findNextMeaningfulLine(lines, index + 1);
+    if (
+      !currentBlock
+      && /GIN[ÁA]STICA|QUALIDADE|N[ÃA]O POR TEMPO/i.test(line)
+      && /^GYMNASTICS\b/i.test(nextMeaningfulLine)
+    ) {
+      pendingBlockHints = { ...pendingBlockHints, gymQuality: true, qualityNote: line.trim() };
+      continue;
+    }
     const timedWodFormatLine = currentBlock && detectBlockType(line) === 'TIMED_WOD';
     const blockDescriptor = timedWodFormatLine
       ? null
-      : detectStructuredBlock(line, nextMeaningfulLine, { allowInferred: !currentBlock });
+      : detectStructuredBlock(line, nextMeaningfulLine, {
+          allowInferred: !currentBlock || currentBlock === 'GYMNASTICS' || currentBlock === 'STRENGTH',
+        });
     if (blockDescriptor) {
       flushCurrentBlock();
       currentBlock = blockDescriptor.type;
       currentBlockTitle = blockDescriptor.title;
+      currentBlockHints = pendingBlockHints;
+      pendingBlockHints = {};
       currentLines = blockDescriptor.includeLine ? [line] : [];
       continue;
     }
@@ -360,7 +380,7 @@ function mapLegacyBlockTypeToStructuredType(type) {
   return upper || 'DEFAULT';
 }
 
-function buildStructuredBlock({ type, title, period, lines }) {
+function buildStructuredBlock({ type, title, period, lines, hints = {} }) {
   const normalizedLines = (lines || []).map((line) => String(line || '').trim()).filter(Boolean);
   const references = normalizedLines.filter((line) => /https?:\/\/\S+/i.test(line));
   const effectiveLines = normalizedLines.filter((line) => !/https?:\/\/\S+/i.test(line));
@@ -369,6 +389,7 @@ function buildStructuredBlock({ type, title, period, lines }) {
     title,
     period,
     lines: effectiveLines,
+    hints,
   });
 
   return {
@@ -381,14 +402,20 @@ function buildStructuredBlock({ type, title, period, lines }) {
   };
 }
 
-function parseStructuredBlockContent({ type, title, period, lines }) {
+function parseStructuredBlockContent({ type, title, period, lines, hints = {} }) {
   const items = [];
   let format = null;
   let rounds = null;
   let timeCapMinutes = null;
   let goal = '';
+  let quality = !!hints.gymQuality;
 
-  lines.forEach((line) => {
+  if (hints.qualityNote) {
+    items.push({ type: 'quality_note', text: hints.qualityNote, raw: hints.qualityNote });
+  }
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
     const upper = line.toUpperCase();
 
     const amrapMatch = upper.match(/^(\d+)\s*['’]?\s*AMRAP\b/);
@@ -396,44 +423,43 @@ function parseStructuredBlockContent({ type, title, period, lines }) {
       format = 'amrap';
       timeCapMinutes = Number(amrapMatch[1]);
       items.push({ type: 'format', format, timeCapMinutes, raw: line });
-      return;
+      continue;
     }
 
     const roundsMatch = upper.match(/^(\d+)\s*X$/);
     if (roundsMatch) {
       rounds = Number(roundsMatch[1]);
       items.push({ type: 'rounds', rounds, raw: line });
-      return;
+      continue;
     }
 
     const goalMatch = line.match(/^OBJETIVO\s*=\s*(.+)$/i);
     if (goalMatch) {
       goal = goalMatch[1].trim();
       items.push({ type: 'goal', text: goal, raw: line });
-      return;
+      continue;
     }
 
-    const restMatch = upper.match(/^(?:(\d+)\s*['’]\s*)?REST(?:\s+TOTAL)?(?:\s+(\d+)\s*['’])?$/);
-    if (restMatch) {
-      const minutes = Number(restMatch[1] || restMatch[2] || 0);
-      items.push({ type: 'rest', durationMinutes: minutes || null, raw: line });
-      return;
+    const rest = parseRestLine(line);
+    if (rest) {
+      items.push(rest);
+      continue;
     }
 
     const recoveryMatch = upper.match(/^(\d+)\s*['’]\s*RECOVERY ROW\b/);
     if (recoveryMatch) {
       items.push({ type: 'recovery', modality: 'row', durationMinutes: Number(recoveryMatch[1]), raw: line });
-      return;
+      continue;
     }
 
     if (/^https?:\/\//i.test(line)) {
       items.push({ type: 'reference', url: line.trim(), raw: line });
-      return;
+      continue;
     }
 
     if (isStrengthSchemeLine(line)) {
-      items.push({ type: 'strength_scheme', scheme: line.trim(), intensityUnknown: line.includes('?'), raw: line });
-      return;
+      items.push(parseStrengthSchemeLine(line));
+      continue;
     }
 
     if (isAccessorySchemeLine(line)) {
@@ -444,19 +470,47 @@ function parseStructuredBlockContent({ type, title, period, lines }) {
         reps: Number(match[2]),
         raw: line,
       });
-      return;
+      continue;
+    }
+
+    if (String(type || '').toUpperCase() === 'ENGINE') {
+      const engineInterval = parseEngineIntervalLine(line);
+      if (engineInterval) {
+        items.push(engineInterval);
+        continue;
+      }
+    }
+
+    if (String(type || '').toUpperCase() === 'GYMNASTICS' && /QUALIDADE|N[ÃA]O POR TEMPO/i.test(upper)) {
+      quality = true;
+      items.push({ type: 'quality_note', text: line.trim(), raw: line });
+      continue;
+    }
+
+    if (String(type || '').toUpperCase() === 'ACCESSORIES') {
+      const accessory = parseAccessoryLine(line);
+      if (accessory) {
+        items.push(accessory);
+        continue;
+      }
     }
 
     const movement = parseMovementLine(line);
     if (movement) {
       items.push(movement);
-      return;
+      continue;
     }
 
     if (line.trim()) {
       items.push({ type: 'note', text: line.trim(), raw: line });
     }
-  });
+  }
+
+  const blockType = String(type || 'DEFAULT').toUpperCase();
+  const accessoryItems = blockType === 'ACCESSORIES' ? buildAccessoryItems(items) : [];
+  const engineSummary = blockType === 'ENGINE' ? buildEngineSummary(items, { title }) : null;
+  const gymnasticsSummary = blockType === 'GYMNASTICS' ? buildGymnasticsSummary(items, { title, rounds, quality }) : null;
+  const strengthSummary = blockType === 'STRENGTH' ? buildStrengthSummary(items, { title }) : null;
 
   return {
     blockType: String(type || 'DEFAULT').toLowerCase(),
@@ -466,6 +520,11 @@ function parseStructuredBlockContent({ type, title, period, lines }) {
     rounds,
     timeCapMinutes,
     goal: goal || null,
+    quality,
+    accessories: accessoryItems,
+    engine: engineSummary,
+    gymnastics: gymnasticsSummary,
+    strength: strengthSummary,
     items,
   };
 }
@@ -534,4 +593,177 @@ function cleanupMovementName(value) {
 
 function roundKg(value) {
   return Math.round((Number(value) || 0) * 10) / 10;
+}
+
+function parseRestLine(line) {
+  const upper = String(line || '').trim().toUpperCase();
+  const restMatch = upper.match(/^(?:(\d+)\s*['’]\s*)?REST(?:\s+TOTAL)?(?:\s+(\d+)\s*['’])?$/);
+  if (restMatch) {
+    const minutes = Number(restMatch[1] || restMatch[2] || 0);
+    return { type: 'rest', durationMinutes: minutes || null, raw: line };
+  }
+
+  if (/^REST AS NECESSARY$/i.test(upper)) {
+    return { type: 'rest', durationMinutes: null, auto: true, raw: line };
+  }
+
+  const minuteRestMatch = upper.match(/^(\d+)\s*MIN\s+REST$/);
+  if (minuteRestMatch) {
+    return { type: 'rest', durationMinutes: Number(minuteRestMatch[1]), raw: line };
+  }
+
+  return null;
+}
+
+function parseStrengthSchemeLine(line) {
+  const raw = String(line || '').trim();
+  const compact = raw.replace(/\s+/g, '');
+  const pairedMatch = compact.match(/^(\d+)@(\?)?\+(\d+)$/i);
+  if (pairedMatch) {
+    return {
+      type: 'strength_scheme',
+      raw,
+      reps: Number(pairedMatch[1]),
+      intensityUnknown: !!pairedMatch[2],
+      pairedReps: Number(pairedMatch[3]),
+      scheme: `${pairedMatch[1]}@${pairedMatch[2] ? '?' : ''}+${pairedMatch[3]}`,
+    };
+  }
+
+  const sequenceMatch = compact.match(/^((?:\d+\+)+\d+)@(\?)?$/i);
+  if (sequenceMatch) {
+    return {
+      type: 'strength_scheme',
+      raw,
+      scheme: sequenceMatch[1],
+      intensityUnknown: !!sequenceMatch[2],
+      sequenceReps: sequenceMatch[1].split('+').map((value) => Number(value)),
+    };
+  }
+
+  return {
+    type: 'strength_scheme',
+    scheme: raw,
+    intensityUnknown: raw.includes('?'),
+    raw,
+  };
+}
+
+function parseEngineIntervalLine(line) {
+  const upper = String(line || '').trim().toUpperCase();
+  const durationMatch = upper.match(/^(\d+)\s*MIN$/);
+  if (durationMatch) {
+    return { type: 'engine_work', durationMinutes: Number(durationMatch[1]), raw: line };
+  }
+
+  const hrConstraintMatch = line.match(/frequ[êe]ncia card[íi]aca.+180\s*-\s*idade/i);
+  if (hrConstraintMatch) {
+    return {
+      type: 'constraint',
+      metric: 'heart_rate',
+      rule: 'never_above',
+      formula: '180 - age',
+      raw: line,
+    };
+  }
+
+  return null;
+}
+
+function parseAccessoryLine(line) {
+  const raw = String(line || '').trim();
+  if (!raw) return null;
+
+  const match = raw.match(/^(.*?)\s+(\d+)\s*x\s*(\d+)$/i);
+  if (match) {
+    return {
+      type: 'accessory_item',
+      name: match[1].trim(),
+      sets: Number(match[2]),
+      reps: Number(match[3]),
+      raw,
+    };
+  }
+
+  return {
+    type: 'accessory_name',
+    name: raw,
+    raw,
+  };
+}
+
+function buildAccessoryItems(items) {
+  return items
+    .filter((item) => item.type === 'accessory_item')
+    .map((item) => ({
+      name: item.name,
+      sets: item.sets,
+      reps: item.reps,
+      notes: extractParentheticalNote(item.name),
+    }));
+}
+
+function buildEngineSummary(items, context = {}) {
+  const roundsItem = items.find((item) => item.type === 'rounds');
+  const workItem = items.find((item) => item.type === 'engine_work');
+  const restItem = items.find((item) => item.type === 'rest' && item.durationMinutes);
+  const constraints = items
+    .filter((item) => item.type === 'constraint')
+    .map((item) => ({
+      metric: item.metric,
+      rule: item.rule,
+      formula: item.formula,
+    }));
+
+  if (!roundsItem && !workItem && !constraints.length) return null;
+
+  return {
+    title: context.title || '',
+    rounds: roundsItem?.rounds || null,
+    workMinutes: workItem?.durationMinutes || null,
+    restMinutes: restItem?.durationMinutes || null,
+    constraints,
+  };
+}
+
+function buildGymnasticsSummary(items, context = {}) {
+  const movements = items
+    .filter((item) => item.type === 'movement' || item.type === 'recovery')
+    .filter((item) => String(item.name || item.modality || '').trim() !== String(context.title || '').trim());
+  if (!movements.length && !context.rounds) return null;
+
+  return {
+    title: context.title || '',
+    rounds: context.rounds || null,
+    quality: !!context.quality,
+    movements: movements.map((item) => ({
+      name: item.name || item.modality || '',
+      reps: item.reps || null,
+      distanceMeters: item.distanceMeters || null,
+      notes: item.notes || null,
+      alternatives: item.alternatives || [],
+      recovery: item.type === 'recovery',
+    })),
+  };
+}
+
+function buildStrengthSummary(items, context = {}) {
+  const schemes = items.filter((item) => item.type === 'strength_scheme');
+  if (!schemes.length) return null;
+
+  return {
+    title: context.title || '',
+    sets: schemes.map((item) => ({
+      scheme: item.scheme || null,
+      sequenceReps: item.sequenceReps || null,
+      reps: item.reps || null,
+      pairedReps: item.pairedReps || null,
+      intensityUnknown: !!item.intensityUnknown,
+    })),
+  };
+}
+
+function extractParentheticalNote(value) {
+  const match = String(value || '').match(/\(([^)]+)\)/);
+  return match ? match[1].trim() : '';
 }
