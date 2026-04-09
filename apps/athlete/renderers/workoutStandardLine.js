@@ -23,7 +23,7 @@ export function renderWorkoutStandardLine(line, lineId, { escapeHtml }) {
       title="Ver execução"
       aria-label="Ver execução de ${escapeHtml(exerciseHelp.label)}"
     >
-      Executar
+      Ver
     </button>
   ` : '';
 

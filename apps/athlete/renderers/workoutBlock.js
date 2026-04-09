@@ -58,7 +58,7 @@ function renderWorkoutTimerActions(timerConfig) {
   return `
     <div class="workout-blockActions">
       <button class="btn-timer" data-action="timer:workout" data-timer-mode="popup" ${attrs} type="button">
-        Iniciar 10s
+        Começar
       </button>
       <button class="btn-timer btn-timer-secondary" data-action="timer:workout" data-timer-mode="fullscreen" ${attrs} type="button">
         Tela cheia
