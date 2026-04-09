@@ -582,6 +582,13 @@ function parseStructuredBlockContent({ type, title, period, lines, hints = {} })
     }
 
     if (/^\*+/.test(line)) {
+      if (String(type || '').toUpperCase() === 'ENGINE') {
+        const engineInterval = parseEngineIntervalLine(line);
+        if (engineInterval) {
+          items.push(engineInterval);
+          continue;
+        }
+      }
       const restFromNote = parseRestLine(line);
       if (restFromNote) {
         items.push(restFromNote);
@@ -718,6 +725,32 @@ function parseMovementLine(line) {
       reps: Number(accumulationMatch[1]),
       notes: String(accumulationMatch[2] || '').trim() || null,
     };
+  }
+
+  const swimDistanceMatch = raw.match(/^(\d+(?:\.\d+)?)\s*M\s+(.+)$/i);
+  if (swimDistanceMatch && /\b(EASY|PACE|RECOVERY|WARM UP|PERNADA|PRANCHA|FOR TIME)\b/i.test(swimDistanceMatch[2])) {
+    const detail = String(swimDistanceMatch[2] || '').trim();
+    const normalizedDetail = detail.replace(/\s+/g, ' ').trim();
+    const lowerDetail = normalizedDetail.toLowerCase();
+    const item = {
+      type: 'movement',
+      raw,
+      distanceMeters: Number(swimDistanceMatch[1]),
+      name: lowerDetail.includes('for time') ? 'for time swim' : 'swim',
+      displayName: normalizedDetail,
+      canonicalName: lowerDetail.includes('for time') ? 'for time swim' : 'swim',
+      canonicalSlug: lowerDetail.includes('for time') ? 'for-time-swim' : 'swim',
+      aliases: [],
+    };
+    if (/\beasy\b/i.test(normalizedDetail)) item.intensity = 'easy';
+    if (/\bpace\b/i.test(normalizedDetail)) item.paceTarget = normalizedDetail;
+    if (/\brecovery\b/i.test(normalizedDetail)) item.intensity = 'recovery';
+    if (/\bwarm up\b/i.test(normalizedDetail)) item.phase = 'warmup';
+    if (/\bpernada\b/i.test(normalizedDetail)) item.drill = 'kick';
+    if (/\bprancha\b/i.test(normalizedDetail)) item.equipment = 'board';
+    if (lowerDetail.includes('for time')) item.format = 'for_time';
+    item.notes = normalizedDetail;
+    return item;
   }
 
   const distanceForTimeMatch = raw.match(/^(\d+)\s*M\s+FOR TIME$/i);
@@ -1073,25 +1106,55 @@ function parseTimedIntervalLine(line) {
 }
 
 function parseEngineIntervalLine(line) {
-  const upper = String(line || '').trim().toUpperCase();
-  const durationMatch = upper.match(/^(\d+)\s*MIN(?:\s+([A-Z* ]+))?$/);
+  const raw = String(line || '').trim();
+  const upper = raw.toUpperCase();
+  const durationMatch = raw.match(/^(\d+)\s*MIN(?:\s+(.+))?$/i);
   if (durationMatch) {
+    const detail = String(durationMatch[2] || '').trim();
+    const starNoteMatch = detail.match(/^(.*?)(\*+)\s*$/);
+    const detailWithoutStars = starNoteMatch ? String(starNoteMatch[1] || '').trim() : detail;
+    const noteMatch = detailWithoutStars.match(/^(.*?)(?:\(([^)]+)\))?$/);
+    const modalityValue = cleanupMovementName(noteMatch?.[1] || detailWithoutStars || '');
+    const normalizedModality = normalizeMovementName(modalityValue || '').canonicalName || modalityValue || null;
     return {
       type: 'engine_work',
       durationMinutes: Number(durationMatch[1]),
-      modality: cleanupMovementName(durationMatch[2] || ''),
-      raw: line,
+      modality: normalizedModality,
+      notes: String(noteMatch?.[2] || starNoteMatch?.[2] || '').trim() || null,
+      raw,
     };
   }
 
-  const hrConstraintMatch = line.match(/frequ[êe]ncia card[íi]aca.+180\s*-\s*idade/i);
+  const hrConstraintMatch = raw.match(/frequ[êe]ncia card[íi]aca.+180\s*-\s*idade/i);
   if (hrConstraintMatch) {
     return {
       type: 'constraint',
       metric: 'heart_rate',
       rule: 'never_above',
       formula: '180 - age',
-      raw: line,
+      raw,
+    };
+  }
+
+  const paceDeltaMatch = raw.match(/(\d+)\s*min.*mais lento.*pace/i);
+  if (paceDeltaMatch) {
+    return {
+      type: 'constraint',
+      metric: 'pace',
+      rule: 'slower_than_test',
+      deltaMinutes: Number(paceDeltaMatch[1]),
+      raw,
+    };
+  }
+
+  const wattsDeltaMatch = raw.match(/(\d+)\s*watts\s+abaixo/i);
+  if (wattsDeltaMatch) {
+    return {
+      type: 'constraint',
+      metric: 'power',
+      rule: 'below_test_average',
+      deltaWatts: Number(wattsDeltaMatch[1]),
+      raw,
     };
   }
 
@@ -1180,28 +1243,47 @@ function buildEngineSummary(items, context = {}) {
   const roundsItem = items.find((item) => item.type === 'rounds');
   const workItem = items.find((item) => item.type === 'engine_work');
   const restItem = items.find((item) => item.type === 'rest' && item.durationMinutes);
+  const movementItems = items
+    .filter((item) => item.type === 'movement')
+    .map((item) => ({
+      name: item.name || '',
+      displayName: item.displayName || item.name || '',
+      canonicalName: item.canonicalName || item.name || '',
+      canonicalSlug: item.canonicalSlug || null,
+      reps: item.reps || null,
+      distanceMeters: item.distanceMeters || null,
+      notes: item.notes || null,
+      paceTarget: item.paceTarget || null,
+      intensity: item.intensity || null,
+      drill: item.drill || null,
+      equipment: item.equipment || null,
+    }));
   const constraints = items
     .filter((item) => item.type === 'constraint')
     .map((item) => ({
       metric: item.metric,
       rule: item.rule,
       formula: item.formula,
+      deltaMinutes: item.deltaMinutes || null,
+      deltaWatts: item.deltaWatts || null,
     }));
 
-  if (!roundsItem && !workItem && !constraints.length) return null;
+  if (!roundsItem && !workItem && !constraints.length && !movementItems.length) return null;
 
   return {
     title: context.title || '',
     rounds: roundsItem?.rounds || null,
     workMinutes: workItem?.durationMinutes || null,
     modality: workItem?.modality || null,
+    workNotes: workItem?.notes || null,
     restMinutes: restItem?.durationMinutes || null,
+    movements: movementItems,
     constraints,
   };
 }
 
 function buildOptionalSummary(items, context = {}) {
-  const swimItems = items.filter((item) => item.type === 'movement' && /swim|warm up|pace/i.test(String(item.raw || item.name || '')));
+  const swimItems = items.filter((item) => item.type === 'movement' && /swim|warm up|pace|easy|recovery|pernada|prancha|for time/i.test(String(item.raw || item.name || item.notes || '')));
   const restItems = items.filter((item) => item.type === 'rest');
   const roundsItem = items.find((item) => item.type === 'rounds');
 
@@ -1218,6 +1300,11 @@ function buildOptionalSummary(items, context = {}) {
       reps: item.reps || null,
       format: item.format || null,
       notes: item.notes || null,
+      intensity: item.intensity || null,
+      paceTarget: item.paceTarget || null,
+      drill: item.drill || null,
+      equipment: item.equipment || null,
+      phase: item.phase || null,
     })),
     rests: restItems.map((item) => ({
       durationMinutes: item.durationMinutes || null,
@@ -1241,6 +1328,8 @@ function isNoteContinuationLine(line = '') {
   const raw = String(line || '').trim();
   const sanitized = stripParentheticalSegments(raw);
   if (!raw) return false;
+  if (/^[a-zà-ÿ]/.test(raw)) return true;
+  if (parseMovementLine(raw)) return false;
   if (/^https?:\/\//i.test(raw)) return false;
   if (detectDayName(raw) || detectPeriodName(raw) || detectBlockType(raw)) return false;
   if (detectStructuredBlock(raw, '') || isCadenceLine(raw) || isStrengthSchemeLine(raw) || isAccessorySchemeLine(raw)) return false;
