@@ -27,6 +27,17 @@ export function trackError(error, context = {}) {
   flushTelemetry().catch(() => {});
 }
 
+export function trackPerf(name, durationMs, props = {}) {
+  enqueue({
+    type: 'perf',
+    name: String(name || 'unknown'),
+    durationMs: Number.isFinite(Number(durationMs)) ? Number(durationMs) : null,
+    props,
+    ts: new Date().toISOString(),
+  });
+  flushTelemetry().catch(() => {});
+}
+
 export async function flushTelemetry() {
   const cfg = getRuntimeConfig();
   if (!cfg.telemetryEnabled) return;

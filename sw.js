@@ -4,8 +4,8 @@
  */
 
 // Cache version bumped to flush stale JS modules from previously installed PWAs.
-const CACHE_NAME = 'ryxen-v4-1';
-const CORE_ASSETS = [
+const CACHE_NAME = 'ryxen-v4-2';
+const APP_SHELL_ASSETS = [
   './',
   './index.html',
   './coach/index.html',
@@ -21,6 +21,13 @@ const CORE_ASSETS = [
   './privacy.html',
   './terms.html',
   './support.html',
+  './branding/exports/ryxen-icon-32.png',
+  './branding/exports/ryxen-icon-180.png',
+  './branding/exports/ryxen-icon-192.png',
+  './branding/exports/ryxen-icon-512.png',
+];
+
+const STATIC_RUNTIME_ASSETS = [
   './packages/shared-web/runtime.js',
   './packages/shared-web/auth.js',
   './packages/shared-web/api-client.js',
@@ -30,19 +37,19 @@ const CORE_ASSETS = [
   './sports/running/main.js',
   './sports/strength/main.js',
   './src/main.js',
+];
+
+const OPTIONAL_LAZY_ASSETS = [
   './src/core/services/apiClient.js',
   './src/core/services/authService.js',
   './src/core/services/subscriptionService.js',
   './src/core/services/telemetryService.js',
   './src/core/usecases/backupData.js',
-  './src/adapters/media/ocrReader.js',
-  './src/adapters/media/videoTextReader.js',
-  './src/libs/pdf.mjs',
-  './src/libs/pdf.worker.mjs',
-  './branding/exports/ryxen-icon-32.png',
-  './branding/exports/ryxen-icon-180.png',
-  './branding/exports/ryxen-icon-192.png',
-  './branding/exports/ryxen-icon-512.png',
+];
+
+const CORE_ASSETS = [
+  ...APP_SHELL_ASSETS,
+  ...STATIC_RUNTIME_ASSETS,
 ];
 
 self.addEventListener('install', (event) => {
@@ -100,8 +107,12 @@ function resolveFetchResponse(request, event) {
     });
   }
 
+  if (isOptionalLazyAsset(url.pathname)) {
+    return cacheFirstWithRefresh(request);
+  }
+
   if (isScriptLikeAsset(request)) {
-    return staleWhileRevalidate(request);
+    return cacheFirstWithRefresh(request);
   }
 
   if (isStaticAsset(request)) {
@@ -117,6 +128,11 @@ function isApiRequest(url) {
 
 function isCacheableRequest(request, url) {
   return request.method === 'GET' && url.origin === self.location.origin;
+}
+
+function isOptionalLazyAsset(pathname = '') {
+  const normalized = `.${String(pathname || '')}`;
+  return OPTIONAL_LAZY_ASSETS.includes(normalized);
 }
 
 self.addEventListener('message', (event) => {
@@ -165,6 +181,33 @@ async function staleWhileRevalidate(request) {
     .catch(() => null);
 
   return cached || networkPromise || offlineResponse({ request });
+}
+
+async function cacheFirstWithRefresh(request) {
+  const cache = await caches.open(CACHE_NAME);
+  const cached = await cache.match(request);
+
+  if (cached) {
+    void fetch(request)
+      .then((response) => {
+        if (isCacheable(response)) {
+          cache.put(request, response.clone());
+        }
+        return response;
+      })
+      .catch(() => null);
+    return cached;
+  }
+
+  try {
+    const response = await fetch(request);
+    if (isCacheable(response)) {
+      cache.put(request, response.clone());
+    }
+    return response;
+  } catch {
+    return offlineResponse({ request });
+  }
 }
 
 async function networkFirst(request, options = {}) {

@@ -83,11 +83,19 @@ function createControllerFixture() {
     controller,
     calls,
     getUiState: () => uiState,
+    setCurrentPage: (page) => {
+      uiState = { ...uiState, currentPage: page };
+    },
   };
 }
 
 async function flush() {
   await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+async function flushBackground() {
+  await flush();
+  await flush();
 }
 
 test('hydratePage em today não dispara blocos de conta', async () => {
@@ -105,7 +113,8 @@ test('hydratePage em today não dispara blocos de conta', async () => {
 });
 
 test('hydratePage em account carrega resumo imediato e dispara blocos lazy uma vez', async () => {
-  const { controller, calls, getUiState } = createControllerFixture();
+  const { controller, calls, getUiState, setCurrentPage } = createControllerFixture();
+  setCurrentPage('account');
 
   await controller.hydratePage({ email: 'athlete@test.local' }, 'account');
 
@@ -116,7 +125,7 @@ test('hydratePage em account carrega resumo imediato e dispara blocos lazy uma v
   assert.equal(getUiState().athleteOverview.blocks.summary.status, 'ready');
   assert.equal(getUiState().coachPortal.status, 'ready');
 
-  await flush();
+  await flushBackground();
 
   assert.equal(calls.results, 1);
   assert.equal(calls.workouts, 1);
@@ -125,7 +134,8 @@ test('hydratePage em account carrega resumo imediato e dispara blocos lazy uma v
 });
 
 test('hydratePage em history carrega summary primeiro e só depois results', async () => {
-  const { controller, calls, getUiState } = createControllerFixture();
+  const { controller, calls, getUiState, setCurrentPage } = createControllerFixture();
+  setCurrentPage('history');
 
   await controller.hydratePage({ email: 'athlete@test.local' }, 'history');
 
@@ -134,7 +144,7 @@ test('hydratePage em history carrega summary primeiro e só depois results', asy
   assert.equal(calls.workouts, 0);
   assert.equal(getUiState().athleteOverview.blocks.summary.status, 'ready');
 
-  await flush();
+  await flushBackground();
 
   assert.equal(calls.results, 1);
   assert.equal(calls.workouts, 0);
@@ -152,8 +162,9 @@ test('hydrateAthleteSummary usa cache curto e evita request duplicado', async ()
 });
 
 test('hydratePage deduplica hidratação concorrente da account', async () => {
-  const { controller, calls } = createControllerFixture();
+  const { controller, calls, setCurrentPage } = createControllerFixture();
   const profile = { email: 'athlete@test.local' };
+  setCurrentPage('account');
 
   await Promise.all([
     controller.hydratePage(profile, 'account'),
@@ -167,4 +178,21 @@ test('hydratePage deduplica hidratação concorrente da account', async () => {
   assert.equal(calls.gyms, 1);
   assert.equal(calls.results, 1);
   assert.equal(calls.workouts, 1);
+});
+
+test('hidratação lazy não sobrescreve account/history quando o usuário já saiu da página', async () => {
+  const { controller, calls, getUiState, setCurrentPage } = createControllerFixture();
+  const profile = { email: 'athlete@test.local' };
+  setCurrentPage('account');
+
+  await controller.hydratePage(profile, 'account');
+  await flush();
+
+  const stateAfterAccount = getUiState();
+  stateAfterAccount.currentPage = 'today';
+
+  await controller.hydrateAthleteResultsBlock(profile, { force: true, page: 'history' });
+
+  assert.equal(calls.results >= 1, true);
+  assert.equal(getUiState().currentPage, 'today');
 });

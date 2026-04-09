@@ -26,9 +26,17 @@ export function buildAthleteAccountPageState(state, helpers) {
   const athleteBenefitSource = describeAthleteBenefitSource(athleteBenefits);
   const athleteResults = state?.__ui?.athleteOverview?.recentResults || [];
   const athleteWorkouts = state?.__ui?.athleteOverview?.recentWorkouts || [];
+  const athleteOverview = state?.__ui?.athleteOverview || {};
   const isSummaryLoading = coachPortal?.status === 'loading' || athleteBlocks?.summary?.status === 'loading';
   const isWorkoutsLoading = athleteBlocks?.workouts?.status === 'loading';
   const isResultsLoading = athleteBlocks?.results?.status === 'loading';
+  const showSnapshotNotice = (
+    coachPortal?.status === 'ready'
+    && (coachPortal?.stale || coachPortal?.source === 'snapshot')
+  ) || (
+    athleteBlocks?.summary?.status === 'ready'
+    && (athleteOverview?.stale || athleteOverview?.source === 'snapshot')
+  );
 
   return {
     profile,
@@ -49,6 +57,6 @@ export function buildAthleteAccountPageState(state, helpers) {
     isSummaryLoading,
     isWorkoutsLoading,
     isResultsLoading,
+    showSnapshotNotice,
   };
 }
-

@@ -23,6 +23,7 @@ export function renderAthleteHistoryPage(state, helpers) {
     isDetailError,
     resultsLogged,
     progressSummary,
+    showSnapshotNotice,
   } = buildAthleteHistoryPageState(state);
 
   return `
@@ -36,6 +37,8 @@ export function renderAthleteHistoryPage(state, helpers) {
           <button class="btn-secondary" data-action="page:set" data-page="account" type="button">Conta</button>
         `,
       })}
+
+      ${showSnapshotNotice ? '<p class="account-hint">Mostrando dados salvos anteriormente enquanto a conexão atualiza.</p>' : ''}
 
       ${renderPageFold({
         title: 'Resumo rápido',

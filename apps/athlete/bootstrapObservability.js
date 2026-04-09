@@ -1,12 +1,55 @@
-import { flushTelemetry, trackError, trackEvent } from '../../src/core/services/telemetryService.js';
+import { flushTelemetry, trackError, trackEvent, trackPerf } from '../../src/core/services/telemetryService.js';
 import { captureAppError, initErrorMonitoring, setErrorMonitorUser } from '../../src/core/services/errorMonitor.js';
 import { getRuntimeConfig } from '../../src/config/runtime.js';
 import { isNativePlatform } from './bootstrapEnvironment.js';
 
+const BOOT_METRICS_KEY = '__RYXEN_BOOT_METRICS__';
+
+function getBootMetricsStore() {
+  const existing = window[BOOT_METRICS_KEY];
+  if (existing && typeof existing === 'object') return existing;
+  const next = {
+    startedAt: performance.now(),
+    steps: [],
+    summary: {},
+    lastFailure: '',
+  };
+  window[BOOT_METRICS_KEY] = next;
+  return next;
+}
+
+export function markBootstrapStep(name, props = {}) {
+  const store = getBootMetricsStore();
+  const now = performance.now();
+  const sinceStart = Number((now - store.startedAt).toFixed(1));
+  const entry = {
+    name: String(name || 'unknown'),
+    at: new Date().toISOString(),
+    sinceStartMs: sinceStart,
+    props: props && typeof props === 'object' ? props : {},
+  };
+  store.steps.push(entry);
+  store.summary[entry.name] = sinceStart;
+  trackPerf(`bootstrap:${entry.name}`, sinceStart, entry.props);
+  return entry;
+}
+
+export function getBootMetricsSnapshot() {
+  const store = getBootMetricsStore();
+  return {
+    startedAt: store.startedAt,
+    steps: [...store.steps],
+    summary: { ...store.summary },
+    lastFailure: store.lastFailure || '',
+  };
+}
+
 export function setupErrorMonitoring() {
   const config = getRuntimeConfig();
   const sentry = config?.observability?.sentry || {};
+  if (!String(sentry?.dsn || '').trim() || !navigator.onLine) return false;
   initErrorMonitoring(sentry);
+  return true;
 }
 
 export function setupVercelObservability() {
@@ -68,11 +111,18 @@ export function registerServiceWorker() {
 }
 
 export function trackBootstrapSuccess() {
+  const store = getBootMetricsStore();
+  const uiMountedMs = Number(store.summary.ui_mounted || 0);
   trackEvent('app_initialized', { success: true });
+  if (uiMountedMs > 0) {
+    trackPerf('bootstrap:first_ui_ready', uiMountedMs, { platform: isNativePlatform() ? 'native' : 'web' });
+  }
   flushTelemetry().catch(() => {});
 }
 
 export function reportBootstrapFailure(errorMessage) {
+  const store = getBootMetricsStore();
+  store.lastFailure = String(errorMessage || 'init_failed');
   trackError(errorMessage || 'init_failed', { stage: 'bootstrap' });
 }
 

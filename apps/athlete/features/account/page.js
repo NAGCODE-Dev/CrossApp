@@ -33,6 +33,7 @@ export function renderAthleteAccountPage(state, helpers) {
     isSummaryLoading,
     isWorkoutsLoading,
     isResultsLoading,
+    showSnapshotNotice,
   } = buildAthleteAccountPageState(state, helpers);
 
   if (!profile?.email) {
@@ -64,6 +65,8 @@ export function renderAthleteAccountPage(state, helpers) {
           <button class="btn-primary" data-action="auth:signout" type="button">Sair</button>
         `,
       })}
+
+      ${showSnapshotNotice ? '<p class="account-hint">Mostrando dados salvos anteriormente enquanto a conexão atualiza.</p>' : ''}
 
       ${renderAccountAccessSection(renderPageFold, {
         isBusy,

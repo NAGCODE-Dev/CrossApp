@@ -17,6 +17,17 @@ export function createHydrationController({
   getAthleteResultsSummary,
   getAthleteWorkoutsRecent,
 }) {
+  const HYDRATION_METRICS_KEY = '__RYXEN_HYDRATION_METRICS__';
+
+  function pushHydrationMetric(entry) {
+    try {
+      const current = Array.isArray(window[HYDRATION_METRICS_KEY]) ? window[HYDRATION_METRICS_KEY] : [];
+      window[HYDRATION_METRICS_KEY] = [...current, { ...entry, at: new Date().toISOString() }].slice(-60);
+    } catch {
+      // no-op
+    }
+  }
+
   function getProfileEmail(profile = null) {
     return String(profile?.email || '').trim().toLowerCase();
   }
@@ -53,6 +64,17 @@ export function createHydrationController({
     return task;
   }
 
+  function deferBackgroundTask(taskFactory) {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        Promise.resolve()
+          .then(() => taskFactory())
+          .then(resolve)
+          .catch(reject);
+      }, 0);
+    });
+  }
+
   const coachPortalDomain = createCoachPortalDomain({
     measureAsync,
     emptyCoachPortal,
@@ -70,6 +92,8 @@ export function createHydrationController({
   const {
     invalidateCoachCache,
     loadCoachSnapshot,
+    peekCoachSnapshot,
+    isCoachSnapshotFresh,
   } = coachPortalDomain;
   const {
     buildAthleteOverviewPatch,
@@ -77,6 +101,12 @@ export function createHydrationController({
     loadAthleteSummaryBlock,
     loadAthleteResultsBlock,
     loadAthleteWorkoutsBlock,
+    peekAthleteSummaryBlock,
+    peekAthleteResultsBlock,
+    peekAthleteWorkoutsBlock,
+    isAthleteSummaryFresh,
+    isAthleteResultsFresh,
+    isAthleteWorkoutsFresh,
   } = athleteOverviewDomain;
 
   async function patchAthleteBlock(block, status, partial = null, error = '') {
@@ -101,6 +131,15 @@ export function createHydrationController({
     await rerender();
   }
 
+  function shouldApplyPagePatch(expectedPage) {
+    const currentPage = getUiState?.()?.currentPage || 'today';
+    return currentPage === expectedPage;
+  }
+
+  function buildReadyOverviewFromSnapshot(currentOverview, partial = {}, block) {
+    return buildAthleteOverviewPatch(currentOverview, partial, block, 'ready');
+  }
+
   function invalidateHydrationCache({ coach = true, athlete = true, account = true } = {}) {
     if (coach || account) {
       invalidateCoachCache();
@@ -114,63 +153,165 @@ export function createHydrationController({
     return createEmptyAdminState();
   }
 
-  async function hydrateCoachBlock(profile, selectedGymId = null, { force = false } = {}) {
+  async function hydrateCoachBlock(profile, selectedGymId = null, { force = false, page = 'account' } = {}) {
     if (!profile?.email) return emptyCoachPortal();
     const current = getUiState?.()?.coachPortal || {};
     if (!force && current?.status === 'ready' && current?.subscription) return current;
-    await patchCoachBlock('loading');
+    const email = getProfileEmail(profile);
+    if (!force) {
+      const cached = peekCoachSnapshot(email, selectedGymId);
+      if (cached) {
+        if (shouldApplyPagePatch(page)) {
+          await patchCoachBlock('ready', { ...cached, source: 'snapshot', stale: !isCoachSnapshotFresh(email, selectedGymId) });
+        }
+        pushHydrationMetric({ page, block: 'coach', source: 'snapshot' });
+        if (isCoachSnapshotFresh(email, selectedGymId)) return cached;
+      } else {
+        await patchCoachBlock('loading');
+      }
+    } else if (!current?.subscription) {
+      await patchCoachBlock('loading');
+    }
     try {
-      const coachPortal = await loadCoachSnapshot(getProfileEmail(profile), selectedGymId, { force });
-      await patchCoachBlock('ready', coachPortal);
+      const coachPortal = await loadCoachSnapshot(email, selectedGymId, { force });
+      if (!shouldApplyPagePatch(page)) return coachPortal;
+      await patchCoachBlock('ready', { ...coachPortal, source: 'network', stale: false });
+      pushHydrationMetric({ page, block: 'coach', source: 'network' });
       return coachPortal;
     } catch (error) {
       const fallback = { ...emptyCoachPortal(), status: 'error', error: error?.message || 'Falha ao carregar portal do coach' };
-      await patchCoachBlock('error', fallback, fallback.error);
+      if (current?.status === 'ready' && current?.subscription) {
+        if (shouldApplyPagePatch(page)) {
+          await patchCoachBlock('ready', { ...current, stale: true, source: current.source || 'snapshot', error: error?.message || '' }, '');
+        }
+        return current;
+      }
+      if (shouldApplyPagePatch(page)) {
+        await patchCoachBlock('error', fallback, fallback.error);
+      }
       return fallback;
     }
   }
 
-  async function hydrateAthleteSummary(profile, { force = false } = {}) {
+  async function hydrateAthleteSummary(profile, { force = false, page = 'account' } = {}) {
     if (!profile?.email) return emptyAthleteOverview();
     const current = getUiState?.()?.athleteOverview || {};
     if (!force && current?.blocks?.summary?.status === 'ready' && current?.stats) return current;
-    await patchAthleteBlock('summary', 'loading');
+    const email = getProfileEmail(profile);
+    if (!force) {
+      const cached = peekAthleteSummaryBlock(email);
+      if (cached) {
+        if (shouldApplyPagePatch(page)) {
+          await patchUiState((s) => ({
+            ...s,
+            athleteOverview: buildReadyOverviewFromSnapshot(s?.athleteOverview, { ...cached, source: 'snapshot', stale: !isAthleteSummaryFresh(email) }, 'summary'),
+          }));
+          await rerender();
+        }
+        pushHydrationMetric({ page, block: 'summary', source: 'snapshot' });
+        if (isAthleteSummaryFresh(email)) return cached;
+      } else {
+        await patchAthleteBlock('summary', 'loading');
+      }
+    } else if (!current?.stats) {
+      await patchAthleteBlock('summary', 'loading');
+    }
     try {
-      const summary = await loadAthleteSummaryBlock(getProfileEmail(profile), { force });
-      await patchAthleteBlock('summary', 'ready', summary);
+      const summary = await loadAthleteSummaryBlock(email, { force });
+      if (shouldApplyPagePatch(page)) {
+        await patchAthleteBlock('summary', 'ready', { ...summary, source: 'network', stale: false });
+      }
+      pushHydrationMetric({ page, block: 'summary', source: 'network' });
       return summary;
     } catch (error) {
-      await patchAthleteBlock('summary', 'error', null, error?.message || 'Falha ao carregar resumo');
+      if (current?.blocks?.summary?.status === 'ready' && current?.stats) {
+        return current;
+      }
+      if (shouldApplyPagePatch(page)) {
+        await patchAthleteBlock('summary', 'error', null, error?.message || 'Falha ao carregar resumo');
+      }
       return current;
     }
   }
 
-  async function hydrateAthleteResultsBlock(profile, { force = false } = {}) {
+  async function hydrateAthleteResultsBlock(profile, { force = false, page = 'history' } = {}) {
     if (!profile?.email) return emptyAthleteOverview();
     const current = getUiState?.()?.athleteOverview || {};
     if (!force && current?.blocks?.results?.status === 'ready' && Array.isArray(current?.benchmarkHistory)) return current;
-    await patchAthleteBlock('results', 'loading');
+    const email = getProfileEmail(profile);
+    if (!force) {
+      const cached = peekAthleteResultsBlock(email);
+      if (cached) {
+        if (shouldApplyPagePatch(page)) {
+          await patchUiState((s) => ({
+            ...s,
+            athleteOverview: buildReadyOverviewFromSnapshot(s?.athleteOverview, { ...cached, source: 'snapshot', stale: !isAthleteResultsFresh(email) }, 'results'),
+          }));
+          await rerender();
+        }
+        pushHydrationMetric({ page, block: 'results', source: 'snapshot' });
+        if (isAthleteResultsFresh(email)) return cached;
+      } else if (shouldApplyPagePatch(page)) {
+        await patchAthleteBlock('results', 'loading');
+      }
+    } else if (!current?.benchmarkHistory?.length && shouldApplyPagePatch(page)) {
+      await patchAthleteBlock('results', 'loading');
+    }
     try {
-      const results = await loadAthleteResultsBlock(getProfileEmail(profile), { force });
-      await patchAthleteBlock('results', 'ready', results);
+      const results = await loadAthleteResultsBlock(email, { force });
+      if (shouldApplyPagePatch(page)) {
+        await patchAthleteBlock('results', 'ready', { ...results, source: 'network', stale: false });
+      }
+      pushHydrationMetric({ page, block: 'results', source: 'network' });
       return results;
     } catch (error) {
-      await patchAthleteBlock('results', 'error', null, error?.message || 'Falha ao carregar resultados');
+      if (current?.blocks?.results?.status === 'ready' && Array.isArray(current?.benchmarkHistory)) {
+        return current;
+      }
+      if (shouldApplyPagePatch(page)) {
+        await patchAthleteBlock('results', 'error', null, error?.message || 'Falha ao carregar resultados');
+      }
       return current;
     }
   }
 
-  async function hydrateAthleteWorkoutsBlock(profile, { force = false } = {}) {
+  async function hydrateAthleteWorkoutsBlock(profile, { force = false, page = 'account' } = {}) {
     if (!profile?.email) return emptyAthleteOverview();
     const current = getUiState?.()?.athleteOverview || {};
     if (!force && current?.blocks?.workouts?.status === 'ready') return current;
-    await patchAthleteBlock('workouts', 'loading');
+    const email = getProfileEmail(profile);
+    if (!force) {
+      const cached = peekAthleteWorkoutsBlock(email);
+      if (cached) {
+        if (shouldApplyPagePatch(page)) {
+          await patchUiState((s) => ({
+            ...s,
+            athleteOverview: buildReadyOverviewFromSnapshot(s?.athleteOverview, { ...cached, source: 'snapshot', stale: !isAthleteWorkoutsFresh(email) }, 'workouts'),
+          }));
+          await rerender();
+        }
+        pushHydrationMetric({ page, block: 'workouts', source: 'snapshot' });
+        if (isAthleteWorkoutsFresh(email)) return cached;
+      } else if (shouldApplyPagePatch(page)) {
+        await patchAthleteBlock('workouts', 'loading');
+      }
+    } else if (shouldApplyPagePatch(page) && !current?.recentWorkouts?.length) {
+      await patchAthleteBlock('workouts', 'loading');
+    }
     try {
-      const workouts = await loadAthleteWorkoutsBlock(getProfileEmail(profile), { force });
-      await patchAthleteBlock('workouts', 'ready', workouts);
+      const workouts = await loadAthleteWorkoutsBlock(email, { force });
+      if (shouldApplyPagePatch(page)) {
+        await patchAthleteBlock('workouts', 'ready', { ...workouts, source: 'network', stale: false });
+      }
+      pushHydrationMetric({ page, block: 'workouts', source: 'network' });
       return workouts;
     } catch (error) {
-      await patchAthleteBlock('workouts', 'error', null, error?.message || 'Falha ao carregar treinos');
+      if (current?.blocks?.workouts?.status === 'ready') {
+        return current;
+      }
+      if (shouldApplyPagePatch(page)) {
+        await patchAthleteBlock('workouts', 'error', null, error?.message || 'Falha ao carregar treinos');
+      }
       return current;
     }
   }
@@ -178,25 +319,26 @@ export function createHydrationController({
   async function hydrateAccountSummary(profile, selectedGymId = null, { force = false } = {}) {
     if (!profile?.email) return;
     await Promise.all([
-      hydrateCoachBlock(profile, selectedGymId, { force }),
-      hydrateAthleteSummary(profile, { force }),
+      hydrateCoachBlock(profile, selectedGymId, { force, page: 'account' }),
+      hydrateAthleteSummary(profile, { force, page: 'account' }),
     ]);
   }
 
   function hydrateAccountLazyBlocks(profile, { force = false } = {}) {
     if (!profile?.email) return;
     const taskKey = createTaskKey('account-lazy', profile, force ? 'force' : 'cache');
-    runBackgroundTask(taskKey, () => Promise.allSettled([
-      hydrateAthleteWorkoutsBlock(profile, { force }),
-      hydrateAthleteResultsBlock(profile, { force }),
-    ])).catch(() => {});
+    runBackgroundTask(taskKey, () => deferBackgroundTask(() => Promise.allSettled([
+      hydrateAthleteWorkoutsBlock(profile, { force, page: 'account' }),
+      hydrateAthleteResultsBlock(profile, { force, page: 'account' }),
+    ]))).catch(() => {});
   }
 
   function hydrateHistoryLazyBlocks(profile, { force = false } = {}) {
     if (!profile?.email) return;
     const taskKey = createTaskKey('history-lazy', profile, force ? 'force' : 'cache');
-    runBackgroundTask(taskKey, () => Promise.resolve()
-      .then(() => hydrateAthleteResultsBlock(profile, { force })))
+    runBackgroundTask(taskKey, () => deferBackgroundTask(
+      () => hydrateAthleteResultsBlock(profile, { force, page: 'history' }),
+    ))
       .catch(() => {});
   }
 
@@ -212,12 +354,20 @@ export function createHydrationController({
     const task = (async () => {
       if (page === 'account') {
         await hydrateAccountSummary(profile, selectedGymId, { force });
-        hydrateAccountLazyBlocks(profile, { force });
+        if (force || !isAthleteResultsFresh(getProfileEmail(profile)) || !isAthleteWorkoutsFresh(getProfileEmail(profile))) {
+          hydrateAccountLazyBlocks(profile, { force: true });
+        } else {
+          hydrateAccountLazyBlocks(profile, { force: false });
+        }
         return;
       }
       if (page === 'history') {
-        await hydrateAthleteSummary(profile, { force });
-        hydrateHistoryLazyBlocks(profile, { force });
+        await hydrateAthleteSummary(profile, { force, page: 'history' });
+        if (force || !isAthleteResultsFresh(getProfileEmail(profile))) {
+          hydrateHistoryLazyBlocks(profile, { force: true });
+        } else {
+          hydrateHistoryLazyBlocks(profile, { force: false });
+        }
       }
     })();
 
@@ -242,14 +392,15 @@ export function createHydrationController({
 
     if (options.includeCoach !== false) {
       nextState.coachPortal = await loadCoachSnapshot(getProfileEmail(profile), selectedGymId, { force: !!options.force });
+      nextState.coachPortal.source = 'network';
     }
 
     if (options.includeAthlete !== false) {
       const summary = await loadAthleteSummaryBlock(getProfileEmail(profile), { force: !!options.force });
-      nextState.athleteOverview = buildAthleteOverviewPatch(nextState.athleteOverview, summary, 'summary', 'ready');
+      nextState.athleteOverview = buildAthleteOverviewPatch(nextState.athleteOverview, { ...summary, source: 'network' }, 'summary', 'ready');
       if (options.includeAthleteResults) {
         const results = await loadAthleteResultsBlock(getProfileEmail(profile), { force: !!options.force });
-        nextState.athleteOverview = buildAthleteOverviewPatch(nextState.athleteOverview, results, 'results', 'ready');
+        nextState.athleteOverview = buildAthleteOverviewPatch(nextState.athleteOverview, { ...results, source: 'network' }, 'results', 'ready');
       }
     }
 

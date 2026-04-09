@@ -8,6 +8,8 @@ import { applyAuthRedirectFromLocation, applyAuthRedirectFromUrl } from '../../s
 import { renderDebugPlaceholder, renderError } from './bootstrapDiagnostics.js';
 import { getCapacitorAppPlugin, wait } from './bootstrapEnvironment.js';
 import {
+  getBootMetricsSnapshot,
+  markBootstrapStep,
   registerServiceWorker,
   reportAuthRedirectOutcome,
   reportBootstrapFailure,
@@ -20,6 +22,7 @@ import {
 
 export async function runAthleteBootstrapFlow() {
   try {
+    markBootstrapStep('start', { platform: getPlatformLabel() });
     initPreBootstrapLayers();
 
     const nativeAuthRedirect = await setupNativeAuthRedirects();
@@ -28,14 +31,17 @@ export async function runAthleteBootstrapFlow() {
     const authRedirect = applyAuthRedirectFromLocation();
     const initResult = await initApplication();
     if (!initResult.success) return;
+    markBootstrapStep('init_ready');
 
-    scheduleDeferredPostInitLayers();
-    finalizeInit(authRedirect);
     if (maybeRenderDeveloperDebug()) return;
 
     await mountAthleteUi();
+    markBootstrapStep('ui_mounted');
+    finalizeInit(authRedirect);
+    scheduleDeferredPostInitLayers();
   } catch (error) {
     const message = error?.message || 'Falha ao carregar o app.';
+    markBootstrapStep('failure', { message });
     reportBootstrapFailure(message);
     console.error('Falha no bootstrap do app:', error);
     renderError(message);
@@ -48,11 +54,17 @@ function initPreBootstrapLayers() {
 }
 
 function initPostNativeLayers() {
-  setupErrorMonitoring();
-  setupVercelObservability();
-  setupGlobalTelemetryHandlers();
-  registerServiceWorker();
-  mountConsentBanner();
+  markBootstrapStep('deferred_layers_start');
+  queueDeferredLayer(() => {
+    setupErrorMonitoring();
+    setupVercelObservability();
+    setupGlobalTelemetryHandlers();
+  }, 60);
+  queueDeferredLayer(() => {
+    registerServiceWorker();
+    mountConsentBanner();
+    markBootstrapStep('deferred_layers_end');
+  }, 220);
 }
 
 function scheduleDeferredPostInitLayers() {
@@ -90,6 +102,7 @@ function finalizeInit(authRedirect) {
   trackBootstrapSuccess();
   reportAuthRedirectOutcome(authRedirect);
   syncErrorMonitorUser(getAppBridge()?.getProfile?.()?.data || null);
+  window.__RYXEN_BOOT_METRICS__ = getBootMetricsSnapshot();
 }
 
 function maybeRenderDeveloperDebug() {
@@ -160,4 +173,33 @@ function withBootstrapTimeout(promise, timeoutMs, message) {
   return Promise.race([promise, timeoutPromise]).finally(() => {
     if (timeoutId !== null) window.clearTimeout(timeoutId);
   });
+}
+
+function queueDeferredLayer(run, delayMs) {
+  const execute = () => {
+    try {
+      run();
+      window.__RYXEN_BOOT_METRICS__ = getBootMetricsSnapshot();
+    } catch (error) {
+      console.warn('Falha em camada adiada do bootstrap', error);
+    }
+  };
+
+  if (typeof window.requestIdleCallback === 'function') {
+    window.requestIdleCallback(() => {
+      window.setTimeout(execute, delayMs);
+    }, { timeout: Math.max(1200, delayMs + 600) });
+    return;
+  }
+
+  window.setTimeout(execute, delayMs);
+}
+
+function getPlatformLabel() {
+  try {
+    if (window.Capacitor?.isNativePlatform?.()) return 'native';
+    return 'web';
+  } catch {
+    return 'web';
+  }
 }

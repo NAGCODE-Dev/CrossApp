@@ -17,6 +17,11 @@ export function buildAthleteHistoryPageState(state) {
     !isDetailLoading && prHistory.length ? `${prHistory.length} PR(s) acompanhados` : null,
     !isSummaryLoading && resultsLogged ? `${resultsLogged} resultado(s) registrado(s)` : null,
   ].filter(Boolean).join(' • ');
+  const showSnapshotNotice = (
+    summaryState === 'ready' || resultsState === 'ready'
+  ) && (
+    athleteOverview?.stale || athleteOverview?.source === 'snapshot'
+  );
 
   return {
     benchmarkHistory,
@@ -27,6 +32,6 @@ export function buildAthleteHistoryPageState(state) {
     isDetailError,
     resultsLogged,
     progressSummary,
+    showSnapshotNotice,
   };
 }
-
