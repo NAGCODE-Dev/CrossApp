@@ -24,6 +24,7 @@ export async function mountUI({ root }) {
   const { getUiState, setImportStatus, setUiState, patchUiState } = uiController;
   let uiBusy = false;
   let uiBusyMessage = '';
+  let loadingHideTimer = null;
 
   const setBusy = (isBusy, message) => {
     uiBusy = !!isBusy;
@@ -31,10 +32,24 @@ export async function mountUI({ root }) {
     const loadingEl = document.getElementById('loading-screen');
     if (!loadingEl) return;
     const labelEl = loadingEl.querySelector('[data-loading-label]');
+    if (loadingHideTimer) {
+      clearTimeout(loadingHideTimer);
+      loadingHideTimer = null;
+    }
+    if (isBusy) {
+      loadingEl.hidden = false;
+      loadingEl.removeAttribute('aria-hidden');
+    }
     loadingEl.classList.toggle('hide', !isBusy);
     document.body.classList.toggle('ui-busy', !!isBusy);
     if (labelEl) {
       labelEl.textContent = uiBusyMessage || 'Carregando...';
+    }
+    if (!isBusy) {
+      loadingHideTimer = window.setTimeout(() => {
+        loadingEl.hidden = true;
+        loadingEl.setAttribute('aria-hidden', 'true');
+      }, 220);
     }
   };
 

@@ -51,6 +51,11 @@
     @apply pointer-events-none invisible opacity-0;
   }
 
+  .loading-screen[hidden],
+  .loading-screen[aria-hidden="true"] {
+    display: none !important;
+  }
+
   .spinner {
     @apply mb-3 h-[42px] w-[42px] animate-spin rounded-full border-[3px] border-solid border-white/15 border-t-ryxen-accent;
   }
