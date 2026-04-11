@@ -1,4 +1,5 @@
 import { getRuntimeConfig } from '../../src/config/runtime.js';
+import { getCapacitorAppPlugin as resolveCapacitorAppPlugin } from '../../src/app/capacitorRuntime.js';
 
 export function isNativePlatform() {
   try {
@@ -26,9 +27,5 @@ export function wait(ms) {
 }
 
 export function getCapacitorAppPlugin() {
-  try {
-    return window.Capacitor?.Plugins?.App || null;
-  } catch {
-    return null;
-  }
+  return resolveCapacitorAppPlugin();
 }

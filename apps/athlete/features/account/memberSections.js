@@ -15,8 +15,8 @@ export function renderAccountAccessSection(renderPageFold, view) {
   } = view;
 
   return renderPageFold({
-    title: 'Seu acesso',
-    subtitle: 'Conta, plano e uso em uma leitura só.',
+    title: 'Conta e acesso',
+    subtitle: 'Status, uso e atividade.',
     guideTarget: 'account-access',
     content: `
     <div class="coach-list coach-listCompact">
@@ -25,8 +25,8 @@ export function renderAccountAccessSection(renderPageFold, view) {
         <span>${isBusy ? 'Carregando perfil...' : `${escapeHtml(profileName || 'Sem nome')} • ${escapeHtml(profileEmail || '')}`}</span>
       </div>
       <div class="coach-listItem static">
-        <strong>Plano</strong>
-        <span>${isBusy || coachPortalStatus === 'loading' ? 'Carregando plano...' : `${escapeHtml(planName)} • ${escapeHtml(planStatus)}`}</span>
+        <strong>Status da conta</strong>
+        <span>${isBusy || coachPortalStatus === 'loading' ? 'Carregando conta...' : `${escapeHtml(planName)} • ${escapeHtml(planStatus)}`}</span>
       </div>
       <div class="coach-listItem static">
         <strong>Acesso do atleta</strong>
@@ -57,23 +57,23 @@ export function renderAccountCoachPortalSection(renderPageFold, view) {
 
   return renderPageFold({
     title: 'Coach Portal',
-    subtitle: 'Gestão do box, quando fizer sentido ativar.',
+    subtitle: 'Status e entrada do portal.',
     guideTarget: 'account-coach',
     content: `
     <div class="coach-list coach-listCompact">
       <div class="coach-listItem static">
         <strong>Status do portal</strong>
-        <span>${canCoachManage ? `Liberado • ${gymsCount} gym(s) visível(is)` : 'Indisponível no plano atual'}</span>
+        <span>${canCoachManage ? `Disponível • ${gymsCount} gym(s) visível(is)` : 'Indisponível no estado atual'}</span>
       </div>
       <div class="coach-listItem static">
         <strong>Renovação</strong>
-        <span>${renewAt ? `Plano renova em ${escapeHtml(formatDateShort(renewAt))}` : 'Sem data de renovação disponível.'}</span>
+        <span>${renewAt ? `Revisão em ${escapeHtml(formatDateShort(renewAt))}` : 'Sem data de renovação disponível.'}</span>
       </div>
     </div>
     <div class="page-actions">
-      ${!canCoachManage ? '<button class="btn-primary" data-action="billing:checkout" data-plan="coach" type="button">Ver plano</button>' : ''}
+      ${!canCoachManage ? '<button class="btn-primary" data-action="billing:checkout" data-plan="coach" type="button">Abrir cobrança</button>' : ''}
       ${canUseDeveloperTools ? '<button class="btn-secondary" data-action="billing:activate-local" data-plan="coach" type="button">Ativar local</button>' : ''}
-      ${canCoachManage ? '<a class="btn-secondary" href="/coach/index.html" target="_blank" rel="noopener noreferrer">Abrir portal</a>' : '<a class="btn-secondary" href="/pricing.html" target="_blank" rel="noopener noreferrer">Comparar planos</a>'}
+      ${canCoachManage ? '<a class="btn-secondary" href="/coach/index.html" target="_blank" rel="noopener noreferrer">Abrir portal</a>' : '<a class="btn-secondary" href="/pricing.html" target="_blank" rel="noopener noreferrer">Detalhes de acesso</a>'}
     </div>
     `,
   });
@@ -89,7 +89,7 @@ export function renderAccountActivitySection(renderPageFold, view) {
 
   return renderPageFold({
     title: 'Atividade recente',
-    subtitle: 'O que já apareceu no seu fluxo recente.',
+    subtitle: 'Resultados e treinos recentes.',
     content: `
     <div class="coach-list coach-listCompact">
       <div class="coach-listItem static">
@@ -200,14 +200,14 @@ export function renderAccountPreferencesSections(renderPageFold, view) {
   return `
     ${renderPageFold({
       title: 'Aparência',
-      subtitle: 'Ajuste o clima visual para o jeito que você mais gosta de usar.',
+      subtitle: 'Visual e leitura.',
       guideTarget: 'account-preferences',
       content: `
         <div class="account-settingsGrid">
           <div class="account-settingsCard">
             <div class="account-settingsHead">
               <strong>Base visual</strong>
-              <span>O Ryxen agora segue uma base escura única para manter contraste, foco e acabamento premium.</span>
+              <span>Tema ativo do app.</span>
             </div>
             <div class="account-choiceGrid account-choiceGrid-single">
               ${renderOptionCard({
@@ -217,7 +217,7 @@ export function renderAccountPreferencesSections(renderPageFold, view) {
                 checked: true,
                 eyebrow: 'Escuro',
                 title: 'Noite',
-                description: 'Mais foco, contraste calmo e cara premium.',
+                description: 'Contraste estável.',
               })}
             </div>
           </div>
@@ -225,56 +225,56 @@ export function renderAccountPreferencesSections(renderPageFold, view) {
           <div class="account-settingsCard">
             <div class="account-settingsHead">
               <strong>Tom de destaque</strong>
-              <span>Use uma assinatura visual mais fria, orgânica ou quente.</span>
+              <span>Cor principal do app.</span>
             </div>
             <div class="account-toneGrid">
               ${renderAccentCard({
                 value: 'blue',
                 checked: accentTone === 'blue',
                 label: 'Azul',
-                description: 'Clássico',
+                description: 'Padrão',
                 swatchClass: 'account-toneSwatch-blue',
               })}
               ${renderAccentCard({
                 value: 'sage',
                 checked: accentTone === 'sage',
                 label: 'Sage',
-                description: 'Calmo',
+                description: 'Verde',
                 swatchClass: 'account-toneSwatch-sage',
               })}
               ${renderAccentCard({
                 value: 'sand',
                 checked: accentTone === 'sand',
                 label: 'Sand',
-                description: 'Quente',
+                description: 'Areia',
                 swatchClass: 'account-toneSwatch-sand',
               })}
               ${renderAccentCard({
                 value: 'rose',
                 checked: accentTone === 'rose',
                 label: 'Rose',
-                description: 'Suave',
+                description: 'Rosé',
                 swatchClass: 'account-toneSwatch-rose',
               })}
               ${renderAccentCard({
                 value: 'teal',
                 checked: accentTone === 'teal',
                 label: 'Teal',
-                description: 'Fresco',
+                description: 'Teal',
                 swatchClass: 'account-toneSwatch-teal',
               })}
               ${renderAccentCard({
                 value: 'plum',
                 checked: accentTone === 'plum',
                 label: 'Plum',
-                description: 'Profundo',
+                description: 'Plum',
                 swatchClass: 'account-toneSwatch-plum',
               })}
               ${renderAccentCard({
                 value: 'ember',
                 checked: accentTone === 'ember',
                 label: 'Ember',
-                description: 'Enérgico',
+                description: 'Âmbar',
                 swatchClass: 'account-toneSwatch-ember',
               })}
             </div>
@@ -283,7 +283,7 @@ export function renderAccountPreferencesSections(renderPageFold, view) {
           <div class="account-settingsCard">
             <div class="account-settingsHead">
               <strong>Densidade e movimento</strong>
-              <span>Deixe a interface mais espaçada ou mais econômica.</span>
+              <span>Espaço e transições.</span>
             </div>
             <div class="account-choiceGrid">
               ${renderOptionCard({
@@ -293,7 +293,7 @@ export function renderAccountPreferencesSections(renderPageFold, view) {
                 checked: interfaceDensity === 'comfortable',
                 eyebrow: 'Equilibrada',
                 title: 'Confortável',
-                description: 'Mais respiro entre blocos e ações.',
+                description: 'Mais espaço entre blocos.',
               })}
               ${renderOptionCard({
                 name: 'setting-interfaceDensity',
@@ -302,7 +302,7 @@ export function renderAccountPreferencesSections(renderPageFold, view) {
                 checked: interfaceDensity === 'compact',
                 eyebrow: 'Econômica',
                 title: 'Compacta',
-                description: 'Mais conteúdo por dobra, sem perder leitura.',
+                description: 'Mais conteúdo por tela.',
               })}
             </div>
             <div class="account-switchStack">
@@ -311,7 +311,7 @@ export function renderAccountPreferencesSections(renderPageFold, view) {
                 key: 'reduceMotion',
                 checked: reduceMotion,
                 title: 'Reduzir movimento',
-                description: 'Diminui transições e animações para uma navegação mais estável.',
+                description: 'Reduz animações.',
               })}
             </div>
           </div>
@@ -355,7 +355,7 @@ export function renderAccountPreferencesSections(renderPageFold, view) {
           <div class="account-settingsCard">
             <div class="account-settingsHead">
               <strong>Leitura do treino</strong>
-              <span>Pequenos detalhes que deixam o dia mais fácil de bater o olho.</span>
+              <span>Opções do treino.</span>
             </div>
             <div class="account-switchStack">
               ${renderSwitchRow({
@@ -363,51 +363,51 @@ export function renderAccountPreferencesSections(renderPageFold, view) {
                 key: 'showLbsConversion',
                 checked: showLbsConversion,
                 title: 'Mostrar conversão lbs → kg',
-                description: 'Ajuda a ler cargas importadas em libras sem conta mental.',
+                description: 'Converte cargas importadas.',
               })}
               ${renderSwitchRow({
                 id: 'setting-showObjectives',
                 key: 'showObjectivesInWods',
                 checked: showGoals,
                 title: 'Mostrar objetivos do WOD',
-                description: 'Mantém a intenção do treino visível quando o bloco trouxer esse contexto.',
+                description: 'Exibe o objetivo do bloco.',
               })}
               ${renderSwitchRow({
                 id: 'setting-showEmojis',
                 key: 'showEmojis',
                 checked: showEmojis,
                 title: 'Mostrar emojis',
-                description: 'Preserva sinais rápidos de leitura nas áreas que usam esse apoio visual.',
+                description: 'Mantém ícones do treino.',
               })}
               ${renderSwitchRow({
                 id: 'setting-showNyxHints',
                 key: 'showNyxHints',
                 checked: showNyxHints,
                 title: 'Mostrar sugestões do Nyx',
-                description: 'Deixa o guia aparecer em empty states e momentos de onboarding leve.',
+                description: 'Mostra atalhos do guia em estados vazios.',
               })}
             </div>
           </div>
 
-          <p class="account-settingsFootnote">Tudo salva automaticamente. O app aplica as mudanças assim que você toca em cada opção.</p>
+          <p class="account-settingsFootnote">Salvo automaticamente.</p>
         </div>
       `,
     })}
 
     ${renderPageFold({
       title: 'Nyx',
-      subtitle: 'Um guia opcional, calmo e direto para quando você quiser uma ajuda leve.',
+      subtitle: 'Tour das áreas principais.',
       guideTarget: 'account-preferences',
       content: `
         <div class="account-settingsCard account-settingsCard-nyx">
           <div class="account-settingsHead">
-            <strong>${nyxGuideCompleted ? 'Tour concluído' : 'Tour opcional do Nyx'}</strong>
-            <span>${nyxGuideCompleted ? 'Você já viu o essencial. Se quiser, o Nyx pode te acompanhar de novo pelas áreas principais.' : 'Hoje, evolução, PRs, importação e conta em um tour curto e guiado.'}</span>
+            <strong>${nyxGuideCompleted ? 'Tour concluído' : 'Tour do Nyx'}</strong>
+            <span>${nyxGuideCompleted ? 'Reabra quando precisar.' : 'Hoje, evolução, conta e dados.'}</span>
           </div>
           <div class="account-choiceFace account-choiceFace-static">
-            <span class="account-choiceEyebrow">Guia premium</span>
-            <strong>Tour real pelo app</strong>
-            <small>Abre as áreas certas, explica o que cada uma faz e guarda seu progresso sem peso visual extra.</small>
+            <span class="account-choiceEyebrow">Guia</span>
+            <strong>Abrir tour</strong>
+            <small>Navega pelas áreas principais.</small>
           </div>
           <div class="page-actions">
             <button class="btn-primary" data-action="modal:open" data-modal="nyx-guide" data-guide-step="0" type="button">${nyxGuideCompleted ? 'Ver de novo' : 'Começar tour'}</button>
@@ -456,7 +456,7 @@ export function renderAccountDataSections(renderPageFold, view) {
 
     ${renderPageFold({
       title: 'Documentos e privacidade',
-      subtitle: 'Acesso rápido às páginas mais importantes do produto.',
+      subtitle: 'Links da conta.',
       guideTarget: 'account-data',
       content: `
         <div class="settings-actions settings-actions-grid">
@@ -468,7 +468,7 @@ export function renderAccountDataSections(renderPageFold, view) {
 
     ${renderPageFold({
       title: 'Limpeza local',
-      subtitle: 'Use só quando quiser zerar os dados deste aparelho e começar limpo.',
+      subtitle: 'Apaga dados salvos neste aparelho.',
       content: `
         <div class="settings-actions">
           <button class="btn-secondary btn-dangerSoft" data-action="pdf:clear" type="button">Limpar dados do app</button>

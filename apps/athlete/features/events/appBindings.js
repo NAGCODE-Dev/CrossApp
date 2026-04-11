@@ -11,6 +11,16 @@ export function createAthleteAppEventBindings({
       rerender?.();
     }],
 
+    ['auth:session-restored', () => {
+      pushEventLine?.('Sessão restaurada');
+      rerender?.();
+    }],
+
+    ['auth:session-failed', () => {
+      pushEventLine?.('Sessão não restaurada');
+      rerender?.();
+    }],
+
     ['week:changed', (data) => {
       pushEventLine?.(`Semana: ${data?.weekNumber ?? '?'}`);
       rerender?.();

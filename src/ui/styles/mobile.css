@@ -156,6 +156,17 @@
     gap: 8px;
   }
 
+  .page-stack-history .trend-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .modal-overlay.guide-overlay {
+    align-items: center;
+    justify-content: center;
+    padding: max(10px, var(--safe-top)) 10px max(10px, var(--safe-bottom));
+  }
+
   .account-viewTabs {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }

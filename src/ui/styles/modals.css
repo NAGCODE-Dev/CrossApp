@@ -181,7 +181,7 @@
     @apply items-stretch gap-1.5;
   }
 
-  .guide-overlay {
+  .modal-overlay.guide-overlay {
     padding: clamp(12px, 2.4vw, 22px);
     align-items: stretch;
     justify-content: center;
@@ -191,7 +191,10 @@
   }
 
   .guide-shell {
+    min-height: 520px;
     width: min(100%, 1040px);
+    height: min(94vh, 920px);
+    max-height: min(94vh, 920px);
     height: min(94dvh, 920px);
     max-height: min(94dvh, 920px);
     display: grid;
@@ -860,11 +863,14 @@
 }
 
 @media (max-width: 640px) {
-  .guide-overlay {
+  .modal-overlay.guide-overlay {
     padding: max(10px, var(--safe-top)) 10px max(10px, var(--safe-bottom));
   }
 
   .guide-shell {
+    min-height: 420px;
+    height: calc(100vh - max(20px, var(--safe-top) + var(--safe-bottom)));
+    max-height: calc(100vh - max(20px, var(--safe-top) + var(--safe-bottom)));
     height: calc(100dvh - max(20px, var(--safe-top) + var(--safe-bottom)));
     max-height: calc(100dvh - max(20px, var(--safe-top) + var(--safe-bottom)));
     border-radius: 28px;

@@ -18,7 +18,7 @@ export function renderAccountHeroSection({
         `}
       </div>
       <div class="account-planCard">
-        <span class="account-planLabel">Plano da conta</span>
+        <span class="account-planLabel">Status da conta</span>
         ${isBusy ? renderAccountSkeleton() : `
           <strong class="account-planValue">${escapeHtml(planName)}</strong>
           <span class="account-planMeta">${escapeHtml(planStatus)}${renewAt ? ` • renova em ${escapeHtml(formatDateShort(renewAt))}` : ''}</span>
@@ -76,20 +76,20 @@ export function renderCoachAccessSection({
     <div class="auth-intro">
       <div class="section-kicker">Coach</div>
       <p class="account-hint">${canCoachManage || canUseDeveloperTools
-        ? 'O portal do coach continua separado do app do atleta. Use sua mesma conta para abrir o workspace do box.'
+        ? 'Abra o portal do coach com a mesma conta.'
         : hasActiveCoachSubscription
-          ? 'Seu plano está ativo, mas o portal do coach só libera quando sua conta está vinculada a um gym com permissão de gestão.'
-          : 'Seu acesso de coach está bloqueado. Ative um plano quando quiser operar box, atletas e grupos no portal separado. O app do atleta continua liberado.'}</p>
+          ? 'O acesso está ativo, mas o portal só libera com vínculo a um gym com permissão de gestão.'
+          : 'O portal do coach só aparece quando a conta recebe acesso de gestão.'}</p>
       <div class="coach-pillRow">
-        <span class="coach-pill ${canCoachManage ? 'isGood' : 'isWarn'}">${canCoachManage ? 'Coach liberado' : 'Coach bloqueado'}</span>
-        <span class="coach-pill ${canAthleteUseApp ? 'isGood' : 'isWarn'}">${canAthleteUseApp ? 'Atleta liberado' : 'Atleta bloqueado'}</span>
+        <span class="coach-pill ${canCoachManage ? 'isGood' : 'isWarn'}">${canCoachManage ? 'Portal disponível' : 'Portal indisponível'}</span>
+        <span class="coach-pill ${canAthleteUseApp ? 'isGood' : 'isWarn'}">${canAthleteUseApp ? 'Atleta disponível' : 'Atleta indisponível'}</span>
         <span class="coach-pill">${gyms.length} gym(s)</span>
       </div>
       <div class="settings-actions coach-billingActions">
-        ${!canCoachManage ? '<button class="btn-primary" data-action="billing:checkout" data-plan="coach" type="button">Assinar Coach</button>' : ''}
+        ${!canCoachManage ? '<button class="btn-primary" data-action="billing:checkout" data-plan="coach" type="button">Abrir cobrança</button>' : ''}
         ${!canCoachManage && canUseDeveloperTools ? '<button class="btn-secondary" data-action="billing:activate-local" data-plan="coach" type="button">Ativar local</button>' : ''}
         <a class="btn-secondary" href="/coach/index.html" target="_blank" rel="noopener noreferrer">Abrir portal</a>
-        ${!canCoachManage ? '<a class="btn-secondary" href="/pricing.html" target="_blank" rel="noopener noreferrer">Ver planos</a>' : ''}
+        ${!canCoachManage ? '<a class="btn-secondary" href="/pricing.html" target="_blank" rel="noopener noreferrer">Detalhes de acesso</a>' : ''}
       </div>
     </div>
   `;

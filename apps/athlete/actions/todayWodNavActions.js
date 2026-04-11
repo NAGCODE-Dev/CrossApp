@@ -82,7 +82,10 @@ export async function handleAthleteWodNavigation(action, context) {
     case 'timer:start': {
       const seconds = Number(element.dataset.seconds);
       if (!seconds || seconds <= 0) return true;
-      startRestTimer(seconds, toast, { mode: element.dataset.timerMode || 'popup' });
+      startRestTimer(seconds, toast, {
+        mode: element.dataset.timerMode || 'popup',
+        startInConfig: element.dataset.timerConfig === 'open',
+      });
       return true;
     }
 
@@ -112,7 +115,10 @@ export async function handleAthleteWodNavigation(action, context) {
         config.capSeconds = Number(element.dataset.capSeconds || 0);
       }
 
-      startWorkoutTimer(config, toast, { mode: element.dataset.timerMode || 'popup' });
+      startWorkoutTimer(config, toast, {
+        mode: element.dataset.timerMode || 'popup',
+        startInConfig: element.dataset.timerConfig === 'open',
+      });
       return true;
     }
 

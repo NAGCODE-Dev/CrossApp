@@ -1,6 +1,9 @@
 import { getAppBridge } from '../../../src/app/bridge.js';
 
 let activeWorkoutTimer = null;
+const TIMER_POPUP_LAYOUT_KEY = 'ryxen-workout-timer-popup-v1';
+const MIN_TIMER_POPUP_WIDTH = 280;
+const MIN_TIMER_POPUP_HEIGHT = 360;
 
 export function workoutKeyFromAppState() {
   const bridge = getAppBridge?.();
@@ -57,12 +60,12 @@ export function clearWorkoutTimer() {
 export function startRestTimer(totalSeconds, toast, options = {}) {
   return startWorkoutTimer({
     label: 'Timer de descanso',
-    detail: 'Descanso guiado',
+    detail: 'Descanso',
     totalSeconds,
     kind: 'countdown',
     completionMessage: 'Descanso finalizado',
     prepSeconds: 0,
-    autoStart: true,
+    autoStart: options.startInConfig ? false : true,
   }, toast, options);
 }
 
@@ -72,19 +75,27 @@ export function startWorkoutTimer(config, toast, options = {}) {
 
   clearWorkoutTimer();
 
-  const state = createTimerState(normalized);
+  let currentConfig = normalized;
+  const state = createTimerState(currentConfig);
   let intervalId = null;
+  let popupLayout = normalizeTimerPopupLayout(readTimerPopupLayout());
+  let configOpen = Boolean(options.startInConfig);
+  let dragState = null;
+  let resizeState = null;
 
   const modal = document.createElement('div');
-  modal.className = `timer-modal ${normalized.mode === 'fullscreen' ? 'is-fullscreen' : 'is-popup'}`;
+  modal.className = `timer-modal ${currentConfig.mode === 'fullscreen' ? 'is-fullscreen' : 'is-popup'}`;
   modal.innerHTML = `
     <div class="timer-content timer-content-workout">
       <div class="timer-topbar">
-        <div>
+        <div class="timer-dragArea" data-timer-drag-handle>
           <div class="timer-kicker">${escapeHtml(normalized.label)}</div>
           <div class="timer-title">${escapeHtml(normalized.detail)}</div>
         </div>
-        <button class="btn-timer-close" type="button" data-timer-close>Fechar</button>
+        <div class="timer-topbarActions">
+          <button class="btn-timer-mode" type="button" data-timer-config-toggle>Ajustes</button>
+          <button class="btn-timer-close" type="button" data-timer-close>Fechar</button>
+        </div>
       </div>
       <div class="timer-phase" data-timer-phase></div>
       <div class="timer-time" data-timer-time>${formatTime(readDisplaySeconds(state))}</div>
@@ -105,11 +116,67 @@ export function startWorkoutTimer(config, toast, options = {}) {
         <button class="btn-timer-mode ${normalized.mode === 'popup' ? 'is-active' : ''}" type="button" data-timer-mode="popup">Mini</button>
         <button class="btn-timer-mode ${normalized.mode === 'fullscreen' ? 'is-active' : ''}" type="button" data-timer-mode="fullscreen">Tela</button>
       </div>
+      <section class="timer-config" data-timer-config-panel hidden>
+        <div class="timer-configGrid">
+          <label class="timer-field">
+            <span>Tipo</span>
+            <select class="timer-input" data-timer-config-kind>
+              <option value="countdown">Contagem regressiva</option>
+              <option value="countup">Cronômetro livre</option>
+              <option value="interval">Intervalado</option>
+              <option value="sequence">Sequência</option>
+            </select>
+          </label>
+          <label class="timer-field">
+            <span>Preparação (s)</span>
+            <input class="timer-input" data-timer-config-prep type="number" min="0" step="1">
+          </label>
+          <label class="timer-field timer-fieldWide">
+            <span>Nome</span>
+            <input class="timer-input" data-timer-config-label type="text" maxlength="60">
+          </label>
+          <label class="timer-field timer-fieldWide">
+            <span>Detalhe</span>
+            <input class="timer-input" data-timer-config-detail type="text" maxlength="120">
+          </label>
+          <label class="timer-field" data-timer-config-countdown>
+            <span>Tempo total (s)</span>
+            <input class="timer-input" data-timer-config-total type="number" min="5" step="5">
+          </label>
+          <label class="timer-field" data-timer-config-cap>
+            <span>Cap (s)</span>
+            <input class="timer-input" data-timer-config-cap-input type="number" min="0" step="5">
+          </label>
+          <label class="timer-field" data-timer-config-rounds>
+            <span>Rounds</span>
+            <input class="timer-input" data-timer-config-rounds-input type="number" min="1" step="1">
+          </label>
+          <label class="timer-field" data-timer-config-work>
+            <span>Trabalho (s)</span>
+            <input class="timer-input" data-timer-config-work-input type="number" min="5" step="5">
+          </label>
+          <label class="timer-field" data-timer-config-rest>
+            <span>Pausa (s)</span>
+            <input class="timer-input" data-timer-config-rest-input type="number" min="0" step="5">
+          </label>
+          <label class="timer-field timer-fieldWide" data-timer-config-sequence>
+            <span>Sequência</span>
+            <textarea class="timer-input timer-textarea" data-timer-config-sequence-input rows="5" placeholder="work:60:Bike&#10;rest:30:Descanso&#10;work:45:Burpee"></textarea>
+          </label>
+        </div>
+        <p class="timer-configNote" data-timer-config-note></p>
+        <div class="timer-actions timer-actions-config">
+          <button class="btn-timer-secondary" type="button" data-timer-config-reset>Usar base do treino</button>
+          <button class="btn-timer-primary" type="button" data-timer-config-apply>Aplicar</button>
+        </div>
+      </section>
+      <button class="timer-resizeHandle" type="button" data-timer-resize aria-label="Redimensionar timer"></button>
     </div>
   `;
 
   document.body.appendChild(modal);
 
+  const content = modal.querySelector('.timer-content');
   const display = modal.querySelector('[data-timer-time]');
   const phase = modal.querySelector('[data-timer-phase]');
   const progress = modal.querySelector('[data-timer-progress]');
@@ -120,6 +187,31 @@ export function startWorkoutTimer(config, toast, options = {}) {
   const startButton = modal.querySelector('[data-timer-start]');
   const mainActions = modal.querySelector('[data-timer-main-actions]');
   const liveActions = modal.querySelector('[data-timer-live-actions]');
+  const configPanel = modal.querySelector('[data-timer-config-panel]');
+  const configToggle = modal.querySelector('[data-timer-config-toggle]');
+  const dragHandle = modal.querySelector('[data-timer-drag-handle]');
+  const resizeHandle = modal.querySelector('[data-timer-resize]');
+  const configFields = {
+    kind: modal.querySelector('[data-timer-config-kind]'),
+    prepSeconds: modal.querySelector('[data-timer-config-prep]'),
+    label: modal.querySelector('[data-timer-config-label]'),
+    detail: modal.querySelector('[data-timer-config-detail]'),
+    totalSeconds: modal.querySelector('[data-timer-config-total]'),
+    capSeconds: modal.querySelector('[data-timer-config-cap-input]'),
+    rounds: modal.querySelector('[data-timer-config-rounds-input]'),
+    workSeconds: modal.querySelector('[data-timer-config-work-input]'),
+    restSeconds: modal.querySelector('[data-timer-config-rest-input]'),
+    sequence: modal.querySelector('[data-timer-config-sequence-input]'),
+    note: modal.querySelector('[data-timer-config-note]'),
+  };
+  const configGroups = {
+    countdown: modal.querySelector('[data-timer-config-countdown]'),
+    cap: modal.querySelector('[data-timer-config-cap]'),
+    rounds: modal.querySelector('[data-timer-config-rounds]'),
+    work: modal.querySelector('[data-timer-config-work]'),
+    rest: modal.querySelector('[data-timer-config-rest]'),
+    sequence: modal.querySelector('[data-timer-config-sequence]'),
+  };
 
   const updateModeButtons = (mode) => {
     modeButtons.forEach((button) => {
@@ -129,21 +221,38 @@ export function startWorkoutTimer(config, toast, options = {}) {
 
   const updateDisplay = () => {
     const displaySeconds = readDisplaySeconds(state);
+    const title = content?.querySelector('.timer-title');
+    const kicker = content?.querySelector('.timer-kicker');
     if (display) display.textContent = formatTime(displaySeconds);
-    if (phase) phase.textContent = describePhase(state, normalized);
-    if (meta) meta.textContent = describeMeta(state, normalized);
-    if (summary) summary.textContent = describeSummary(state, normalized);
+    if (phase) phase.textContent = describePhase(state, currentConfig);
+    if (meta) meta.textContent = describeMeta(state, currentConfig);
+    if (summary) summary.textContent = describeSummary(state, currentConfig);
     if (toggleButton) toggleButton.textContent = state.paused ? 'Retomar' : 'Pausar';
-    if (progress) progress.style.width = `${calculateProgressPercent(state, normalized)}%`;
+    if (progress) progress.style.width = `${calculateProgressPercent(state, currentConfig)}%`;
+    if (title) title.textContent = currentConfig.detail;
+    if (kicker) kicker.textContent = currentConfig.label;
     if (mainActions) mainActions.hidden = state.phase !== 'ready';
     if (liveActions) liveActions.hidden = state.phase === 'ready' || state.phase === 'finished';
+    if (startButton) {
+      startButton.textContent = currentConfig.prepSeconds > 0 ? `Começar em ${currentConfig.prepSeconds}s` : 'Começar';
+    }
   };
 
   const applyMode = async (mode) => {
     const nextMode = mode === 'fullscreen' ? 'fullscreen' : 'popup';
+    currentConfig = { ...currentConfig, mode: nextMode };
     modal.classList.toggle('is-fullscreen', nextMode === 'fullscreen');
     modal.classList.toggle('is-popup', nextMode === 'popup');
     updateModeButtons(nextMode);
+    if (nextMode === 'popup') {
+      popupLayout = normalizeTimerPopupLayout(popupLayout);
+      applyTimerPopupLayout(modal, popupLayout);
+    } else {
+      modal.style.left = '';
+      modal.style.top = '';
+      modal.style.width = '';
+      modal.style.height = '';
+    }
 
     if (nextMode === 'fullscreen' && modal.requestFullscreen) {
       try { await modal.requestFullscreen(); } catch {}
@@ -156,7 +265,7 @@ export function startWorkoutTimer(config, toast, options = {}) {
 
   const finish = () => {
     destroy(false);
-    toast(normalized.completionMessage);
+    toast(currentConfig.completionMessage);
   };
 
   const tick = () => {
@@ -173,22 +282,22 @@ export function startWorkoutTimer(config, toast, options = {}) {
 
     if (state.phase !== 'running') return;
 
-    if (normalized.kind === 'countdown') {
+    if (currentConfig.kind === 'countdown') {
       state.remaining = Math.max(0, state.remaining - 1);
       updateDisplay();
       if (state.remaining <= 0) finish();
       return;
     }
 
-    if (normalized.kind === 'countup') {
+    if (currentConfig.kind === 'countup') {
       state.elapsed += 1;
-      if (state.capSeconds) state.remaining = Math.max(0, normalized.capSeconds - state.elapsed);
+      if (state.capSeconds) state.remaining = Math.max(0, currentConfig.capSeconds - state.elapsed);
       updateDisplay();
-      if (state.capSeconds && state.elapsed >= normalized.capSeconds) finish();
+      if (state.capSeconds && state.elapsed >= currentConfig.capSeconds) finish();
       return;
     }
 
-    if (normalized.kind === 'interval') {
+    if (currentConfig.kind === 'interval') {
       state.intervalRemaining = Math.max(0, state.intervalRemaining - 1);
       state.totalElapsed += 1;
       updateDisplay();
@@ -196,21 +305,21 @@ export function startWorkoutTimer(config, toast, options = {}) {
       if (state.intervalRemaining > 0) return;
 
       if (state.segment === 'work') {
-        if (normalized.restSeconds > 0 && state.round < normalized.rounds) {
+        if (currentConfig.restSeconds > 0 && state.round < currentConfig.rounds) {
           state.segment = 'rest';
-          state.intervalRemaining = normalized.restSeconds;
-        } else if (state.round < normalized.rounds) {
+          state.intervalRemaining = currentConfig.restSeconds;
+        } else if (state.round < currentConfig.rounds) {
           state.round += 1;
           state.segment = 'work';
-          state.intervalRemaining = normalized.workSeconds;
+          state.intervalRemaining = currentConfig.workSeconds;
         } else {
           finish();
           return;
         }
-      } else if (state.round < normalized.rounds) {
+      } else if (state.round < currentConfig.rounds) {
         state.round += 1;
         state.segment = 'work';
-        state.intervalRemaining = normalized.workSeconds;
+        state.intervalRemaining = currentConfig.workSeconds;
       } else {
         finish();
         return;
@@ -220,7 +329,7 @@ export function startWorkoutTimer(config, toast, options = {}) {
       return;
     }
 
-    if (normalized.kind === 'sequence') {
+    if (currentConfig.kind === 'sequence') {
       state.intervalRemaining = Math.max(0, state.intervalRemaining - 1);
       state.totalElapsed += 1;
       updateDisplay();
@@ -228,17 +337,17 @@ export function startWorkoutTimer(config, toast, options = {}) {
       if (state.intervalRemaining > 0) return;
 
       const nextSegmentIndex = state.segmentIndex + 1;
-      if (nextSegmentIndex < normalized.segments.length) {
+      if (nextSegmentIndex < currentConfig.segments.length) {
         state.segmentIndex = nextSegmentIndex;
-        state.intervalRemaining = normalized.segments[nextSegmentIndex].seconds;
+        state.intervalRemaining = currentConfig.segments[nextSegmentIndex].seconds;
         updateDisplay();
         return;
       }
 
-      if (state.round < normalized.rounds) {
+      if (state.round < currentConfig.rounds) {
         state.round += 1;
         state.segmentIndex = 0;
-        state.intervalRemaining = normalized.segments[0].seconds;
+        state.intervalRemaining = currentConfig.segments[0].seconds;
         updateDisplay();
         return;
       }
@@ -256,6 +365,7 @@ export function startWorkoutTimer(config, toast, options = {}) {
       window.clearInterval(intervalId);
       intervalId = null;
     }
+    window.removeEventListener('resize', handleWindowResize);
     if (document.fullscreenElement === modal) {
       document.exitFullscreen().catch(() => {});
     }
@@ -264,10 +374,96 @@ export function startWorkoutTimer(config, toast, options = {}) {
     if (showToast) toast('Timer fechado');
   }
 
+  function resetTimerWithConfig(nextConfig) {
+    currentConfig = normalizeTimerConfig(nextConfig, { mode: currentConfig.mode }) || currentConfig;
+    const nextState = createTimerState(currentConfig);
+    Object.keys(state).forEach((key) => {
+      delete state[key];
+    });
+    Object.assign(state, nextState);
+    updateConfigEditor(currentConfig);
+    updateDisplay();
+  }
+
+  function toggleConfigPanel(forceOpen) {
+    configOpen = typeof forceOpen === 'boolean' ? forceOpen : !configOpen;
+    if (configPanel) configPanel.hidden = !configOpen;
+    if (content) content.classList.toggle('is-configOpen', configOpen);
+    if (configToggle) configToggle.classList.toggle('is-active', configOpen);
+  }
+
+  function updateConfigVisibility() {
+    const kind = String(configFields.kind?.value || 'countdown');
+    if (configGroups.countdown) configGroups.countdown.hidden = kind !== 'countdown';
+    if (configGroups.cap) configGroups.cap.hidden = kind !== 'countup';
+    if (configGroups.rounds) configGroups.rounds.hidden = kind !== 'interval' && kind !== 'sequence';
+    if (configGroups.work) configGroups.work.hidden = kind !== 'interval';
+    if (configGroups.rest) configGroups.rest.hidden = kind !== 'interval';
+    if (configGroups.sequence) configGroups.sequence.hidden = kind !== 'sequence';
+    if (configFields.note) {
+      configFields.note.textContent = kind === 'sequence'
+        ? 'Use uma linha por bloco no formato tipo:segundos:rótulo. Exemplo: work:60:Bike ou rest:30:Descanso.'
+        : kind === 'interval'
+          ? 'Defina rounds, trabalho e pausa para montar o bloco intervalado.'
+          : kind === 'countup'
+            ? 'Cap opcional. Use 0 para cronômetro livre.'
+            : 'Use o tempo total para uma contagem regressiva simples.';
+    }
+  }
+
+  function updateConfigEditor(configToEdit) {
+    const editor = createTimerEditorConfig(configToEdit);
+    if (configFields.kind) configFields.kind.value = editor.kind;
+    if (configFields.prepSeconds) configFields.prepSeconds.value = String(editor.prepSeconds);
+    if (configFields.label) configFields.label.value = editor.label;
+    if (configFields.detail) configFields.detail.value = editor.detail;
+    if (configFields.totalSeconds) configFields.totalSeconds.value = String(editor.totalSeconds || 0);
+    if (configFields.capSeconds) configFields.capSeconds.value = String(editor.capSeconds || 0);
+    if (configFields.rounds) configFields.rounds.value = String(editor.rounds || 1);
+    if (configFields.workSeconds) configFields.workSeconds.value = String(editor.workSeconds || 60);
+    if (configFields.restSeconds) configFields.restSeconds.value = String(editor.restSeconds || 0);
+    if (configFields.sequence) configFields.sequence.value = editor.sequence;
+    updateConfigVisibility();
+  }
+
+  function buildConfigFromEditor() {
+    const kind = String(configFields.kind?.value || 'countdown');
+    const nextConfig = {
+      kind,
+      label: String(configFields.label?.value || currentConfig.label || 'Timer do treino').trim() || 'Timer do treino',
+      detail: String(configFields.detail?.value || '').trim() || describeDefaultDetail({ kind }),
+      prepSeconds: Math.max(0, Number(configFields.prepSeconds?.value) || 0),
+      mode: currentConfig.mode || 'popup',
+      completionMessage: `${String(configFields.label?.value || currentConfig.label || 'Timer do treino').trim() || 'Timer do treino'} finalizado`,
+    };
+
+    if (kind === 'interval') {
+      nextConfig.rounds = Math.max(1, Number(configFields.rounds?.value) || 1);
+      nextConfig.workSeconds = Math.max(5, Number(configFields.workSeconds?.value) || 60);
+      nextConfig.restSeconds = Math.max(0, Number(configFields.restSeconds?.value) || 0);
+      return nextConfig;
+    }
+
+    if (kind === 'sequence') {
+      nextConfig.rounds = Math.max(1, Number(configFields.rounds?.value) || 1);
+      nextConfig.segments = parseSequenceConfig(configFields.sequence?.value || '');
+      if (!nextConfig.segments.length) return null;
+      return nextConfig;
+    }
+
+    if (kind === 'countup') {
+      nextConfig.capSeconds = Math.max(0, Number(configFields.capSeconds?.value) || 0);
+      return nextConfig;
+    }
+
+    nextConfig.totalSeconds = Math.max(5, Number(configFields.totalSeconds?.value) || 0);
+    return nextConfig;
+  }
+
   startButton?.addEventListener('click', () => {
     if (state.phase !== 'ready') return;
-    state.phase = normalized.prepSeconds > 0 ? 'prep' : 'running';
-    state.prepRemaining = normalized.prepSeconds;
+    state.phase = currentConfig.prepSeconds > 0 ? 'prep' : 'running';
+    state.prepRemaining = currentConfig.prepSeconds;
     updateDisplay();
   });
 
@@ -282,12 +478,12 @@ export function startWorkoutTimer(config, toast, options = {}) {
   });
 
   modal.querySelector('[data-timer-minus]')?.addEventListener('click', () => {
-    adjustTimer(state, normalized, -30);
+    adjustTimer(state, currentConfig, -30);
     updateDisplay();
   });
 
   modal.querySelector('[data-timer-plus]')?.addEventListener('click', () => {
-    adjustTimer(state, normalized, 30);
+    adjustTimer(state, currentConfig, 30);
     updateDisplay();
   });
 
@@ -295,18 +491,209 @@ export function startWorkoutTimer(config, toast, options = {}) {
     button.addEventListener('click', () => applyMode(button.dataset.timerMode));
   });
 
-  activeWorkoutTimer = { modal, destroy, applyMode };
+  configToggle?.addEventListener('click', () => {
+    toggleConfigPanel();
+  });
+
+  configFields.kind?.addEventListener('change', () => {
+    updateConfigVisibility();
+  });
+
+  modal.querySelector('[data-timer-config-reset]')?.addEventListener('click', () => {
+    resetTimerWithConfig(normalized);
+    toggleConfigPanel(true);
+  });
+
+  modal.querySelector('[data-timer-config-apply]')?.addEventListener('click', () => {
+    const nextConfig = buildConfigFromEditor();
+    if (!nextConfig) {
+      toast('Revise os ajustes do timer');
+      return;
+    }
+    resetTimerWithConfig(nextConfig);
+    toggleConfigPanel(false);
+    toast('Timer ajustado');
+  });
+
+  dragHandle?.addEventListener('pointerdown', (event) => {
+    if (currentConfig.mode !== 'popup') return;
+    if (event.target?.closest?.('button, input, textarea, select')) return;
+    dragState = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      left: popupLayout.left,
+      top: popupLayout.top,
+    };
+    dragHandle.setPointerCapture?.(event.pointerId);
+  });
+
+  dragHandle?.addEventListener('pointermove', (event) => {
+    if (!dragState || currentConfig.mode !== 'popup') return;
+    popupLayout = normalizeTimerPopupLayout({
+      ...popupLayout,
+      left: dragState.left + (event.clientX - dragState.startX),
+      top: dragState.top + (event.clientY - dragState.startY),
+    });
+    applyTimerPopupLayout(modal, popupLayout);
+  });
+
+  dragHandle?.addEventListener('pointerup', (event) => {
+    if (!dragState) return;
+    dragHandle.releasePointerCapture?.(event.pointerId);
+    dragState = null;
+    writeTimerPopupLayout(popupLayout);
+  });
+
+  resizeHandle?.addEventListener('pointerdown', (event) => {
+    if (currentConfig.mode !== 'popup') return;
+    resizeState = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      width: popupLayout.width,
+      height: popupLayout.height,
+    };
+    resizeHandle.setPointerCapture?.(event.pointerId);
+  });
+
+  resizeHandle?.addEventListener('pointermove', (event) => {
+    if (!resizeState || currentConfig.mode !== 'popup') return;
+    popupLayout = normalizeTimerPopupLayout({
+      ...popupLayout,
+      width: resizeState.width + (event.clientX - resizeState.startX),
+      height: resizeState.height + (event.clientY - resizeState.startY),
+    });
+    applyTimerPopupLayout(modal, popupLayout);
+  });
+
+  resizeHandle?.addEventListener('pointerup', (event) => {
+    if (!resizeState) return;
+    resizeHandle.releasePointerCapture?.(event.pointerId);
+    resizeState = null;
+    writeTimerPopupLayout(popupLayout);
+  });
+
+  window.addEventListener('resize', handleWindowResize);
+
+  function handleWindowResize() {
+    if (currentConfig.mode !== 'popup') return;
+    popupLayout = normalizeTimerPopupLayout(popupLayout);
+    applyTimerPopupLayout(modal, popupLayout);
+  }
+
+  activeWorkoutTimer = {
+    modal,
+    destroy,
+    applyMode,
+  };
+  updateConfigEditor(currentConfig);
   updateDisplay();
   startInterval();
-  applyMode(normalized.mode);
+  applyMode(currentConfig.mode);
+  toggleConfigPanel(configOpen);
 
-  if (normalized.autoStart) {
-    state.phase = normalized.prepSeconds > 0 ? 'prep' : 'running';
-    state.prepRemaining = normalized.prepSeconds;
+  if (currentConfig.autoStart) {
+    state.phase = currentConfig.prepSeconds > 0 ? 'prep' : 'running';
+    state.prepRemaining = currentConfig.prepSeconds;
     updateDisplay();
   }
 
   return activeWorkoutTimer;
+}
+
+function createTimerEditorConfig(config = {}) {
+  return {
+    kind: config.kind || 'countdown',
+    prepSeconds: Math.max(0, Number(config.prepSeconds) || 0),
+    label: String(config.label || 'Timer do treino').trim(),
+    detail: String(config.detail || describeDefaultDetail(config)).trim(),
+    totalSeconds: Math.max(0, Number(config.totalSeconds) || 0),
+    capSeconds: Math.max(0, Number(config.capSeconds) || 0),
+    rounds: Math.max(1, Number(config.rounds) || 1),
+    workSeconds: Math.max(5, Number(config.workSeconds) || 60),
+    restSeconds: Math.max(0, Number(config.restSeconds) || 0),
+    sequence: serializeSequenceConfig(config.segments || []),
+  };
+}
+
+function parseSequenceConfig(rawValue) {
+  return String(rawValue || '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [kindPart = 'work', secondsPart = '0', ...labelParts] = line.split(':');
+      const kind = String(kindPart || 'work').trim().toLowerCase() === 'rest' ? 'rest' : 'work';
+      const seconds = Math.max(1, Number(secondsPart) || 0);
+      const label = String(labelParts.join(':') || (kind === 'rest' ? 'Descanso' : 'Trabalho')).trim();
+      return { kind, seconds, label };
+    })
+    .filter((segment) => segment.seconds > 0);
+}
+
+function serializeSequenceConfig(segments = []) {
+  return segments
+    .map((segment) => `${segment?.kind === 'rest' ? 'rest' : 'work'}:${Math.max(1, Number(segment?.seconds) || 0)}:${String(segment?.label || (segment?.kind === 'rest' ? 'Descanso' : 'Trabalho')).trim()}`)
+    .join('\n');
+}
+
+function getTimerViewport() {
+  const width = Math.max(320, window.innerWidth || document.documentElement?.clientWidth || 390);
+  const height = Math.max(420, window.innerHeight || document.documentElement?.clientHeight || 720);
+  return { width, height };
+}
+
+function normalizeTimerPopupLayout(layout = {}) {
+  const viewport = getTimerViewport();
+  const maxWidth = Math.max(MIN_TIMER_POPUP_WIDTH, viewport.width - 16);
+  const maxHeight = Math.max(MIN_TIMER_POPUP_HEIGHT, viewport.height - 16);
+  const width = clampNumber(Number(layout.width) || Math.min(360, viewport.width - 24), MIN_TIMER_POPUP_WIDTH, maxWidth);
+  const height = clampNumber(Number(layout.height) || Math.min(440, viewport.height - 120), MIN_TIMER_POPUP_HEIGHT, maxHeight);
+  const left = clampNumber(
+    Number(layout.left),
+    8,
+    Math.max(8, viewport.width - width - 8),
+    Math.max(8, viewport.width - width - 12),
+  );
+  const top = clampNumber(
+    Number(layout.top),
+    8,
+    Math.max(8, viewport.height - height - 8),
+    Math.max(8, viewport.height - height - 96),
+  );
+
+  return { width, height, left, top };
+}
+
+function applyTimerPopupLayout(modal, layout) {
+  if (!modal || !layout) return;
+  modal.style.left = `${layout.left}px`;
+  modal.style.top = `${layout.top}px`;
+  modal.style.width = `${layout.width}px`;
+  modal.style.height = `${layout.height}px`;
+}
+
+function readTimerPopupLayout() {
+  try {
+    const raw = window.localStorage?.getItem(TIMER_POPUP_LAYOUT_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeTimerPopupLayout(layout) {
+  try {
+    window.localStorage?.setItem(TIMER_POPUP_LAYOUT_KEY, JSON.stringify(layout || {}));
+  } catch {
+    // no-op
+  }
+}
+
+function clampNumber(value, min, max, fallback = min) {
+  if (!Number.isFinite(value)) return fallback;
+  return Math.min(Math.max(value, min), max);
 }
 
 function normalizeTimerConfig(config, options = {}) {

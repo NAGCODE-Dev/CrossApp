@@ -513,7 +513,7 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
         method: 'POST',
         body: { planId: 'coach', provider: 'mock' },
       });
-      setMessage('Plano Coach local ativado');
+      setMessage('Acesso local liberado');
       await loadDashboard(dashboard.selectedGymId, dashboard.selectedSportType);
     } catch (err) {
       setError(err.message || 'Erro ao ativar plano local');
@@ -755,6 +755,26 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
     canCoachManage,
   });
   const canPublishWorkout = !loading && publishErrors.length === 0;
+  const shouldShowBillingAction = !canCoachManage || planStatus !== 'active';
+  const overviewBenchmarks = (dashboard.insights?.topBenchmarks || []).length
+    ? dashboard.insights.topBenchmarks
+      .slice(0, 4)
+      .map((item) => ({
+        key: item.slug || item.name,
+        title: item.name || 'Benchmark',
+        detail: `${item.total || 0} registro(s) no gym`,
+      }))
+    : dashboard.benchmarks
+      .slice(0, 4)
+      .map((benchmark) => ({
+        key: benchmark.slug || benchmark.id,
+        title: benchmark.name || benchmark.slug || 'Benchmark',
+        detail: `${benchmarkCategoryLabel(benchmark.category)}${benchmark.year ? ` • ${benchmark.year}` : ''}`,
+      }));
+  const overviewRecentPrs = dashboard.selectedSportType === 'cross'
+    ? (dashboard.insights?.recentPrs || []).slice(0, 4)
+    : [];
+  const overviewFeed = (dashboard.feed || []).slice(0, 4);
 
   function renderSportSpecificWorkoutFields() {
     if (isRunning) {
@@ -999,13 +1019,13 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
     React.createElement('aside', { className: 'sidebar' },
       React.createElement('div', { className: 'eyebrow' }, 'Ryxen Coach'),
       React.createElement('h1', { className: 'sidebar-title' }, 'Coach Portal'),
-      React.createElement('p', { className: 'sidebar-copy' }, 'Operação do box, assinatura, benchmarks, rankings e programação em um workspace mais claro.'),
+      React.createElement('p', { className: 'sidebar-copy' }, 'Operação, benchmarks, rankings e programação.'),
       React.createElement('div', { className: 'profile-box' },
         React.createElement('strong', null, profile?.name || profile?.email || 'Coach'),
         React.createElement('span', null, profile?.email || '')
       ),
       React.createElement('div', { className: 'sidebar-plan' },
-        React.createElement('span', { className: 'stat-label' }, 'Plano atual'),
+        React.createElement('span', { className: 'stat-label' }, 'Acesso atual'),
         React.createElement('strong', { className: 'sidebar-planValue' }, planName),
         React.createElement('span', { className: `pill ${billingTone}` },
           renewAt
@@ -1033,21 +1053,21 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
       React.createElement('section', { className: 'hero', id: 'overview' },
         React.createElement('div', null,
           React.createElement('div', { className: 'eyebrow' }, 'Operação do coach'),
-          React.createElement('h2', null, selectedGym ? `Operação de ${selectedGym.name}` : 'Seu painel de operação do box'),
+          React.createElement('h2', null, selectedGym ? `Operação de ${selectedGym.name}` : 'Seu painel operacional do box'),
           React.createElement('p', { className: 'hero-copy' }, selectedGym
-            ? `Publicação, grupos, atletas, benchmarks e assinatura do ${selectedGym.name} em um fluxo só.`
-            : 'Escolha um gym para começar a publicar programação, acompanhar atletas e operar o portal com mais clareza.')
+            ? `Publicação, grupos, atletas, benchmarks e rotina de ${selectedGym.name}.`
+            : 'Escolha um gym para publicar, acompanhar atletas e usar o portal.')
         ),
         React.createElement('div', { className: 'hero-pills' },
           React.createElement('span', { className: 'pill' }, sportLabel(dashboard.selectedSportType)),
-          React.createElement('span', { className: `pill ${canCoachManage ? 'ok' : 'warn'}` }, canCoachManage ? 'Coach liberado' : 'Coach bloqueado'),
-          React.createElement('span', { className: `pill ${canAthleteUseApp ? 'ok' : 'warn'}` }, canAthleteUseApp ? 'Atletas com acesso' : 'Atletas limitados')
+          React.createElement('span', { className: `pill ${canCoachManage ? 'ok' : 'warn'}` }, canCoachManage ? 'Portal disponível' : 'Portal indisponível'),
+          React.createElement('span', { className: `pill ${canAthleteUseApp ? 'ok' : 'warn'}` }, canAthleteUseApp ? 'Atletas com acesso' : 'Atletas sem acesso')
         )
       ),
       React.createElement('section', { className: 'portal-toolbarCard card' },
         React.createElement('div', { className: 'stack' },
           React.createElement('div', { className: 'eyebrow' }, 'Modalidade ativa'),
-          React.createElement('strong', null, 'Troque o contexto do portal para publicar e gerenciar por esporte'),
+          React.createElement('strong', null, 'Selecione a modalidade'),
           React.createElement('div', { className: 'tabs' },
             availableSportOptions.map((sport) =>
               React.createElement('button', {
@@ -1074,20 +1094,20 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
       message ? React.createElement('div', { className: 'notice success' }, message) : null,
       React.createElement('section', { className: `billing-banner billing-banner-${billingTone}`, hidden: !isOverviewSection },
         React.createElement('div', null,
-          React.createElement('div', { className: 'eyebrow' }, 'Assinatura'),
+          React.createElement('div', { className: 'eyebrow' }, 'Acesso'),
           React.createElement('strong', { className: 'billing-bannerTitle' },
             planStatus === 'active'
-              ? `Plano ${planName} ativo`
-              : `Plano ${planName} ${planStatus}`
+              ? `Acesso ${planName} ativo`
+              : `${planName} • ${planStatus}`
           ),
           React.createElement('p', { className: 'muted' },
             renewAt
               ? `Renovação em ${formatDateLabel(renewAt)}${daysRemaining !== null ? ` • ${daysRemaining} dia(s) restantes` : ''}`
-              : 'Sem renovação cadastrada. O box entra em modo limitado se a assinatura não estiver ativa.'
+              : 'Sem renovação cadastrada. O portal segue em modo limitado enquanto o acesso não estiver ativo.'
           )
         ),
         React.createElement('div', { className: 'billing-bannerActions' },
-        React.createElement('button', { className: 'btn btn-primary', onClick: () => handleCheckout('coach'), disabled: loading }, 'Assinar Coach'),
+          shouldShowBillingAction ? React.createElement('button', { className: 'btn btn-primary', onClick: () => handleCheckout('coach'), disabled: loading }, 'Abrir cobrança') : null,
           canUseDeveloperTools ? React.createElement('button', { className: 'btn btn-secondary', onClick: handleActivateLocalPlan, disabled: loading }, 'Ativar local') : null,
           React.createElement('a', { className: 'btn btn-link', href: '/terms.html', target: '_blank', rel: 'noreferrer' }, 'Termos')
         )
@@ -1096,7 +1116,7 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
         showSkeleton
           ? Array.from({ length: 6 }, (_, index) => portalSkeletonCard(`stat-${index}`))
           : [
-              statCard('Plano', planName),
+              statCard('Acesso', planName),
               statCard('Status', planStatus),
               statCard('Gyms', String(dashboard.gyms.length)),
               statCard('Modalidade', sportLabel(dashboard.selectedSportType)),
@@ -1112,34 +1132,140 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
         React.createElement('h3', null, 'Estrutura do box'),
         React.createElement('p', { className: 'muted' }, 'Gyms, membros, grupos e indicadores operacionais em leitura direta.')
       ),
-      React.createElement('section', { className: 'plan-grid', hidden: !isOverviewSection },
-        planCard({
-          name: 'Coach Starter',
-          price: 'R$ 49,90/mês',
-          description: 'Para começar a organizar treino, atletas e rotina do box.',
-          features: ['Operação inicial', 'Treino e benchmarks', 'Atletas vinculados com mais recursos'],
-          featured: false,
-          action: () => handleCheckout('starter'),
-          loading,
-        }),
-        planCard({
-          name: 'Coach Pro',
-          price: 'R$ 119,90/mês',
-          description: 'Plano principal para publicar programação e ampliar a experiência dos atletas.',
-          features: ['Tudo do Starter', 'Gestão mais forte', 'Mais imports e histórico para atletas'],
-          featured: true,
-          action: () => handleCheckout('pro'),
-          loading,
-        }),
-        planCard({
-          name: 'Coach Performance',
-          price: 'R$ 199,90/mês',
-          description: 'Para operação premium com mais folga, escala e experiência completa.',
-          features: ['Tudo do Pro', 'Operação premium', 'Atletas com imports e histórico máximos'],
-          featured: false,
-          action: () => handleCheckout('performance'),
-          loading,
-        })
+      React.createElement('section', { className: 'grid portal-grid', hidden: !isOverviewSection },
+        !dashboard.gyms.length
+          ? React.createElement('div', { className: 'card wide' },
+              React.createElement('div', { className: 'publish-formSectionHead' },
+                React.createElement('div', { className: 'eyebrow' }, 'Primeiros passos'),
+                React.createElement('strong', null, 'Começar pelo básico')
+              ),
+              React.createElement('p', { className: 'muted' }, 'Crie um gym, convide membros e publique um treino.'),
+              React.createElement('div', { className: 'stack list-block' },
+                React.createElement('div', { className: 'list-item static' },
+                  React.createElement('strong', null, '1. Criar gym'),
+                  React.createElement('span', null, 'Abra Operação para cadastrar o box e definir o contexto inicial.')
+                ),
+                React.createElement('div', { className: 'list-item static' },
+                  React.createElement('strong', null, '2. Convidar membros'),
+                  React.createElement('span', null, 'Adicione atletas e coaches para montar a estrutura de trabalho.')
+                ),
+                React.createElement('div', { className: 'list-item static' },
+                  React.createElement('strong', null, '3. Publicar treino'),
+                  React.createElement('span', null, 'Use Programação para enviar o primeiro treino ao feed do atleta.')
+                )
+              ),
+              React.createElement('div', { className: 'billing-bannerActions' },
+                React.createElement('button', { className: 'btn btn-secondary', type: 'button', onClick: () => setActiveSection('operation') }, 'Abrir operação'),
+                React.createElement('button', { className: 'btn btn-secondary', type: 'button', onClick: () => setActiveSection('programming') }, 'Abrir programação'),
+                React.createElement('button', { className: 'btn btn-secondary', type: 'button', onClick: () => setActiveSection('library') }, 'Ver benchmarks')
+              )
+            )
+          : [
+              React.createElement('div', { className: 'card', key: 'overview-actions' },
+                React.createElement('div', { className: 'publish-formSectionHead' },
+                  React.createElement('div', { className: 'eyebrow' }, 'Próximas ações'),
+                  React.createElement('strong', null, selectedGym ? `Fluxo de ${selectedGym.name}` : 'Fluxo operacional')
+                ),
+                React.createElement('div', { className: 'stack list-block' },
+                  React.createElement('button', { className: 'list-item', type: 'button', onClick: () => setActiveSection('programming') },
+                    React.createElement('strong', null, 'Publicar treino'),
+                    React.createElement('span', null, selectedGym ? `Enviar treino para ${selectedGym.name}` : 'Abrir publicação')
+                  ),
+                  React.createElement('button', { className: 'list-item', type: 'button', onClick: () => setActiveSection('operation') },
+                    React.createElement('strong', null, 'Revisar membros e grupos'),
+                    React.createElement('span', null, `${dashboard.members.length} membro(s) • ${dashboard.groups.length} grupo(s)`)
+                  ),
+                  React.createElement('button', { className: 'list-item', type: 'button', onClick: () => setActiveSection('library') },
+                    React.createElement('strong', null, 'Consultar benchmarks'),
+                    React.createElement('span', null, `${dashboard.benchmarkPagination.total || dashboard.benchmarks.length || 0} benchmark(s) disponíveis`)
+                  )
+                )
+              ),
+              React.createElement('div', { className: 'card', key: 'overview-access' },
+                React.createElement('div', { className: 'publish-formSectionHead' },
+                  React.createElement('div', { className: 'eyebrow' }, 'Leitura rápida'),
+                  React.createElement('strong', null, 'Estado atual do portal')
+                ),
+                React.createElement('div', { className: 'stack list-block' },
+                  React.createElement('div', { className: 'list-item static' },
+                    React.createElement('strong', null, 'Gym selecionado'),
+                    React.createElement('span', null, selectedGym ? `${selectedGym.name} • ${selectedGym.role || 'membro'}` : 'Nenhum gym ativo')
+                  ),
+                  React.createElement('div', { className: 'list-item static' },
+                    React.createElement('strong', null, 'Portal do coach'),
+                    React.createElement('span', null, canCoachManage ? 'Disponível para operar' : 'Indisponível no estado atual')
+                  ),
+                  React.createElement('div', { className: 'list-item static' },
+                    React.createElement('strong', null, 'App do atleta'),
+                    React.createElement('span', null, canAthleteUseApp ? 'Disponível para os atletas vinculados' : 'Sem liberação para atletas')
+                  ),
+                  React.createElement('div', { className: 'list-item static' },
+                    React.createElement('strong', null, 'Renovação'),
+                    React.createElement('span', null, renewAt ? formatDateLabel(renewAt) : 'Sem data cadastrada')
+                  )
+                )
+              ),
+              React.createElement('div', { className: 'card', key: 'overview-benchmarks' },
+                React.createElement('div', { className: 'publish-formSectionHead' },
+                  React.createElement('div', { className: 'eyebrow' }, 'Benchmarks'),
+                  React.createElement('strong', null, 'Referências em destaque')
+                ),
+                overviewBenchmarks.length
+                  ? React.createElement('div', { className: 'stack list-block' },
+                      overviewBenchmarks.map((item) =>
+                        React.createElement('div', { key: item.key, className: 'list-item static' },
+                          React.createElement('strong', null, item.title),
+                          React.createElement('span', null, item.detail)
+                        )
+                      )
+                    )
+                  : React.createElement('p', { className: 'muted' }, 'Abra a biblioteca para ver benchmarks.'),
+                React.createElement('div', { className: 'billing-bannerActions' },
+                  React.createElement('button', { className: 'btn btn-secondary', type: 'button', onClick: () => setActiveSection('library') }, 'Abrir biblioteca')
+                )
+              ),
+              React.createElement('div', { className: 'card', key: 'overview-prs' },
+                React.createElement('div', { className: 'publish-formSectionHead' },
+                  React.createElement('div', { className: 'eyebrow' }, 'PRs'),
+                  React.createElement('strong', null, 'Últimos registros')
+                ),
+                dashboard.selectedSportType !== 'cross'
+                  ? React.createElement('p', { className: 'muted' }, 'Troque para Cross para ver PRs.')
+                  : overviewRecentPrs.length
+                    ? React.createElement('div', { className: 'stack list-block' },
+                        overviewRecentPrs.map((record, index) =>
+                          React.createElement('div', { key: `${record.id || record.exercise || 'pr'}-${index}`, className: 'list-item static' },
+                            React.createElement('strong', null, record.athlete_name || record.athlete_email || 'Atleta'),
+                            React.createElement('span', null, `${record.exercise} • ${formatNumericValue(record.value)} ${record.unit || 'kg'}`)
+                          )
+                        )
+                      )
+                    : React.createElement('p', { className: 'muted' }, 'Nenhum PR sincronizado recentemente.'),
+                React.createElement('div', { className: 'billing-bannerActions' },
+                  React.createElement('button', { className: 'btn btn-secondary', type: 'button', onClick: () => setActiveSection('operation') }, 'Abrir operação')
+                )
+              ),
+              React.createElement('div', { className: 'card wide', key: 'overview-feed' },
+                React.createElement('div', { className: 'publish-formSectionHead' },
+                  React.createElement('div', { className: 'eyebrow' }, 'Feed'),
+                  React.createElement('strong', null, 'Treinos recentes publicados')
+                ),
+                overviewFeed.length
+                  ? React.createElement('div', { className: 'stack list-block' },
+                      overviewFeed.map((item) =>
+                        React.createElement('div', { key: item.id, className: 'list-item static' },
+                          React.createElement('strong', null, item.title || 'Treino'),
+                          React.createElement('span', null, `${item.gym_name || selectedGym?.name || 'Gym'} • ${sportLabel(item.sport_type || dashboard.selectedSportType)}${item.benchmark?.name ? ` • ${item.benchmark.name}` : ''}`)
+                        )
+                      )
+                    )
+                  : React.createElement('p', { className: 'muted' }, 'Sem treinos publicados ainda para este contexto.'),
+                React.createElement('div', { className: 'billing-bannerActions' },
+                  React.createElement('button', { className: 'btn btn-secondary', type: 'button', onClick: () => setActiveSection('programming') }, 'Abrir programação'),
+                  React.createElement('button', { className: 'btn btn-secondary', type: 'button', onClick: () => loadDashboard(dashboard.selectedGymId, dashboard.selectedSportType) }, 'Atualizar visão geral')
+                )
+              ),
+            ]
       ),
       React.createElement('section', { className: 'grid portal-grid', hidden: !(isOperationSection || isProgrammingSection || isLibrarySection) },
         React.createElement('div', { className: 'card wide operation-shellLayout', hidden: !isOperationSection },
@@ -1634,7 +1760,7 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
           React.createElement('div', { className: 'portal-sectionHeader portal-sectionHeader-inline' },
             React.createElement('div', { className: 'eyebrow' }, 'Competições'),
             React.createElement('h3', null, 'Calendário e eventos'),
-            React.createElement('p', { className: 'muted' }, 'Crie competições, eventos e mantenha o calendário do box organizado.')
+            React.createElement('p', { className: 'muted' }, 'Crie competições e eventos.')
           ),
           React.createElement('div', { className: 'competition-shellLayout' },
             React.createElement('section', { className: 'stack nested-card competition-calendarCard' },
@@ -1887,7 +2013,7 @@ function portalSkeletonList(count = 3) {
 
 function planCard({ name, price, description, features = [], featured = false, action = null, loading = false }) {
   return React.createElement('div', { className: `plan-card ${featured ? 'plan-card-featured' : ''}` },
-    React.createElement('span', { className: 'eyebrow' }, 'Plano'),
+    React.createElement('span', { className: 'eyebrow' }, 'Acesso'),
     React.createElement('h3', { className: 'plan-cardTitle' }, name),
     React.createElement('strong', { className: 'plan-cardPrice' }, price),
     React.createElement('p', { className: 'muted' }, description),
@@ -1897,7 +2023,7 @@ function planCard({ name, price, description, features = [], featured = false, a
       )
     ),
     action
-      ? React.createElement('button', { className: 'btn btn-primary', onClick: action, disabled: loading }, loading ? 'Abrindo...' : `Assinar ${name}`)
+      ? React.createElement('button', { className: 'btn btn-primary', onClick: action, disabled: loading }, loading ? 'Abrindo...' : 'Abrir cobrança')
       : React.createElement('span', { className: 'plan-cardGhost' }, 'Em breve')
   );
 }
@@ -2096,7 +2222,7 @@ function getPublishValidationErrors({ forms = {}, selectedGymId = '', athleteMem
   const selectedGroups = Array.isArray(forms.targetGroupIds) ? forms.targetGroupIds.filter(Boolean) : [];
 
   if (!selectedGymId) errors.push('Selecione um gym');
-  if (!canCoachManage) errors.push('Seu plano atual não libera a publicação no portal');
+  if (!canCoachManage) errors.push('Seu acesso atual não libera publicação no portal');
   if (!title) errors.push('Defina um título para o treino');
   if (!date) errors.push('Escolha a data da publicação');
   if (!lines.length) errors.push('Adicione pelo menos uma linha no treino');

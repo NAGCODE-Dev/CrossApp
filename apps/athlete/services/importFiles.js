@@ -94,3 +94,16 @@ export function formatBytes(bytes) {
   if (value >= 1024) return `${(value / 1024).toFixed(1)} KB`;
   return `${value} B`;
 }
+
+export async function compressImportedImage(file, {
+  targetMaxBytes = IMAGE_TARGET_MAX_BYTES,
+  maxDimension = IMAGE_MAX_DIMENSION,
+  hardMaxBytes = IMPORT_HARD_MAX_BYTES,
+} = {}) {
+  if (!file) return null;
+  const nextTarget = Math.min(Number(targetMaxBytes) || IMAGE_TARGET_MAX_BYTES, Number(hardMaxBytes) || IMPORT_HARD_MAX_BYTES);
+  return compressImageFile(file, {
+    targetMaxBytes: nextTarget,
+    maxDimension: Number(maxDimension) || IMAGE_MAX_DIMENSION,
+  });
+}

@@ -73,10 +73,10 @@ export function renderAthleteAccountPage(state, helpers) {
           eyebrow: 'Conta',
           title: 'Sua conta',
           subtitle: accountView === 'preferences'
-            ? 'Ajuste o visual, o treino e o conforto deste aparelho.'
+            ? 'Visual e treino deste aparelho.'
             : accountView === 'data'
-              ? 'Backups, documentos e os dados locais do app continuam por aqui.'
-              : 'Acesso simples, progresso salvo e tudo no seu ritmo.',
+              ? 'Backups, documentos e dados locais.'
+              : 'Acesso e atividade.',
           actions: `
             <button class="btn-primary" data-action="modal:open" data-modal="auth" type="button">Entrar</button>
           `,
@@ -116,23 +116,23 @@ export function renderAthleteAccountPage(state, helpers) {
       ${renderPageHero({
         eyebrow: 'Conta',
         title: profile.name || 'Sua conta',
-        subtitle: accountView === 'preferences'
-          ? 'Aparência, treino e conforto visual do seu jeito.'
+          subtitle: accountView === 'preferences'
+            ? 'Aparência e treino.'
           : accountView === 'data'
-            ? 'Backups, documentos e o básico do que está salvo neste app.'
-            : 'Plano, acesso e atividade recente em uma leitura tranquila.',
+            ? 'Backups, documentos e dados salvos.'
+            : 'Status da conta, acesso e atividade.',
         actions: `
           <button class="btn-secondary" data-action="auth:refresh" type="button">Atualizar</button>
           <button class="btn-primary" data-action="auth:signout" type="button">Sair</button>
         `,
         footer: `
           <div class="summary-strip summary-strip-3">
-            ${renderHeroStat('Plano', escapeHtml(planName || 'Livre'), escapeHtml(planStatus || 'sem status'))}
+            ${renderHeroStat('Conta', escapeHtml(planName || 'Livre'), escapeHtml(planStatus || 'sem status'))}
             ${renderHeroStat('Resultados', String(Number(athleteStats?.resultsLogged || 0)), 'registros salvos')}
-            ${renderHeroStat('Portal', canCoachManage ? 'Liberado' : 'Fechado', canCoachManage ? `${gyms.length} gym(s)` : 'upgrade quando quiser')}
+            ${renderHeroStat('Portal', canCoachManage ? 'Disponível' : 'Indisponível', canCoachManage ? `${gyms.length} gym(s)` : 'sem acesso no momento')}
           </div>
           <div class="account-viewTabs" role="tablist" aria-label="Seções da conta">
-            ${renderAccountViewButton('overview', accountView, 'Visão geral', 'acesso e atividade')}
+            ${renderAccountViewButton('overview', accountView, 'Visão geral', 'status e atividade')}
             ${renderAccountViewButton('preferences', accountView, 'Preferências', 'aparência e treino')}
             ${renderAccountViewButton('data', accountView, 'Dados', 'backup e documentos')}
           </div>
