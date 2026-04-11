@@ -156,6 +156,7 @@ export async function init() {
       checkDependencies,
       loadPersistedState,
       restoreSessionIfPossible,
+      setSessionRestoreStatus,
       updateCurrentDay,
       loadSavedWeeks,
       setupEventListeners,
@@ -170,12 +171,23 @@ export async function init() {
   }
 }
 
-async function restoreSessionIfPossible() {
+async function restoreSessionIfPossible(options = {}) {
   return restorePersistedSession({
     hasStoredSession,
     handleRefreshSession,
     remoteHandlers,
     logDebug,
+    setSessionRestoreStatus: options.setSessionRestoreStatus || setSessionRestoreStatus,
+    emit,
+  });
+}
+
+function setSessionRestoreStatus(status) {
+  const nextStatus = ['restoring', 'ready', 'failed'].includes(status) ? status : 'idle';
+  setState({
+    ui: {
+      sessionRestore: nextStatus,
+    },
   });
 }
 

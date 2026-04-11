@@ -60,6 +60,9 @@ function renderWorkoutTimerActions(timerConfig) {
       <button class="btn-timer" data-action="timer:workout" data-timer-mode="popup" ${attrs} type="button">
         Começar
       </button>
+      <button class="btn-timer btn-timer-secondary" data-action="timer:workout" data-timer-mode="popup" data-timer-config="open" ${attrs} type="button">
+        Ajustar
+      </button>
       <button class="btn-timer btn-timer-secondary" data-action="timer:workout" data-timer-mode="fullscreen" ${attrs} type="button">
         Tela cheia
       </button>

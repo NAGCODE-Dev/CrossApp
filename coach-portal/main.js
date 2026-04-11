@@ -104,7 +104,7 @@ function App() {
         React.createElement('section', { className: 'auth-card' },
           React.createElement('div', { className: 'eyebrow' }, 'Ryxen Coach'),
           React.createElement('h1', null, 'Coach Portal'),
-          React.createElement('p', { className: 'muted' }, 'Entre para publicar treinos, organizar atletas e acompanhar o box sem depender de planilha solta.'),
+          React.createElement('p', { className: 'muted' }, 'Entre para publicar treinos, acompanhar atletas e consultar benchmarks.'),
           error ? React.createElement('div', { className: 'notice error' }, error) : null,
           message ? React.createElement('div', { className: 'notice success' }, message) : null,
           React.createElement('form', { className: 'stack', onSubmit: handleLogin },
@@ -138,18 +138,18 @@ function App() {
           ),
           React.createElement('div', { className: 'auth-links' },
             React.createElement('a', { className: 'portal-link', href: '/' }, 'Abrir app do atleta'),
-            React.createElement('a', { className: 'portal-link', href: '/pricing.html' }, 'Ver planos')
+            React.createElement('a', { className: 'portal-link', href: '/support.html' }, 'Suporte')
           )
         ),
         React.createElement('aside', { className: 'auth-panel' },
           React.createElement('div', { className: 'eyebrow' }, 'Operação do coach'),
-          React.createElement('h2', null, 'Um portal só para operar o box com mais clareza.'),
-          React.createElement('p', { className: 'muted auth-panelCopy' }, 'O Coach Portal concentra programação, grupos, atletas, benchmarks, rankings e assinatura em uma experiência separada do app do atleta.'),
+          React.createElement('h2', null, 'Portal do coach'),
+          React.createElement('p', { className: 'muted auth-panelCopy' }, 'Treinos, grupos, atletas, benchmarks, rankings e acesso em uma área própria.'),
           React.createElement('div', { className: 'auth-panelGrid' },
             authFeatureCard('Publique treinos', 'Envie programação para todos, grupos ou atletas específicos.'),
             authFeatureCard('Gerencie atletas', 'Centralize membros, grupos e contexto operacional do gym.'),
-            authFeatureCard('Acompanhe acesso', 'Visualize plano, status e benefícios herdados pelos atletas.'),
-            authFeatureCard('Use a mesma conta', 'Coach e atleta compartilham sessão, mas com experiências separadas.')
+            authFeatureCard('Acompanhe acesso', 'Visualize status da conta, liberações e uso herdado pelos atletas.'),
+            authFeatureCard('Mesma conta', 'Atleta e coach usam o mesmo login.')
           )
         )
       )
@@ -228,7 +228,7 @@ async function handleBillingReturn(setMessage, setError) {
   const params = new URLSearchParams(window.location.search);
   const billing = params.get('billing');
   if (billing === 'success') {
-    setMessage('Checkout concluído. Atualize o portal para refletir o plano.');
+    setMessage('Cobrança concluída. Atualize o portal.');
     clearBillingParams(params);
     return;
   }

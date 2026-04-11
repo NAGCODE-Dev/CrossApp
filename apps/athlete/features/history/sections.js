@@ -42,7 +42,7 @@ export function renderPrHistorySection({
   if (isBusy || isDetailLoading) return renderTrendSkeletons(3);
   if (isDetailError) return '<p class="account-hint">Não foi possível carregar PRs agora.</p>';
   if (!prHistory.length) {
-    return '<p class="account-hint">Cadastre seus PRs para o app calcular cargas e mostrar progresso real.</p>';
+    return '<p class="account-hint">Cadastre PRs para calcular cargas.</p>';
   }
 
   return prHistory.map((item) => `

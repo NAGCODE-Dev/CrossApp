@@ -5,10 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Ryxen - Política de Privacidade</title>
   <style>
-    body { font-family: system-ui, sans-serif; margin: 0; background: #f9fafb; color: #111827; }
+    body { font-family: system-ui, sans-serif; margin: 0; background: #f4f7fb; color: #111827; }
     main { max-width: 900px; margin: 0 auto; padding: 88px 24px 24px; line-height: 1.55; }
     h1, h2 { line-height: 1.25; }
-    .card { background: white; border-radius: 12px; padding: 18px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); margin-bottom: 16px; }
+    .card { background: white; border-radius: 16px; padding: 18px; box-shadow: 0 12px 32px rgba(15,23,42,0.08); margin-bottom: 16px; border: 1px solid rgba(15,23,42,0.08); }
+    .brand-header {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 24px 24px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .brand-header img { width: min(180px, 48vw); height: auto; }
+    .brand-copy { display: grid; gap: 4px; text-align: right; }
+    .brand-copy strong { font-size: 1rem; }
+    .brand-copy span { color: #475569; font-size: 0.84rem; line-height: 1.45; }
     a { color: #2563eb; }
     .app-back {
       position: fixed;
@@ -26,6 +39,7 @@
       box-shadow: 0 6px 20px rgba(0,0,0,0.18);
     }
     body.embedded .app-back { display: none; }
+    body.embedded .brand-header { padding-top: 24px; }
     body.embedded main { padding-top: 24px; }
   </style>
 </head>
@@ -36,6 +50,13 @@
     }
   </script>
   <button class="app-back" type="button" onclick="if (history.length > 1) history.back(); else location.assign('/index.html')">Voltar</button>
+  <header class="brand-header">
+    <img src="./branding/exports/ryxen-logo-horizontal.png" alt="Ryxen" onerror="this.onerror=null;this.src='./branding/exports/ryxen-logo-horizontal-alt.png'">
+    <div class="brand-copy">
+      <strong>Privacidade</strong>
+      <span>Documento de dados, uso e proteção de informações.</span>
+    </div>
+  </header>
   <main>
     <h1>Política de Privacidade - Ryxen</h1>
     <div class="card">

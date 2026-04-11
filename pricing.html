@@ -33,6 +33,35 @@
       margin: 0 auto;
       padding: 96px 0 64px;
     }
+    .brand-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 22px;
+      padding: 16px 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+    .brand-header img {
+      width: min(180px, 48vw);
+      height: auto;
+    }
+    .brand-headerCopy {
+      display: grid;
+      gap: 4px;
+      text-align: right;
+    }
+    .brand-headerCopy strong {
+      font-size: 0.98rem;
+    }
+    .brand-headerCopy span {
+      color: var(--muted);
+      font-size: 0.84rem;
+      line-height: 1.45;
+    }
     .app-back {
       position: fixed;
       top: 16px;
@@ -218,6 +247,13 @@
       .grid-3, .grid-2 {
         grid-template-columns: 1fr;
       }
+      .brand-header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+      .brand-headerCopy {
+        text-align: left;
+      }
       .page {
         width: min(100vw - 24px, 100%);
       }
@@ -236,18 +272,26 @@
   </script>
   <button class="app-back" type="button" onclick="if (history.length > 1) history.back(); else location.assign('/index.html')">Voltar</button>
   <main class="page">
+    <header class="brand-header">
+      <img src="./branding/exports/ryxen-logo-horizontal.png" alt="Ryxen" onerror="this.onerror=null;this.src='./branding/exports/ryxen-logo-horizontal-alt.png'">
+      <div class="brand-headerCopy">
+        <strong>Ryxen Coach</strong>
+        <span>Cobrança e acesso do portal em leitura direta.</span>
+      </div>
+    </header>
+
     <section class="hero">
-      <div class="eyebrow">Ryxen Coach Pricing</div>
-      <h1>Planos do coach. Atleta livre no app.</h1>
+      <div class="eyebrow">Acesso do Coach Portal</div>
+      <h1>Acesso do portal do coach. App do atleta liberado.</h1>
       <p>
-        No Ryxen Coach, quem assina é o coach ou o box. Os atletas usam o Ryxen livremente, com imports e histórico completos.
-        O plano pago existe para liberar a operação do coach no portal separado: gestão, grupos, box e publicação de treinos.
+        No Ryxen Coach, a cobrança fica concentrada no portal do coach ou do box. Os atletas seguem usando o app do atleta normalmente,
+        enquanto o acesso pago libera a operação do portal separado: gestão, grupos, benchmarks e publicação de treinos.
       </p>
       <div class="hero-meta">
         <span>Atleta pode usar solo</span>
         <span>Imports e histórico completos</span>
-        <span>Coach paga pela operação</span>
-        <span>Competições liberadas em todos os níveis</span>
+        <span>Cobrança centralizada no coach</span>
+        <span>Portal separado do app do atleta</span>
       </div>
       <div class="hero-actions">
         <a class="btn btn-primary" href="/coach/">Abrir Coach Portal</a>
@@ -256,60 +300,60 @@
     </section>
 
     <section class="section">
-      <h2>Planos do coach</h2>
-      <p>Escolha o plano conforme a maturidade da operação. O atleta continua livre no app; o que muda aqui é a estrutura de gestão do coach.</p>
+      <h2>Níveis de acesso do coach</h2>
+      <p>Escolha o nível conforme a necessidade operacional do box. O atleta continua livre no app; o que muda aqui é a estrutura do portal do coach.</p>
       <div class="grid-3">
         <article class="plan-card">
           <div class="plan-top">
             <div class="plan-kicker">Coach Starter</div>
-            <span class="subtle">Operação inicial</span>
+            <span class="subtle">Base operacional</span>
           </div>
           <strong class="plan-price">R$ 49,90/mês</strong>
           <h3>Starter</h3>
-          <p>Para coaches e boxes que querem sair do improviso e começar a centralizar treino, atletas e rotina.</p>
+          <p>Para boxes que precisam organizar treino, atletas e rotina em uma base centralizada.</p>
           <div class="feature-list">
             <div class="feature">Publicação de treinos e rotina básica do box</div>
             <div class="feature">Gestão inicial de atletas e grupos</div>
-            <div class="feature">Estrutura inicial para publicar treinos e começar a operar com clareza</div>
+            <div class="feature">Leitura operacional inicial do portal</div>
           </div>
           <div class="plan-actions">
-            <a class="btn btn-primary" data-plan-link="starter" href="#">Assinar Starter</a>
+            <a class="btn btn-primary" data-plan-link="starter" href="#">Abrir cobrança Starter</a>
           </div>
         </article>
 
         <article class="plan-card featured">
           <div class="plan-top">
             <div class="plan-kicker">Coach Pro</div>
-            <span class="subtle">Plano principal</span>
+            <span class="subtle">Operação recorrente</span>
           </div>
           <strong class="plan-price">R$ 119,90/mês</strong>
           <h3>Pro</h3>
-          <p>Para a operação principal do Ryxen Coach: publicação consistente, gestão mais forte e mais valor percebido para os atletas.</p>
+          <p>Para a rotina principal do Ryxen Coach: publicação consistente, gestão mais forte e leitura mais completa do box.</p>
           <div class="feature-list">
             <div class="feature">Tudo do Starter</div>
             <div class="feature">Mais controle operacional do coach e da rotina</div>
-            <div class="feature">Mais controle operacional do coach, grupos e rotina do box</div>
+            <div class="feature">Mais contexto para grupos, atletas e benchmarks</div>
           </div>
           <div class="plan-actions">
-            <a class="btn btn-primary" data-plan-link="pro" href="#">Assinar Pro</a>
+            <a class="btn btn-primary" data-plan-link="pro" href="#">Abrir cobrança Pro</a>
           </div>
         </article>
 
         <article class="plan-card">
           <div class="plan-top">
             <div class="plan-kicker">Coach Performance</div>
-            <span class="subtle">Operação premium</span>
+            <span class="subtle">Escala operacional</span>
           </div>
           <strong class="plan-price">R$ 199,90/mês</strong>
           <h3>Performance</h3>
-          <p>Para boxes e coaches que querem máxima folga operacional, escala e experiência premium para toda a base.</p>
+          <p>Para boxes e coaches que precisam de mais folga operacional, escala e organização contínua da base.</p>
           <div class="feature-list">
             <div class="feature">Tudo do Pro</div>
             <div class="feature">Operação avançada com mais espaço de crescimento</div>
-            <div class="feature">Camada premium para escalar a operação do coach com mais folga</div>
+            <div class="feature">Mais margem para escalar o portal do coach</div>
           </div>
           <div class="plan-actions">
-            <a class="btn btn-primary" data-plan-link="performance" href="#">Assinar Performance</a>
+            <a class="btn btn-primary" data-plan-link="performance" href="#">Abrir cobrança Performance</a>
           </div>
         </article>
       </div>
@@ -317,7 +361,7 @@
 
     <section class="section">
       <h2>Como fica para o atleta</h2>
-      <p>O atleta não precisa comprar plano para usar o Ryxen. O app do atleta fica liberado por padrão, com uso solo, histórico completo, importações e competições sem bloqueio artificial.</p>
+      <p>O atleta não precisa comprar acesso separado para usar o Ryxen. O app do atleta fica liberado por padrão, com uso solo, histórico completo, importações e competições sem bloqueio artificial.</p>
       <div class="grid-2">
         <article class="note-card">
           <strong>Uso livre</strong>
@@ -325,7 +369,7 @@
         </article>
         <article class="note-card">
           <strong>Quando o coach entra</strong>
-          <p>O plano do coach não serve para capar o atleta. Ele serve para liberar o portal separado, organizar o box e operar treinos, grupos e atletas com mais estrutura.</p>
+          <p>O acesso do coach não existe para limitar o atleta. Ele libera o portal separado para organizar o box e operar treinos, grupos e atletas com mais estrutura.</p>
         </article>
       </div>
     </section>

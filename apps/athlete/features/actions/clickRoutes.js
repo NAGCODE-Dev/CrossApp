@@ -11,6 +11,7 @@ export async function routeAthleteModalClick(action, context) {
     getUiState: context.getUiState,
     applyUiState: context.applyUiState,
     applyUiPatch: context.applyUiPatch,
+    hydratePage: context.hydratePage,
     isImportBusy: context.isImportBusy,
     getAppBridge,
   });

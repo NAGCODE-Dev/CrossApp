@@ -1,3 +1,5 @@
+import { getCapacitorAppPlugin } from './capacitorRuntime.js';
+
 let nativeBackRegistered = false;
 
 export function initNativeBackHandling() {
@@ -51,12 +53,4 @@ function navigateWebBack(canGoBack) {
 
 function isAuxiliaryPath(path) {
   return ['/pricing.html', '/privacy.html', '/terms.html', '/support.html'].includes(path);
-}
-
-function getCapacitorAppPlugin() {
-  try {
-    return window.Capacitor?.Plugins?.App || null;
-  } catch {
-    return null;
-  }
 }

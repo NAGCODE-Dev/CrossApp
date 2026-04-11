@@ -4,6 +4,7 @@ export async function runAppInitialization(deps) {
     checkDependencies,
     loadPersistedState,
     restoreSessionIfPossible,
+    setSessionRestoreStatus,
     updateCurrentDay,
     loadSavedWeeks,
     setupEventListeners,
@@ -17,7 +18,8 @@ export async function runAppInitialization(deps) {
 
   checkDependencies();
   await loadPersistedState();
-  await restoreSessionIfPossible();
+  const sessionRestoreTask = Promise.resolve()
+    .then(() => restoreSessionIfPossible({ setSessionRestoreStatus }));
   await updateCurrentDay();
   await loadSavedWeeks();
   setupEventListeners();
@@ -27,7 +29,7 @@ export async function runAppInitialization(deps) {
   emit('app:ready', { state: getState() });
   logDebug('✅ Aplicação inicializada');
 
-  return { success: true };
+  return { success: true, sessionRestoreTask };
 }
 
 export async function restoreSessionIfPossible(deps) {
@@ -36,16 +38,34 @@ export async function restoreSessionIfPossible(deps) {
     handleRefreshSession,
     remoteHandlers,
     logDebug,
+    setSessionRestoreStatus = () => {},
+    emit = () => {},
   } = deps;
 
-  if (!hasStoredSession()) return;
+  if (!hasStoredSession()) {
+    setSessionRestoreStatus('idle');
+    return { attempted: false, restored: false };
+  }
+
+  setSessionRestoreStatus('restoring');
+  emit('auth:session-restoring');
 
   try {
-    await handleRefreshSession();
+    const result = await handleRefreshSession();
+    setSessionRestoreStatus('ready');
     logDebug('🔐 Sessão restaurada');
+    emit('auth:session-restored', { user: result?.user || null });
+    return { attempted: true, restored: true, result };
   } catch (error) {
-    await remoteHandlers.handleSignOut();
+    setSessionRestoreStatus('failed');
+    try {
+      await remoteHandlers.handleSignOut();
+    } catch (signOutError) {
+      console.warn('Falha ao limpar sessão após refresh:', signOutError?.message || signOutError);
+    }
+    emit('auth:session-failed', { error: error?.message || error });
     console.warn('Falha ao restaurar sessão:', error?.message || error);
+    return { attempted: true, restored: false, error };
   }
 }
 

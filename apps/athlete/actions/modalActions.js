@@ -44,12 +44,21 @@ function buildGuideFocusSelector(stepIndex) {
 async function openNyxGuideStep(stepIndex, context) {
   const {
     applyUiPatch,
+    getUiState,
+    getAppBridge,
+    hydratePage,
   } = context;
   const safeStep = clampNyxGuideStep(stepIndex);
+  const step = getNyxGuideStep(safeStep);
   await applyUiPatch(
     (state) => buildGuideUiPatch(safeStep, state),
     { focusSelector: buildGuideFocusSelector(safeStep) },
   );
+  if ((step.page === 'account' || step.page === 'history') && typeof hydratePage === 'function') {
+    const profile = getAppBridge?.()?.getProfile?.()?.data || null;
+    const ui = getUiState?.() || {};
+    hydratePage(profile, step.page, ui?.coachPortal?.selectedGymId || null);
+  }
 }
 
 async function closeModal(context) {
@@ -80,7 +89,7 @@ async function closeModal(context) {
         throw new Error(result?.error || 'Falha ao concluir tour');
       }
     }
-    toast?.('Nyx pronto para te acompanhar');
+    toast?.('Tour concluído');
   }
 
   clearPasswordResetSupportPolling();
@@ -181,7 +190,7 @@ export async function handleAthleteModalAction(action, context) {
             showNyxHints: nextShowNyxHints,
           },
         }),
-        { toastMessage: 'Nyx pronto para te acompanhar' },
+        { toastMessage: 'Tour concluído' },
       );
       return true;
     }
@@ -203,7 +212,7 @@ export async function handleAthleteModalAction(action, context) {
             showNyxHints: false,
           },
         }),
-        { toastMessage: 'Nyx fica em silêncio por enquanto' },
+        { toastMessage: 'Sugestões do Nyx ocultadas' },
       );
       return true;
     }

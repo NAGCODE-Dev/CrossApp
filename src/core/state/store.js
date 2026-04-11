@@ -41,6 +41,7 @@ let state = {
     hasWarnings: false,
     isLoading: false,
     activeModal: null,
+    sessionRestore: 'idle',
   },
 };
 
@@ -110,6 +111,7 @@ export function resetState() {
       hasWarnings: false,
       isLoading: false,
       activeModal: null,
+      sessionRestore: 'idle',
     },
   };
   

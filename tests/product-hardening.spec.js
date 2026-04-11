@@ -385,10 +385,10 @@ test.describe('coach hardening', () => {
     await expect(page.getByRole('button', { name: 'Ativar local' })).toBeVisible();
 
     await page.getByRole('button', { name: 'Ativar local' }).click();
-    await expect(page.getByText(/Plano Coach local ativado/i)).toBeVisible();
-    await expect(page.getByText(/Plano coach ativo/i)).toBeVisible();
+    await expect(page.getByText(/Acesso local liberado/i)).toBeVisible();
+    await expect(page.getByText(/Acesso coach ativo/i)).toBeVisible();
 
-    await page.locator('.billing-bannerActions').getByRole('button', { name: 'Assinar Coach', exact: true }).click();
+    await page.locator('.billing-bannerActions').getByRole('button', { name: 'Abrir cobrança', exact: true }).click();
     await page.waitForURL('https://example.com/pro-plan', { timeout: 10000 });
   });
 });

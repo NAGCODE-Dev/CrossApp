@@ -43,6 +43,16 @@ export function renderWorkoutSpecialLine(line, lineId, { escapeHtml }) {
               <button
                 class="btn-timer btn-timer-secondary"
                 data-action="timer:start"
+                data-timer-mode="popup"
+                data-timer-config="open"
+                data-seconds="${restSeconds}"
+                type="button"
+              >
+                Ajustar
+              </button>
+              <button
+                class="btn-timer btn-timer-secondary"
+                data-action="timer:start"
                 data-timer-mode="fullscreen"
                 data-seconds="${restSeconds}"
                 type="button"

@@ -45,10 +45,10 @@ export function renderAthleteNyxGuideModal({ guide = {}, preferences = {} } = {}
         <div class="guide-topbar">
           <div class="guide-mark">
             <span class="guide-markBadge" aria-hidden="true"></span>
-            <span>Guided by Nyx</span>
+            <span>Nyx</span>
           </div>
           <div class="guide-topbarMeta">
-            <span>${isCompleted ? 'Tour salvo' : `Tour ${stepIndex + 1}/${total}`}</span>
+            <span>${isCompleted ? 'Tour concluído' : `Passo ${stepIndex + 1}/${total}`}</span>
             <button class="modal-close" data-action="modal:close" type="button" aria-label="Fechar tour">✕</button>
           </div>
         </div>
@@ -61,15 +61,17 @@ export function renderAthleteNyxGuideModal({ guide = {}, preferences = {} } = {}
                 <span class="guide-kicker">${step.kicker}</span>
                 <h2 class="guide-title" id="nyx-guide-title">${step.title}</h2>
                 <p class="guide-lead">${step.lead}</p>
-                <div class="guide-chipRow">
-                  ${step.chips.map((chip) => `<span class="guide-chip">${chip}</span>`).join('')}
-                </div>
+                ${Array.isArray(step.chips) && step.chips.length ? `
+                  <div class="guide-chipRow">
+                    ${step.chips.map((chip) => `<span class="guide-chip">${chip}</span>`).join('')}
+                  </div>
+                ` : ''}
               </div>
 
               <div class="guide-targetNote">
                 <span class="guide-targetBadge">${step.targetLabel}</span>
-                <p class="guide-note">${step.note}</p>
-                <p class="guide-targetText">${step.targetText}</p>
+                ${step.note ? `<p class="guide-note">${step.note}</p>` : ''}
+                ${step.targetText ? `<p class="guide-targetText">${step.targetText}</p>` : ''}
               </div>
             </div>
 
@@ -84,8 +86,8 @@ export function renderAthleteNyxGuideModal({ guide = {}, preferences = {} } = {}
           <div class="guide-footer">
             <div class="guide-footerMeta">
               ${isCompleted
-                ? 'Você já concluiu esse tour antes. Pode rever quando quiser.'
-                : 'O tour abre as áreas reais do app e acompanha a navegação do produto.'}
+                ? 'Tour concluído'
+                : 'Navegação guiada'}
             </div>
             ${renderGuideFooter(stepIndex)}
           </div>
