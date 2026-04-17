@@ -278,7 +278,7 @@ Portal separado em framework:
 
 - URL: `/coach/`
 - frontend: `coach/index.html`
-- runtime: `coach/main.js`
+- runtime real: build de `coach-portal/` em `dist/coach/`
 
 ## Documentação complementar
 
