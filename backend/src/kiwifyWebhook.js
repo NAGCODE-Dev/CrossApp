@@ -11,6 +11,9 @@ import { normalizeSubscriptionPlanId } from './utils/subscriptionBilling.js';
 export function isValidKiwifyToken(req) {
   if (!KIWIFY_WEBHOOK_TOKEN) return false;
 
+  const transport = describeKiwifyTokenTransport(req);
+  if (transport !== 'header' && transport !== 'bearer') return false;
+
   const headerAuth = String(req.headers.authorization || '').trim();
   const bearerToken = headerAuth.toLowerCase().startsWith('bearer ')
     ? headerAuth.slice(7).trim()
@@ -26,6 +29,36 @@ export function isValidKiwifyToken(req) {
     .filter(Boolean);
 
   return candidates.includes(KIWIFY_WEBHOOK_TOKEN);
+}
+
+export function describeKiwifyTokenTransport(req) {
+  const headerToken = [
+    req?.headers?.['x-kiwify-webhook-token'],
+    req?.headers?.['x-kiwify-token'],
+    req?.headers?.['x-webhook-token'],
+  ]
+    .map((value) => String(value || '').trim())
+    .find(Boolean);
+
+  if (headerToken) return 'header';
+
+  const headerAuth = String(req?.headers?.authorization || '').trim();
+  if (headerAuth.toLowerCase().startsWith('bearer ') && headerAuth.slice(7).trim()) {
+    return 'bearer';
+  }
+
+  const queryToken = String(req?.query?.token || '').trim();
+  if (queryToken) return 'query';
+
+  const bodyToken = [
+    req?.body?.token,
+    req?.body?.webhook_token,
+  ]
+    .map((value) => String(value || '').trim())
+    .find(Boolean);
+  if (bodyToken) return 'body';
+
+  return 'missing';
 }
 
 export function extractKiwifyEventType(payload) {

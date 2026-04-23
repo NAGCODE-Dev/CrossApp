@@ -1,6 +1,7 @@
 import express from 'express';
 
 import { adminRequired } from '../auth.js';
+import { logAdminAuditEvent } from '../adminAudit.js';
 import { pool } from '../db.js';
 import { grantSubscriptionToUser, normalizeSubscriptionPlanId, reprocessBillingClaim } from '../utils/subscriptionBilling.js';
 import { getMailerHealth, getRecentEmailJobs, retryEmailJob } from '../mailer.js';
@@ -22,7 +23,13 @@ import {
   respondToAccountDeletionToken,
 } from '../accountDeletion.js';
 
-export function createAdminOpsRouter() {
+export function createAdminOpsRouter({
+  adminMiddleware = adminRequired,
+  auditLogger = logAdminAuditEvent,
+  logOpsEventFn = logOpsEvent,
+  retryEmailJobFn = retryEmailJob,
+  reprocessBillingClaimFn = reprocessBillingClaim,
+} = {}) {
   const router = express.Router();
 
   router.get('/account-deletions/respond', async (req, res) => {
@@ -63,7 +70,7 @@ export function createAdminOpsRouter() {
     }
   });
 
-  router.get('/admin/overview', adminRequired, async (req, res) => {
+  router.get('/admin/overview', adminMiddleware, async (req, res) => {
     const limit = Math.min(Math.max(Number(req.query.limit) || 25, 1), 100);
     const q = String(req.query.q || '').trim().toLowerCase();
     const verify = String(req.query.verify || '').trim() === '1';
@@ -137,7 +144,7 @@ export function createAdminOpsRouter() {
     });
   });
 
-  router.get('/admin/ops/health', adminRequired, async (req, res) => {
+  router.get('/admin/ops/health', adminMiddleware, async (req, res) => {
     const verify = String(req.query.verify || '').trim() === '1';
     const startedAt = Date.now();
     const [dbCheck, mailer] = await Promise.allSettled([
@@ -166,18 +173,18 @@ export function createAdminOpsRouter() {
     });
   });
 
-  router.post('/admin/billing/claims/:claimId/reprocess', adminRequired, async (req, res) => {
+  router.post('/admin/billing/claims/:claimId/reprocess', adminMiddleware, async (req, res) => {
     const claimId = Number(req.params.claimId);
     if (!Number.isFinite(claimId) || claimId <= 0) {
       return res.status(400).json({ error: 'claimId inválido' });
     }
 
-    const result = await reprocessBillingClaim(claimId, { force: true });
+    const result = await reprocessBillingClaimFn(claimId, { force: true });
     if (!result?.claim) {
       return res.status(404).json({ error: 'Claim não encontrada' });
     }
 
-    await logOpsEvent({
+    await logOpsEventFn({
       kind: 'billing_claim_reprocess',
       status: result.applied ? 'applied' : 'pending',
       email: result.claim.email,
@@ -186,6 +193,19 @@ export function createAdminOpsRouter() {
         claimId,
         externalRef: result.claim.external_ref,
         planId: result.claim.plan_id,
+      },
+    });
+    await auditLogger({
+      req,
+      action: 'billing.claim.reprocess',
+      actorUserId: req.user?.userId,
+      actorEmail: req.user?.email,
+      targetUserId: result.claim.applied_user_id || null,
+      targetEmail: result.claim.email || '',
+      payload: {
+        claimId,
+        externalRef: result.claim.external_ref,
+        applied: !!result.applied,
       },
     });
 
@@ -197,22 +217,36 @@ export function createAdminOpsRouter() {
     });
   });
 
-  router.post('/admin/email/jobs/:jobId/retry', adminRequired, async (req, res) => {
+  router.post('/admin/email/jobs/:jobId/retry', adminMiddleware, async (req, res) => {
     const jobId = Number(req.params.jobId);
     if (!Number.isFinite(jobId) || jobId <= 0) {
       return res.status(400).json({ error: 'jobId inválido' });
     }
 
-    const result = await retryEmailJob(jobId);
+    const result = await retryEmailJobFn(jobId);
     if (!result?.job) {
       return res.status(404).json({ error: 'Job de email não encontrado' });
     }
 
-    await logOpsEvent({
+    await logOpsEventFn({
       kind: 'email_job_retry',
       status: result.job.status,
       email: result.job.email,
       userId: result.job.userId,
+      payload: {
+        jobId,
+        kind: result.job.kind,
+        provider: result.job.provider,
+        retryCount: result.job.retryCount,
+      },
+    });
+    await auditLogger({
+      req,
+      action: 'email.job.retry',
+      actorUserId: req.user?.userId,
+      actorEmail: req.user?.email,
+      targetUserId: result.job.userId || null,
+      targetEmail: result.job.email || '',
       payload: {
         jobId,
         kind: result.job.kind,
@@ -232,7 +266,7 @@ export function createAdminOpsRouter() {
     });
   });
 
-  router.post('/admin/users/:userId/password-reset/manual', adminRequired, async (req, res) => {
+  router.post('/admin/users/:userId/password-reset/manual', adminMiddleware, async (req, res) => {
     const userId = Number(req.params.userId);
     if (!Number.isFinite(userId) || userId <= 0) {
       return res.status(400).json({ error: 'userId inválido' });
@@ -276,6 +310,15 @@ export function createAdminOpsRouter() {
       email: user.email,
       payload: { expiresAt },
     });
+    await auditLogger({
+      req,
+      action: 'user.password_reset.manual_release',
+      actorUserId: req.user?.userId,
+      actorEmail: req.user?.email,
+      targetUserId: user.id,
+      targetEmail: user.email || '',
+      payload: { expiresAt },
+    });
 
     return res.json({
       success: true,
@@ -291,7 +334,7 @@ export function createAdminOpsRouter() {
     });
   });
 
-  router.post('/admin/password-reset-requests/:requestId/approve', adminRequired, async (req, res) => {
+  router.post('/admin/password-reset-requests/:requestId/approve', adminMiddleware, async (req, res) => {
     const requestId = Number(req.params.requestId);
     const durationMinutes = Math.min(Math.max(Number(req.body?.durationMinutes) || 120, 5), 120);
     if (!Number.isFinite(requestId) || requestId <= 0) {
@@ -319,6 +362,18 @@ export function createAdminOpsRouter() {
         durationMinutes,
       },
     });
+    await auditLogger({
+      req,
+      action: 'password_reset_support_request.approve',
+      actorUserId: req.user?.userId,
+      actorEmail: req.user?.email,
+      targetUserId: request.user_id || null,
+      targetEmail: request.email || '',
+      payload: {
+        requestId: request.id,
+        durationMinutes,
+      },
+    });
 
     return res.json({
       success: true,
@@ -329,7 +384,7 @@ export function createAdminOpsRouter() {
     });
   });
 
-  router.post('/admin/password-reset-requests/:requestId/deny', adminRequired, async (req, res) => {
+  router.post('/admin/password-reset-requests/:requestId/deny', adminMiddleware, async (req, res) => {
     const requestId = Number(req.params.requestId);
     if (!Number.isFinite(requestId) || requestId <= 0) {
       return res.status(400).json({ error: 'requestId inválido' });
@@ -351,6 +406,17 @@ export function createAdminOpsRouter() {
       email: request.email,
       payload: { requestId: request.id, deniedByUserId: req.user.userId },
     });
+    await auditLogger({
+      req,
+      action: 'password_reset_support_request.deny',
+      actorUserId: req.user?.userId,
+      actorEmail: req.user?.email,
+      targetUserId: request.user_id || null,
+      targetEmail: request.email || '',
+      payload: {
+        requestId: request.id,
+      },
+    });
 
     return res.json({
       success: true,
@@ -361,7 +427,7 @@ export function createAdminOpsRouter() {
     });
   });
 
-  router.post('/admin/subscriptions/activate', adminRequired, async (req, res) => {
+  router.post('/admin/subscriptions/activate', adminMiddleware, async (req, res) => {
     const userId = Number(req.body?.userId);
     const planId = normalizeSubscriptionPlanId(req.body?.planId);
     const renewDays = Math.min(Math.max(Number(req.body?.renewDays) || 30, 1), 365);
@@ -393,6 +459,19 @@ export function createAdminOpsRouter() {
       provider: 'kiwify_manual',
       renewDays,
     });
+    await auditLogger({
+      req,
+      action: 'subscription.activate_manual',
+      actorUserId: req.user?.userId,
+      actorEmail: req.user?.email,
+      targetUserId: user.id,
+      targetEmail: user.email || '',
+      payload: {
+        planId,
+        renewDays,
+        subscriptionId: subscription.id,
+      },
+    });
 
     return res.json({
       success: true,
@@ -401,7 +480,7 @@ export function createAdminOpsRouter() {
     });
   });
 
-  router.post('/admin/users/:userId/account-deletion/request', adminRequired, async (req, res) => {
+  router.post('/admin/users/:userId/account-deletion/request', adminMiddleware, async (req, res) => {
     const userId = Number(req.params.userId);
     if (!Number.isFinite(userId) || userId <= 0) {
       return res.status(400).json({ error: 'userId inválido' });
@@ -411,6 +490,18 @@ export function createAdminOpsRouter() {
       userId,
       requestedByUserId: req.user.userId,
       reason: 'admin_request',
+    });
+    await auditLogger({
+      req,
+      action: 'account_deletion.request',
+      actorUserId: req.user?.userId,
+      actorEmail: req.user?.email,
+      targetUserId: result.user.id,
+      targetEmail: result.user.email || '',
+      payload: {
+        requestId: result.request?.id || null,
+        reused: !!result.reused,
+      },
     });
 
     return res.json({
@@ -425,7 +516,7 @@ export function createAdminOpsRouter() {
     });
   });
 
-  router.post('/admin/users/:userId/account-deletion/delete-now', adminRequired, async (req, res) => {
+  router.post('/admin/users/:userId/account-deletion/delete-now', adminMiddleware, async (req, res) => {
     const userId = Number(req.params.userId);
     if (!Number.isFinite(userId) || userId <= 0) {
       return res.status(400).json({ error: 'userId inválido' });
@@ -435,6 +526,17 @@ export function createAdminOpsRouter() {
       userId,
       requestedByUserId: req.user.userId,
       source: 'admin_immediate',
+    });
+    await auditLogger({
+      req,
+      action: 'account_deletion.delete_now',
+      actorUserId: req.user?.userId,
+      actorEmail: req.user?.email,
+      targetUserId: userId,
+      targetEmail: result.deleted?.email || '',
+      payload: {
+        source: result.deleted?.source || 'admin_immediate',
+      },
     });
 
     return res.json({
