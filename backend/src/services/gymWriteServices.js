@@ -136,7 +136,7 @@ export async function createAthleteGroup({
   let client;
   try {
     client = await pool.connect();
-    console.info('[gym-write-services] gym creation started', { gymName });
+    console.info('[gym-write-services] athlete group creation started', { gymId, name, sportType });
     
     await client.query('BEGIN');
     const inserted = await client.query(

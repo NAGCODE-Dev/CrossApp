@@ -1474,6 +1474,7 @@ body[data-guide-target="account-data"] [data-guide-target="account-data"] {
 .settings-group,
 .auth-form,
 .pr-add,
+.pr-toolbar,
 .auth-resetForm,
 .modal-body-auth,
 .trend-grid,
@@ -1553,6 +1554,20 @@ body[data-guide-target="account-data"] [data-guide-target="account-data"] {
     color-mix(in srgb, var(--bg-surface-2) 94%, white 6%);
 }
 
+.pr-modalHint {
+  margin: 0;
+}
+
+.pr-toolbar {
+  gap: 10px;
+}
+
+.pr-toolbarActions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 8px;
+}
+
 .pr-actionsHead,
 .pr-addHead {
   display: grid;
@@ -1600,6 +1615,21 @@ body[data-guide-target="account-data"] [data-guide-target="account-data"] {
 .pr-item {
   grid-template-columns: 1fr 82px 40px;
   align-items: center;
+}
+
+.pr-addCard-compact {
+  gap: 10px;
+}
+
+.pr-addHead-compact {
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  align-items: baseline;
+  gap: 6px 10px;
+}
+
+.pr-addHead-compact span {
+  justify-self: end;
+  text-align: right;
 }
 
 .pr-batchActions {

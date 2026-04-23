@@ -272,7 +272,7 @@ test('preview e confirmação de importação salvam semanas apenas após confir
   assert.equal(emitted.some(([name]) => name === 'pdf:uploaded'), true);
 });
 
-test('confirmação de importação reposiciona o Hoje para o primeiro dia disponível quando o dia atual não existe no arquivo', async () => {
+test('confirmação de importação reposiciona o Hoje sem gravar override manual quando o dia atual não existe no arquivo', async () => {
   const parsedWeeks = [
     {
       weekNumber: 19,
@@ -327,9 +327,9 @@ test('confirmação de importação reposiciona o Hoje para o primeiro dia dispo
   assert.equal(commitResult.success, true);
   assert.equal(state.currentDay, 'Quarta');
   assert.deepEqual(selected, [19]);
-  assert.equal(await dayOverrideStorage.get('custom-day'), 'Quarta');
+  assert.equal(await dayOverrideStorage.get('custom-day'), undefined);
   assert.equal(
-    emitted.some(([name, payload]) => name === 'day:changed' && payload?.dayName === 'Quarta' && payload?.reason === 'import-fallback'),
+    emitted.some(([name, payload]) => name === 'day:changed' && payload?.dayName === 'Quarta' && payload?.reason === 'import-fallback-auto' && payload?.manual === false),
     true,
   );
 });

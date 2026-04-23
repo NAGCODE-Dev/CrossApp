@@ -69,3 +69,56 @@ test('applyPreferredWorkout prioriza treino do coach quando ele está disponíve
   assert.equal(emitted[0][1].coachWorkoutId, 'coach-1');
   assert.equal(emitted[0][1].workout.title, 'Coach WOD');
 });
+
+test('applyPreferredWorkout carrega treino de domingo quando a planilha realmente tem domingo', async () => {
+  const state = {
+    currentDay: 'Domingo',
+    activeWeekNumber: 1,
+    weeks: [{ weekNumber: 1 }],
+    workout: null,
+    workoutMeta: null,
+    workoutContext: {},
+    preferences: {
+      autoConvertLbs: false,
+      workoutPriority: 'uploaded',
+    },
+    prs: {},
+    ui: { activeScreen: 'welcome' },
+  };
+
+  const sundayWorkout = {
+    day: 'Domingo',
+    title: 'Sunday Grind',
+    blocks: [{ type: 'wod', lines: ['run 5k'] }],
+  };
+
+  const domain = createWorkoutDomain({
+    getState: () => state,
+    setState: (patch) => {
+      Object.assign(state, patch);
+    },
+    emit: () => {},
+    logDebug: () => {},
+    getWorkoutFromWeek: () => sundayWorkout,
+    getCoachWorkoutForCurrentDay: async () => null,
+    prepareWorkoutEntity: (workout) => ({
+      isValid: true,
+      issues: [],
+      entity: {
+        ...workout,
+        transformTrace: ['prepared'],
+      },
+    }),
+    summarizeWorkoutIssues: () => '',
+    createDefensiveWorkoutSnapshot: () => ({}),
+    captureAppError: () => {},
+    trackError: () => {},
+  });
+
+  const result = await domain.applyPreferredWorkout({ fallbackToWelcome: true });
+
+  assert.deepEqual(result, { success: true, source: 'local' });
+  assert.equal(state.workoutMeta.source, 'local');
+  assert.equal(state.workout.day, 'Domingo');
+  assert.equal(state.ui.activeScreen, 'workout');
+});

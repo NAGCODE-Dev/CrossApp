@@ -66,11 +66,11 @@ export function createImportExportDomain({
     const fallbackDay = availableDays[0];
     setState({ currentDay: fallbackDay });
     try {
-      await dayOverrideStorage.set('custom-day', fallbackDay);
+      await dayOverrideStorage.remove('custom-day');
     } catch {
-      // no-op: imported workout should still render even if persisting the fallback fails
+      // no-op: imported workout should still render even if removing the stale override fails
     }
-    emit('day:changed', { dayName: fallbackDay, manual: true, reason: 'import-fallback' });
+    emit('day:changed', { dayName: fallbackDay, manual: false, reason: 'import-fallback-auto' });
     return fallbackDay;
   }
 

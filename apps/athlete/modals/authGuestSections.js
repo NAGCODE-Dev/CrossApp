@@ -3,8 +3,8 @@ export function renderGuestIntroSection({ isSignup }) {
     <div class="auth-intro auth-intro-auth">
       <div class="section-kicker">${isSignup ? 'Nova conta' : 'Acesso rápido'}</div>
       <p class="account-hint">${isSignup
-        ? 'Crie sua conta para salvar treino, histórico e progresso sem misturar isso com a operação do box.'
-        : 'Entre para retomar treino, histórico e progresso exatamente de onde parou.'}</p>
+        ? 'Crie sua conta para salvar treino e progresso neste aparelho.'
+        : 'Entre para retomar treino e progresso de onde parou.'}</p>
     </div>
   `;
 }

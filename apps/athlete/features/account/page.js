@@ -9,16 +9,6 @@ import {
 } from './sections.js';
 import { buildAthleteAccountPageState } from './viewState.js';
 
-function renderHeroStat(label, value, detail = '') {
-  return `
-    <div class="summary-tile summary-tileCompact summary-tileHero">
-      <span class="summary-label">${label}</span>
-      <strong class="summary-value">${value}</strong>
-      ${detail ? `<span class="summary-detail">${detail}</span>` : ''}
-    </div>
-  `;
-}
-
 function renderAccountViewButton(view, currentView, label, detail) {
   const isActive = currentView === view;
   return `
@@ -78,8 +68,8 @@ export function renderAthleteAccountPage(state, helpers) {
           subtitle: accountView === 'preferences'
             ? 'Visual e treino deste aparelho.'
             : accountView === 'data'
-              ? 'Backups, documentos e dados locais.'
-              : 'Acesso e atividade.',
+              ? 'Backup e dados locais.'
+              : 'Acesso, status e atividade.',
           actions: `
             <button class="btn-primary" data-action="modal:open" data-modal="auth" type="button">Entrar</button>
           `,
@@ -122,18 +112,13 @@ export function renderAthleteAccountPage(state, helpers) {
           subtitle: accountView === 'preferences'
             ? 'Aparência e treino.'
           : accountView === 'data'
-            ? 'Backups, documentos e dados salvos.'
-            : 'Status da conta, acesso e atividade.',
+            ? 'Backup, privacidade e dados locais.'
+            : 'Conta, acesso e backup local.',
         actions: `
           <button class="btn-secondary" data-action="auth:refresh" type="button">Atualizar</button>
           <button class="btn-primary" data-action="auth:signout" type="button">Sair</button>
         `,
         footer: `
-          <div class="summary-strip summary-strip-3">
-            ${renderHeroStat('Conta', escapeHtml(planName || 'Livre'), escapeHtml(planStatus || 'sem status'))}
-            ${renderHeroStat('Resultados', String(Number(athleteStats?.resultsLogged || 0)), 'registros salvos')}
-            ${renderHeroStat('Portal', canCoachManage ? 'Disponível' : 'Indisponível', canCoachManage ? `${gyms.length} gym(s)` : 'sem acesso no momento')}
-          </div>
           <div class="account-viewTabs" role="tablist" aria-label="Seções da conta">
             ${renderAccountViewButton('overview', accountView, 'Visão geral', 'status e atividade')}
             ${renderAccountViewButton('preferences', accountView, 'Preferências', 'aparência e treino')}

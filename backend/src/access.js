@@ -1,7 +1,16 @@
-import { pool } from './db.js';
 import { getAthleteBenefitProfile } from './accessPolicy.js';
 
+let poolPromise = null;
+
+async function getPool() {
+  if (!poolPromise) {
+    poolPromise = import('./db.js').then((module) => module.pool);
+  }
+  return poolPromise;
+}
+
 export async function getUserMemberships(userId) {
+  const pool = await getPool();
   const result = await pool.query(
     `SELECT
       gm.id,
@@ -24,11 +33,13 @@ export async function getUserMemberships(userId) {
 }
 
 export async function getGymById(gymId) {
+  const pool = await getPool();
   const result = await pool.query(`SELECT * FROM gyms WHERE id = $1`, [gymId]);
   return result.rows[0] || null;
 }
 
 export async function getMembershipForUser(gymId, userId) {
+  const pool = await getPool();
   const result = await pool.query(
     `SELECT * FROM gym_memberships WHERE gym_id = $1 AND user_id = $2 LIMIT 1`,
     [gymId, userId],
@@ -37,6 +48,7 @@ export async function getMembershipForUser(gymId, userId) {
 }
 
 export async function getActiveSubscriptionForUser(userId) {
+  const pool = await getPool();
   const result = await pool.query(
     `SELECT id, plan_id, status, provider, renew_at, updated_at
      FROM subscriptions
@@ -97,6 +109,7 @@ export async function getAccessContextsForGymIds(gymIds = []) {
   ));
   if (!uniqueGymIds.length) return new Map();
 
+  const pool = await getPool();
   const gymsRes = await pool.query(
     `SELECT id, name, slug, owner_user_id
      FROM gyms

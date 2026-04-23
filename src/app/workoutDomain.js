@@ -178,16 +178,6 @@ export function createWorkoutDomain({
     const state = getState();
     const dayName = state.currentDay;
 
-    if (dayName === 'Domingo') {
-      setState({
-        workout: null,
-        workoutMeta: null,
-        ui: { ...state.ui, activeScreen: 'rest' },
-      });
-      logDebug('💤 Dia de descanso');
-      return;
-    }
-
     const resolvedWorkout = getWorkoutFromWeek(week, dayName);
 
     if (!resolvedWorkout) {
@@ -331,19 +321,6 @@ export function createWorkoutDomain({
         captureAppError(error, { tags: { feature: 'workout', source: 'manual', stage: 'preferred_candidate' }, snapshot: defensiveContext.snapshot });
         trackError(error, defensiveContext);
       }
-    }
-
-    if (state.currentDay === 'Domingo') {
-      setState({
-        workout: null,
-        workoutMeta: null,
-        workoutContext: {
-          ...context,
-          activeSource: 'rest',
-        },
-        ui: { ...state.ui, activeScreen: 'rest' },
-      });
-      return { success: true, source: 'rest' };
     }
 
     if (options.fallbackToWelcome) {

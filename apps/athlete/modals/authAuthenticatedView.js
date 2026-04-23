@@ -1,6 +1,5 @@
 import {
   renderAccountHeroSection,
-  renderAccountSummaryTiles,
   renderCoachAccessSection,
 } from './authAccountSections.js';
 import { renderAdminSection } from './authAdminSection.js';
@@ -12,17 +11,14 @@ export function renderAuthenticatedAccountView({
   isBusy,
   admin,
   coachPortal,
-  athleteOverview,
   helpers,
 }) {
   const {
     escapeHtml,
     formatDateShort,
     renderAccountSkeleton,
-    describeAthleteBenefitSource,
     formatSubscriptionPlanName,
     isDeveloperEmail,
-    normalizeAthleteBenefits,
   } = helpers;
 
   const isAdmin = !!profile?.is_admin || !!profile?.isAdmin;
@@ -32,8 +28,6 @@ export function renderAuthenticatedAccountView({
   const canAthleteUseApp = entitlements.includes('athlete_app');
   const subscription = coachPortal?.subscription || null;
   const gyms = coachPortal?.gyms || [];
-  const athleteStats = athleteOverview?.stats || {};
-  const athleteBenefits = normalizeAthleteBenefits(athleteOverview?.athleteBenefits || null);
   const planKey = subscription?.plan || subscription?.plan_id || 'free';
   const planName = formatSubscriptionPlanName(planKey);
   const planStatus = subscription?.status || 'inactive';
@@ -75,38 +69,25 @@ export function renderAuthenticatedAccountView({
             renderAccountSkeleton,
           })}
 
-          ${renderAccountSummaryTiles({
-            isBusy,
-            athleteBenefits,
-            athleteStats,
-            gyms,
-            escapeHtml,
-            describeAthleteBenefitSource,
-          })}
-
           <div class="settings-actions account-actions">
             <button class="btn-secondary" data-action="auth:refresh" type="button">Atualizar</button>
-            <button class="btn-secondary" data-action="modal:close" type="button">Fechar</button>
+            <button class="btn-primary" data-action="auth:signout" type="button">Sair</button>
           </div>
 
-          ${renderCoachAccessSection({
+          ${(canCoachManage || canUseDeveloperTools || hasActiveCoachSubscription) ? renderCoachAccessSection({
             canCoachManage,
             canAthleteUseApp,
             canUseDeveloperTools,
             hasActiveCoachSubscription,
             gyms,
-          })}
+          }) : ''}
 
-          ${renderAccountNotificationsSection({
+          ${notifications.length ? renderAccountNotificationsSection({
             notifications,
             escapeHtml,
-          })}
+          }) : ''}
 
           ${isAdmin ? renderAdminSection({ overview, admin, escapeHtml, formatDateShort }) : ''}
-
-          <div class="settings-actions">
-            <button class="btn-primary" data-action="auth:signout" type="button">Sair</button>
-          </div>
         </div>
       </div>
     </div>

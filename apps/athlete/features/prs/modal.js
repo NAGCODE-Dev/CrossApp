@@ -17,34 +17,27 @@ export function renderAthletePrsModal(prs = {}, helpers = {}) {
         </div>
 
         <div class="modal-body">
-          <div class="modal-intro modal-intro-compact">
-            <p class="account-hint">Guarde suas referências de força para o app calcular melhor as cargas do treino.</p>
-            <p class="account-hint">Edite quantos exercícios quiser e salve tudo de uma vez.</p>
-          </div>
+          <p class="account-hint pr-modalHint">Salve suas referências e ajuste as cargas do treino sem sair do fluxo.</p>
 
-          <div class="pr-search">
+          <div class="pr-toolbar">
             <input
               type="text"
               class="search-input"
               placeholder="Buscar exercício..."
               id="ui-prsSearch"
             />
-          </div>
-
-          <div class="pr-actionsCard">
-            <div class="pr-actionsHead">
-              <strong>Importar e exportar</strong>
-              <span>Traga seus PRs antigos, salve um backup limpo ou cole um JSON quando precisar migrar rápido.</span>
-            </div>
-            <div class="pr-actionsRow">
+            <div class="pr-toolbarActions">
+              ${entries.length > 0 ? `
+                <button class="btn-primary pr-saveAll" data-action="prs:save-all" type="button">
+                  Salvar tudo
+                </button>
+              ` : ''}
               <button class="btn-secondary" data-action="prs:export" type="button">
                 Exportar
               </button>
-
               <button class="btn-secondary" data-action="prs:import-file" type="button">
                 Importar arquivo
               </button>
-
               <button class="btn-secondary" data-action="prs:import" type="button">
                 Colar JSON
               </button>
@@ -83,18 +76,10 @@ export function renderAthletePrsModal(prs = {}, helpers = {}) {
             `).join('')}
           </div>
 
-          ${entries.length > 0 ? `
-            <div class="pr-batchActions">
-              <button class="btn-primary pr-saveAll" data-action="prs:save-all" type="button">
-                Salvar tudo
-              </button>
-            </div>
-          ` : ''}
-
-          <div class="pr-addCard">
-            <div class="pr-addHead">
-              <strong>Adicionar exercício</strong>
-              <span>Inclua uma referência nova sem perder o ritmo do resto da edição.</span>
+          <div class="pr-addCard pr-addCard-compact">
+            <div class="pr-addHead pr-addHead-compact">
+              <strong>Novo exercício</strong>
+              <span>Adicione um PR rápido sem abrir outra tela.</span>
             </div>
             <div class="pr-add">
               <input

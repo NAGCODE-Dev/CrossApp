@@ -1,7 +1,14 @@
-import { pool } from '../db.js';
 import { normalizeEmail } from '../devAccess.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+let poolPromise = null;
+
+async function getPool() {
+  if (!poolPromise) {
+    poolPromise = import('../db.js').then((module) => module.pool);
+  }
+  return poolPromise;
+}
 
 export function normalizeSubscriptionPlanId(value) {
   const raw = String(value || '').trim().toLowerCase();
@@ -38,7 +45,7 @@ export async function grantSubscriptionToUser({
     throw new Error('planId inválido');
   }
 
-  const db = client || pool;
+  const db = client || await getPool();
   const latestRes = await db.query(
     `SELECT renew_at
      FROM subscriptions
@@ -82,7 +89,7 @@ export async function attachPendingBillingClaimsToUser(userId, email, client = n
   const normalized = normalizeEmail(email);
   if (!normalized) return [];
 
-  const db = client || pool;
+  const db = client || await getPool();
   const pendingRes = await db.query(
     `SELECT *
      FROM billing_claims
@@ -125,6 +132,7 @@ export async function queueBillingClaim({
     throw new Error('externalRef é obrigatório');
   }
 
+  const pool = await getPool();
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -193,6 +201,7 @@ export async function queueBillingReversalClaim({
     throw new Error('externalRef é obrigatório');
   }
 
+  const pool = await getPool();
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -255,6 +264,7 @@ export async function reprocessBillingClaim(claimId, { force = false } = {}) {
     throw new Error('claimId inválido');
   }
 
+  const pool = await getPool();
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -310,7 +320,7 @@ export async function resolveLatestPlanForEmail(email, client = null) {
   const normalizedEmail = normalizeEmail(email);
   if (!normalizedEmail) return '';
 
-  const db = client || pool;
+  const db = client || await getPool();
   const latestSubscriptionRes = await db.query(
     `SELECT s.plan_id
      FROM subscriptions s
@@ -342,7 +352,7 @@ export function isReversalClaimPayload(payload) {
 }
 
 async function applyBillingClaimRecord(claim, { userIdOverride = null, client = null } = {}) {
-  const db = client || pool;
+  const db = client || await getPool();
   const payload = normalizeClaimPayload(claim?.payload);
   const normalizedEmail = normalizeEmail(claim?.email);
   const normalizedPlanId = normalizeSubscriptionPlanId(claim?.plan_id);
@@ -406,7 +416,7 @@ async function revokeSubscriptionForUser({
   }
 
   const nextStatus = normalizeReversalSubscriptionStatus(subscriptionStatus);
-  const db = client || pool;
+  const db = client || await getPool();
   const latestRes = await db.query(
     `SELECT id, user_id, plan_id, status, provider, renew_at, updated_at
      FROM subscriptions
