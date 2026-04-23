@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import { classifyUniversalImportFile } from '../src/app/importFileTypes.js';
 import { parseTextIntoWeeks } from '../src/app/workoutHelpers.js';
-import { isImageFile } from '../src/adapters/media/ocrReader.js';
+import { isImageFile, mergeOcrTextVariants } from '../src/adapters/media/ocrReader.js';
 import {
   isVideoFile,
   mergeDistinctOcrChunks,
@@ -119,6 +119,105 @@ OBJETIVO = acima de 7 rounds
   assert.equal(afternoonWod.parsed.format, 'amrap');
   assert.equal(afternoonWod.parsed.timeCapMinutes, 12);
   assert.equal(afternoonWod.parsed.goal, 'acima de 7 rounds');
+});
+
+test('OCR de screenshot longo preserva MANHA/TARDE e recupera blocos reais da foto', () => {
+  const morningHintText = `
+MANHA
+SNATCH PULL + HANG SQUAT SNATCH +SQUAT SNATCH
+STRICT PULL UP
+  `.trim();
+  const morningBodyText = `
+SNATCH PULL + HANG SQUAT SNATCH +SQUAT SNATCH
+1+141@ 50%
+1+1+1@ 55%
+1+141@ 60%
+14141@ 65%
+1+141@ 70% x3
+SNATCH PULL
+3@80% x3
+STRICT PULL UP
+4x8
+STRICT PULL UP (SUPINADA)
+4x8
+  `.trim();
+  const afternoonHintText = `
+GHD HIP EXTENSION
+[ARDE
+CLEAN AND JERK COMPLEX
+  `.trim();
+  const afternoonBodyText = `
+GHD HIP EXTENSION
+4x12
+https. //www.youtube com/watch?v=7X075Hr5IE
+CLEAN AND JERK COMPLEX
+CLEAN PULL + HANG SQUAT CLEAN + SQUAT CLEAN + JERK
+1+141+1@ 50%
+1+14141@ 55%
+1+1+1+41@ 60%
+1+1+41+1@ 65%
+1414141@ 70% x 2
+CLEAN PULL
+3@80% x 3
+FRONT SQUATS
+10@60%
+REST 3
+8@65%
+REST 3
+8@70%
+BACK LOADED WALKING LUNGE
+3x12 passadas (6 cada perna)
+https www youtube com/watch?v=wpeSpPmbhz0
+DOUBLE DB BULGARIAN SQUATS
+3x8
+https: /iwww. youtube com/watch?v=r3jzv)t-0I8
+STRICT HSPU
+4x12
+SUPINO PEGADA FECHADA
+4x10
+  `.trim();
+
+  const morningMerged = mergeOcrTextVariants(morningHintText, morningBodyText);
+  const afternoonMerged = mergeOcrTextVariants(afternoonHintText, afternoonBodyText);
+  const weeks = parseTextIntoWeeks(`${morningMerged}\n${afternoonMerged}`, 24, { fallbackDay: 'Quarta' });
+
+  assert.match(morningMerged, /^MANHA$/m);
+  assert.match(afternoonMerged, /\nTARDE\nCLEAN AND JERK COMPLEX/);
+  assert.equal(weeks.length, 1);
+  assert.equal(weeks[0].workouts.length, 1);
+
+  const workout = weeks[0].workouts[0];
+  const morningStrength = workout.blocks.find((block) => block.period === 'manhã' && block.title.includes('SNATCH PULL + HANG SQUAT SNATCH'));
+  const pullUpAccessory = workout.blocks.find((block) => block.period === 'manhã' && block.title === 'STRICT PULL UP');
+  const ghdAccessory = workout.blocks.find((block) => block.period === 'manhã' && block.title === 'GHD HIP EXTENSION');
+  const afternoonComplex = workout.blocks.find((block) => block.period === 'tarde' && block.title === 'CLEAN AND JERK COMPLEX');
+  const frontSquats = workout.blocks.find((block) => block.period === 'tarde' && block.title === 'FRONT SQUATS');
+  const walkingLunge = workout.blocks.find((block) => block.period === 'tarde' && block.title === 'BACK LOADED WALKING LUNGE');
+
+  assert.ok(morningStrength);
+  assert.deepEqual(morningStrength.parsed.strength.sets[0].sequenceReps, [1, 1, 1]);
+  assert.equal(morningStrength.parsed.strength.sets.at(-1).repeatCount, 3);
+
+  assert.ok(pullUpAccessory);
+  assert.equal(pullUpAccessory.parsed.accessories[0].sets, 4);
+  assert.equal(pullUpAccessory.parsed.accessories[0].reps, 8);
+
+  assert.ok(ghdAccessory);
+  assert.equal(ghdAccessory.parsed.accessories[0].sets, 4);
+  assert.equal(ghdAccessory.parsed.accessories[0].reps, 12);
+  assert.equal(ghdAccessory.references.length, 1);
+
+  assert.ok(afternoonComplex);
+  assert.deepEqual(afternoonComplex.parsed.strength.sets[0].sequenceReps, [1, 1, 1, 1]);
+  assert.equal(afternoonComplex.parsed.strength.sets.at(-1).repeatCount, 2);
+
+  assert.ok(frontSquats);
+  assert.equal(frontSquats.parsed.items.filter((item) => item.type === 'rest').length, 2);
+
+  assert.ok(walkingLunge);
+  assert.equal(walkingLunge.parsed.accessories[0].sets, 3);
+  assert.equal(walkingLunge.parsed.accessories[0].reps, 12);
+  assert.match(walkingLunge.parsed.accessories[0].notes, /passadas/i);
 });
 
 test('json cru de treino salvo não entra no parser textual universal', () => {

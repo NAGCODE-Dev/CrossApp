@@ -1,152 +1,21 @@
 // @ts-check
-import path from 'node:path';
-import { test, expect, devices } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 
-const IMPORT_FIXTURES_DIR = path.join(process.cwd(), '__tests__', 'fixtures', 'imports');
-const CLEAN_TEXT_IMPORT = path.join(IMPORT_FIXTURES_DIR, 'treino-exemplo.txt');
-const BSB_ACCEPTED_IMPORTS = [
-  path.join(IMPORT_FIXTURES_DIR, 'treino-bsb-clean.png'),
-  path.join(IMPORT_FIXTURES_DIR, 'treino-bsb-cropped.png'),
-  path.join(IMPORT_FIXTURES_DIR, 'treino-bsb-low-contrast.png'),
-  path.join(IMPORT_FIXTURES_DIR, 'treino-bsb-tilted.png'),
-];
-const BSB_IMPOSSIBLE_IMPORT = path.join(IMPORT_FIXTURES_DIR, 'treino-bsb-impossivel.png');
-const REAL_PRS_FIXTURE = path.join(IMPORT_FIXTURES_DIR, 'prs-real-legacy.json');
-const PIXEL_7_PROFILE = (({ viewport, userAgent, deviceScaleFactor, isMobile, hasTouch, colorScheme }) => ({
-  viewport,
-  userAgent,
-  deviceScaleFactor,
-  isMobile,
-  hasTouch,
-  colorScheme,
-}))(devices['Pixel 7']);
-
-function fulfillJson(route, body, status = 200) {
-  return route.fulfill({
-    status,
-    contentType: 'application/json',
-    body: JSON.stringify(body),
-  });
-}
-
-async function waitForAthleteReady(page) {
-  await page.goto('/sports/cross/index.html', { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => document.body?.dataset.page === 'today');
-  await page.waitForFunction(() => {
-    const loading = document.getElementById('loading-screen');
-    return !!loading && (loading.hidden === true || loading.getAttribute('aria-hidden') === 'true');
-  }, null, { timeout: 8000 });
-}
-
-async function openAthleteImportModal(page) {
-  const existingHeading = page.getByRole('heading', { name: /Adicionar treino/i });
-  if (await existingHeading.count()) {
-    const isVisible = await existingHeading.first().isVisible().catch(() => false);
-    if (isVisible) return;
-  }
-  const trigger = page.locator('button[data-modal="import"]').first();
-  await expect(trigger).toBeVisible();
-  await trigger.click();
-  await expect(page.getByRole('heading', { name: /Adicionar treino/i })).toBeVisible();
-}
-
-async function uploadFromUniversalPicker(page, filePath) {
-  const chooserPromise = page.waitForEvent('filechooser');
-  await page.getByRole('button', { name: /Imagem, vídeo, planilha ou texto/i }).click();
-  const chooser = await chooserPromise;
-  await chooser.setFiles(filePath);
-}
-
-async function importWorkoutAndSave(page, filePath) {
-  await openAthleteImportModal(page);
-  await uploadFromUniversalPicker(page, filePath);
-  await expect(page.getByText('Preview da importação')).toBeVisible({ timeout: 20000 });
-  await page.getByRole('button', { name: /Salvar importação/i }).click();
-  await page.waitForFunction(() => !document.querySelector('.modal-overlay.isOpen'));
-  await page.waitForFunction(() => document.body?.dataset.page === 'today');
-}
-
-function bottomNavButton(page, label) {
-  return page.locator('.bottom-nav .nav-btn').filter({ hasText: label }).first();
-}
-
-function resolveCoachApiMocks(pathname, state) {
-  if (pathname === '/billing/status') {
-    return { plan: state.subscription.plan, status: state.subscription.status, renewAt: state.subscription.renewAt };
-  }
-  if (pathname === '/billing/entitlements') {
-    return { entitlements: [], gymAccess: [] };
-  }
-  if (pathname === '/gyms/me') {
-    return {
-      gyms: [
-        { id: 'gym-1', name: 'BSB Strong', role: 'owner', access: { warning: '' } },
-      ],
-    };
-  }
-  if (pathname === '/workouts/feed') {
-    return { workouts: [] };
-  }
-  if (pathname === '/benchmarks') {
-    return {
-      benchmarks: [
-        { slug: 'fran', name: 'Fran', category: 'girls', official_source: 'benchmark', year: 2003 },
-        { slug: 'murph', name: 'Murph', category: 'hero', official_source: 'hero', year: 2005 },
-        { slug: 'fight-gone-bad', name: 'Fight Gone Bad', category: 'classic', official_source: 'benchmark', year: 2004 },
-      ],
-      pagination: { total: 3, page: 1, limit: 30, pages: 1 },
-    };
-  }
-  if (pathname === '/gyms/gym-1/memberships') {
-    return { memberships: [] };
-  }
-  if (pathname === '/gyms/gym-1/groups') {
-    return { groups: [] };
-  }
-  if (pathname === '/gyms/gym-1/insights') {
-    return { stats: { athletes: 14, results: 28, activePrs: 9, athletesWithPrs: 7 } };
-  }
-  return {};
-}
-
-async function installCoachDashboardRoutes(page, { failWithHtml = false } = {}) {
-  const state = {
-    subscription: {
-      plan: 'coach',
-      status: 'inactive',
-      renewAt: null,
-    },
-  };
-
-  await page.route('**/api/**', async (route) => {
-    const request = route.request();
-    const url = new URL(request.url());
-    const pathname = url.pathname.replace(/^\/api/, '');
-
-    if (failWithHtml && pathname === '/gyms/me') {
-      return route.fulfill({
-        status: 502,
-        contentType: 'text/html',
-        body: '<!DOCTYPE html><html><body>bad gateway</body></html>',
-      });
-    }
-
-    if (pathname === '/billing/mock/activate' && request.method() === 'POST') {
-      state.subscription = {
-        plan: 'coach',
-        status: 'active',
-        renewAt: '2026-05-11T12:00:00.000Z',
-      };
-      return fulfillJson(route, { ok: true });
-    }
-
-    if (pathname.startsWith('/competitions/') || pathname === '/competitions/calendar' || pathname.startsWith('/leaderboards/benchmarks/')) {
-      return fulfillJson(route, { error: 'not_found' }, 404);
-    }
-
-    return fulfillJson(route, resolveCoachApiMocks(pathname, state));
-  });
-}
+import {
+  BSB_ACCEPTED_IMPORTS,
+  BSB_IMPOSSIBLE_IMPORT,
+  CLEAN_TEXT_IMPORT,
+  PIXEL_7_PROFILE,
+  REAL_PRS_FIXTURE,
+  bottomNavButton,
+  fulfillJson,
+  importWorkoutAndSave,
+  installAthleteAuthenticatedRoutes,
+  installCoachDashboardRoutes,
+  openAthleteImportModal,
+  uploadFromUniversalPicker,
+  waitForAthleteReady,
+} from './helpers/productHardening.js';
 
 test.describe('athlete hardening', () => {
   test.use(PIXEL_7_PROFILE);
@@ -189,7 +58,7 @@ test.describe('athlete hardening', () => {
 
     await page.getByRole('button', { name: 'PRs' }).click();
     const prsModal = page.locator('.modal-overlay.isOpen');
-    await expect(prsModal.getByText(/Importar e exportar/i)).toBeVisible();
+    await expect(prsModal.getByPlaceholder('Buscar exercício...')).toBeVisible();
 
     const prsChooserPromise = page.waitForEvent('filechooser');
     await prsModal.getByRole('button', { name: /Importar arquivo/i }).click();
@@ -291,11 +160,52 @@ test.describe('athlete hardening', () => {
     await expect(page.locator('.header-account-btn.isActive')).toContainText(/Trusted User|trusted@example\.com/i);
   });
 
+  test('faz login com email, hidrata conta e histórico, atualiza sessão e sai sem quebrar o app', async ({ page }) => {
+    test.setTimeout(90000);
+
+    await installAthleteAuthenticatedRoutes(page);
+    await waitForAthleteReady(page);
+
+    await page.locator('button[data-modal="auth"]').first().click();
+    await expect(page.locator('#auth-email')).toBeVisible();
+
+    await page.locator('#auth-email').fill('athlete@example.com');
+    await page.locator('#auth-password').fill('12345678');
+    await page.locator('.auth-submitButton[data-mode="signin"]').click();
+    await page.waitForFunction(() => !document.querySelector('.modal-overlay.isOpen'));
+    await expect(page.locator('.header-account-btn.isActive')).toContainText(/Athlete Demo|athlete@example\.com/i);
+
+    await bottomNavButton(page, 'Conta').click();
+    await page.waitForFunction(() => document.body?.dataset.page === 'account');
+    await expect(page.getByRole('heading', { name: 'Athlete Demo' })).toBeVisible();
+    await expect(page.getByText(/athlete@example\.com/i)).toBeVisible();
+    await expect(page.getByText(/liberado na conta do atleta/i)).toBeVisible();
+
+    await page.getByRole('button', { name: 'Atualizar' }).click();
+    await expect(page.locator('.ui-toastShow')).toContainText(/Sessão atualizada/i);
+
+    await bottomNavButton(page, 'Evolução').click();
+    await page.waitForFunction(() => document.body?.dataset.page === 'history');
+    await expect(page.getByRole('heading', { name: 'Evolução' })).toBeVisible();
+    await expect(page.getByText('Fran')).toBeVisible();
+    await expect(page.getByText(/Back Squat/i)).toBeVisible();
+
+    await bottomNavButton(page, 'Conta').click();
+    await page.waitForFunction(() => document.body?.dataset.page === 'account');
+    await page.getByRole('button', { name: 'Sair' }).click();
+    await expect(page.getByRole('button', { name: 'Entrar' }).last()).toBeVisible();
+  });
+
   test('Nyx conduz um tour real abrindo Hoje, Evolução e Conta passo a passo', async ({ page }) => {
     test.setTimeout(90000);
 
     await waitForAthleteReady(page);
     await importWorkoutAndSave(page, CLEAN_TEXT_IMPORT);
+
+    const consentBanner = page.locator('#consent-banner');
+    if (await consentBanner.isVisible().catch(() => false)) {
+      await consentBanner.getByRole('button', { name: /Aceitar|Recusar/i }).first().click();
+    }
 
     await page.getByRole('button', { name: /Tour com Nyx/i }).click();
     await expect(page.locator('#nyx-guide-shell')).toBeVisible();
@@ -340,6 +250,31 @@ test.describe('athlete hardening', () => {
 });
 
 test.describe('coach hardening', () => {
+  test('coach entra pelo formulário, carrega o workspace e pode sair com segurança', async ({ page }) => {
+    await installCoachDashboardRoutes(page, { allowSignin: true, startsActive: true });
+
+    await page.goto('/coach/', { waitUntil: 'domcontentloaded' });
+    await expect(page).toHaveTitle(/Ryxen Coach/i);
+    await expect(page.getByRole('heading', { name: /Coach Portal/i })).toBeVisible();
+
+    await page.getByPlaceholder('Email').fill('admin@example.com');
+    await page.getByPlaceholder('Senha').fill('12345678');
+    await page.getByRole('button', { name: 'Entrar' }).click();
+
+    await expect(page.getByText('Coach Admin')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Operação de BSB Strong' })).toBeVisible();
+    await expect(page.getByText(/Acesso coach ativo/i)).toBeVisible();
+    await expect(page.getByLabel('Seções do portal').getByRole('button', { name: 'Visão geral' })).toBeVisible();
+
+    await page.getByLabel('Seções do portal').getByRole('button', { name: 'Operação' }).click();
+    await expect(page.getByRole('heading', { name: 'Estrutura do box' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Criar gym' })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Sair' }).click();
+    await expect(page.getByRole('heading', { name: /Coach Portal/i })).toBeVisible();
+    await expect(page.getByPlaceholder('Email')).toBeVisible();
+  });
+
   test('portal do coach trata HTML inválido sem quebrar o parse JSON', async ({ page }) => {
     await page.addInitScript(() => {
       localStorage.setItem('ryxen-auth-token', 'coach-token');
@@ -384,11 +319,14 @@ test.describe('coach hardening', () => {
     await page.goto('/coach/', { waitUntil: 'domcontentloaded' });
     await expect(page.getByRole('button', { name: 'Ativar local' })).toBeVisible();
 
+    await page.locator('.billing-bannerActions').getByRole('button', { name: 'Abrir cobrança', exact: true }).click();
+    await page.waitForURL('https://example.com/pro-plan', { timeout: 10000 });
+
+    await page.goto('/coach/', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByRole('button', { name: 'Ativar local' })).toBeVisible();
+
     await page.getByRole('button', { name: 'Ativar local' }).click();
     await expect(page.getByText(/Acesso local liberado/i)).toBeVisible();
     await expect(page.getByText(/Acesso coach ativo/i)).toBeVisible();
-
-    await page.locator('.billing-bannerActions').getByRole('button', { name: 'Abrir cobrança', exact: true }).click();
-    await page.waitForURL('https://example.com/pro-plan', { timeout: 10000 });
   });
 });

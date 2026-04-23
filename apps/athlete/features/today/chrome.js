@@ -48,11 +48,6 @@ export function renderTodayPageIntro(state, { renderPageHero, formatDay }) {
   const hasWorkout = !!(state?.workout?.blocks?.length || state?.workoutOfDay?.blocks?.length);
   const activeWeek = state?.activeWeekNumber || state?.weeks?.[0]?.weekNumber || 1;
   const currentDay = formatDay(state?.currentDay || state?.workout?.day || state?.workoutOfDay?.day || '');
-  const showNyxHints = state?.preferences?.showNyxHints !== false;
-  const nyxGuideCompleted = state?.preferences?.nyxGuideCompleted === true;
-  const nyxAction = showNyxHints || nyxGuideCompleted
-    ? `<button class="btn-secondary" data-action="modal:open" data-modal="nyx-guide" data-guide-step="0" type="button">${nyxGuideCompleted ? 'Rever tour' : 'Tour com Nyx'}</button>`
-    : '';
   const heroActions = hasWeeks ? `
     <button class="btn-secondary" data-action="day:auto" type="button">Automático</button>
     <select class="day-select" data-action="day:set">
@@ -65,8 +60,7 @@ export function renderTodayPageIntro(state, { renderPageHero, formatDay }) {
       <option value="Sábado">Sábado</option>
       <option value="Domingo">Domingo</option>
     </select>
-    ${nyxAction}
-  ` : nyxAction;
+  ` : '';
 
   const renderWeekChips = (localState) => {
     const weeks = localState?.weeks || [];
@@ -99,11 +93,11 @@ export function renderTodayPageIntro(state, { renderPageHero, formatDay }) {
   return `
     ${renderPageHero({
       eyebrow: 'Hoje',
-      title: hasWorkout && currentDay ? currentDay : 'Treino do dia',
+      title: hasWeeks ? (currentDay || 'Hoje') : 'Treino do dia',
       subtitle: hasWeeks
         ? (hasWorkout
-          ? `Semana ${activeWeek} • ${currentDay || 'sessão pronta para hoje'}`
-          : `Semana ${activeWeek} carregada. Escolha o dia ou troque a planilha.`)
+          ? `Semana ${activeWeek} pronta para ${currentDay || 'hoje'}.`
+          : `Semana ${activeWeek} pronta. Escolha o dia.`)
         : 'Importe um treino em PDF, imagem, vídeo, planilha ou texto.',
       actions: heroActions,
       footer: hasWeeks ? `<div class="week-chips">${renderWeekChips(state)}</div>` : '',

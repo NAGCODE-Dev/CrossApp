@@ -1,6 +1,14 @@
-import { pool } from '../db.js';
+let poolPromise = null;
+
+async function getPool() {
+  if (!poolPromise) {
+    poolPromise = import('../db.js').then((module) => module.pool);
+  }
+  return poolPromise;
+}
 
 export async function searchBenchmarkLibrary({ limit, page, q, category, officialSource, orderBy }) {
+  const pool = await getPool();
   const offset = (page - 1) * limit;
   const params = [];
   const where = [];
@@ -51,6 +59,7 @@ export async function searchBenchmarkLibrary({ limit, page, q, category, officia
 }
 
 export async function getBenchmarkBySlug(slug) {
+  const pool = await getPool();
   const result = await pool.query(`SELECT * FROM benchmark_library WHERE slug = $1 LIMIT 1`, [slug]);
   return result.rows[0] || null;
 }
@@ -96,6 +105,7 @@ export async function getBenchmarkLeaderboard({ slug, sportType, gymId, limit })
   const benchmark = await getBenchmarkBySlug(slug);
   if (!benchmark) return null;
 
+  const pool = await getPool();
   const params = [slug, sportType];
   let gymClause = '';
   if (Number.isFinite(gymId)) {
@@ -142,6 +152,7 @@ export async function createBenchmarkResult({ slug, userId, gymId, sportType, sc
   const benchmark = await getBenchmarkBySlug(slug);
   if (!benchmark) return null;
 
+  const pool = await getPool();
   const scoreValue = parseBenchmarkScoreValue(scoreDisplay, benchmark.score_type);
   const inserted = await pool.query(
     `INSERT INTO benchmark_results (benchmark_slug, user_id, gym_id, sport_type, score_display, score_value, notes)

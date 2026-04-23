@@ -148,3 +148,85 @@ test('handleRefreshSession não limpa estado local ao apenas restaurar sessão e
   assert.deepEqual(state.preferences, { theme: 'light', accentTone: 'rose' });
   assert.equal(state.ui.activeScreen, 'today');
 });
+
+test('handleSignOut limpa o estado da sessão e volta a UI base do app', async () => {
+  const state = {
+    weeks: [{ weekNumber: 1 }],
+    prs: { 'BACK SQUAT': 155 },
+    activeWeekNumber: 1,
+    currentDay: 'Quarta',
+    workout: { day: 'Quarta', blocks: [{ type: 'wod', lines: ['row 10 min'] }] },
+    workoutOfDay: { day: 'Quarta', blocks: [{ type: 'wod', lines: ['row 10 min'] }] },
+    workoutMeta: { source: 'manual' },
+    workoutContext: { activeSource: 'manual' },
+    preferences: { theme: 'light', accentTone: 'rose' },
+    ui: {
+      activeScreen: 'workout',
+      activeModal: 'auth',
+      hasWarnings: true,
+      isLoading: true,
+      sessionRestore: 'ready',
+    },
+  };
+  const calls = {
+    clearLocalUserData: [],
+    clearCoachWorkoutFeed: 0,
+    updateCurrentDay: 0,
+    applyPreferredWorkout: [],
+    signOut: 0,
+  };
+
+  const domain = createAuthDomain({
+    getState: () => state,
+    setState: (patch) => {
+      Object.assign(state, patch);
+    },
+    remoteHandlers: {
+      handleSignOut: async () => {
+        calls.signOut += 1;
+        return {};
+      },
+      handleGetWorkoutFeed: async () => {},
+      handleStartGoogleRedirect: () => ({}),
+    },
+    handleGetProfile: () => ({ data: { email: 'athlete@ryxen.app' } }),
+    restoreAppStateFromAccount: async () => {},
+    restoreImportedPlanFromAccount: async () => {},
+    flushPendingAppStateSync: async () => {},
+    flushPendingSyncOutbox: async () => {},
+    clearLocalUserData: async (options) => {
+      calls.clearLocalUserData.push(options);
+    },
+    clearCoachWorkoutFeed: async () => {
+      calls.clearCoachWorkoutFeed += 1;
+    },
+    updateCurrentDay: async () => {
+      calls.updateCurrentDay += 1;
+      state.currentDay = 'Terça';
+    },
+    applyPreferredWorkout: async (options) => {
+      calls.applyPreferredWorkout.push(options);
+    },
+  });
+
+  const result = await domain.handleSignOut();
+
+  assert.deepEqual(result, { success: true });
+  assert.equal(calls.signOut, 1);
+  assert.deepEqual(calls.clearLocalUserData, [{ preserveAuth: false }]);
+  assert.equal(calls.clearCoachWorkoutFeed, 1);
+  assert.equal(calls.updateCurrentDay, 1);
+  assert.deepEqual(calls.applyPreferredWorkout, [{ fallbackToWelcome: true }]);
+  assert.deepEqual(state.weeks, []);
+  assert.deepEqual(state.prs, {});
+  assert.equal(state.activeWeekNumber, null);
+  assert.equal(state.workout, null);
+  assert.equal(state.workoutOfDay, null);
+  assert.equal(state.workoutMeta, null);
+  assert.equal(state.ui.activeScreen, 'welcome');
+  assert.equal(state.ui.activeModal, null);
+  assert.equal(state.ui.hasWarnings, false);
+  assert.equal(state.ui.isLoading, false);
+  assert.equal(state.ui.sessionRestore, 'idle');
+  assert.equal(state.currentDay, 'Terça');
+});

@@ -106,11 +106,14 @@ export function createAuthDomain({
   async function clearSessionScopedData(options = {}) {
     await clearLocalUserData(options);
     await clearCoachWorkoutFeed();
+    const currentState = getState();
     setState({
       weeks: [],
       prs: {},
       activeWeekNumber: null,
+      currentDay: null,
       workout: null,
+      workoutOfDay: null,
       workoutMeta: null,
       workoutContext: {
         coachAvailable: false,
@@ -132,8 +135,12 @@ export function createAuthDomain({
         reduceMotion: false,
       },
       ui: {
-        ...getState().ui,
+        ...currentState.ui,
         activeScreen: 'welcome',
+        activeModal: null,
+        hasWarnings: false,
+        isLoading: false,
+        sessionRestore: 'idle',
       },
     });
     await updateCurrentDay();

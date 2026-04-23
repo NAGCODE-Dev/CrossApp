@@ -63,8 +63,24 @@ export async function handleAthletePageSessionAction(action, context) {
       invalidateHydrationCache();
       await applyUiState(
         {
+          currentPage: 'today',
+          accountView: 'overview',
           modal: null,
           authMode: 'signin',
+          passwordReset: {},
+          signupVerification: {},
+          guide: { step: 0 },
+          importStatus: {
+            active: false,
+            tone: 'idle',
+            title: '',
+            message: '',
+            fileName: '',
+            step: 'idle',
+            review: null,
+          },
+          settings: {},
+          wod: {},
           coachPortal: emptyCoachPortal(),
           athleteOverview: emptyAthleteOverview(),
           admin: typeof emptyAdmin === 'function' ? emptyAdmin() : { overview: null, query: '' },

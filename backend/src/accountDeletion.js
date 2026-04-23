@@ -190,6 +190,7 @@ export async function deleteUserAccountNow({ userId, requestedByUserId = null, s
 
 async function deleteUserAccount({ userId, requestedByUserId = null, source, requestId = null, preserveRequest = false, emailOverride = '' }) {
   let client;
+  let email = '';
   try {
     client = await pool.connect();
     console.info('[account-deletion] deletion process started', { userId, source });
@@ -204,7 +205,7 @@ async function deleteUserAccount({ userId, requestedByUserId = null, source, req
       [userId],
     );
     const user = userRes.rows[0] || null;
-    const email = normalizeEmail(emailOverride || user?.email || '');
+    email = normalizeEmail(emailOverride || user?.email || '');
 
     if (!user && !email) {
       const error = new Error('Usuário não encontrado');

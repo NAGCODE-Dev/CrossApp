@@ -135,8 +135,11 @@ export function shouldSkipLine(line) {
   const normalized = normalizeHeadingToken(line);
   const lower = normalized.toLowerCase();
   const upper = normalized.toUpperCase();
+  const compactLower = lower.replace(/[\s.]+/g, '');
 
   return (
+    /^RX\./i.test(normalized) ||
+    !/[A-Za-zÀ-ÿ0-9]/.test(normalized) ||
     lower.includes('gmail.com') ||
     lower.includes('hotmail.com') ||
     line.startsWith('Garanta') ||
@@ -145,8 +148,11 @@ export function shouldSkipLine(line) {
     lower.includes('hp1570') ||
     lower.includes('www.bsbstrong.com') ||
     lower.includes('bsbstrong.com') ||
+    compactLower.includes('bsbstrongcom') ||
     lower.startsWith('#') ||
     lower.includes('#trainwithapurpose') ||
+    compactLower.includes('trainwithapurpose') ||
+    compactLower.includes('treinocomproposito') ||
     upper === 'BSB' ||
     upper === 'STRONG' ||
     upper === 'BSB STRONG' ||
@@ -227,6 +233,14 @@ export function parseWeekText(weekText, weekNumber, options = {}) {
     const nextMeaningfulLines = findNextMeaningfulLines(lines, index + 1, 2);
     if (
       !currentBlock
+      && /COMPLEX\b/i.test(line)
+      && looksLikeStrengthHeader(nextMeaningfulLine, nextMeaningfulLines[1] || '', nextMeaningfulLines.slice(1))
+    ) {
+      pendingBlockHints = { ...pendingBlockHints, compositeTitle: line.trim() };
+      continue;
+    }
+    if (
+      !currentBlock
       && /GIN[ÁA]STICA|QUALIDADE|N[ÃA]O POR TEMPO/i.test(line)
       && /^GYMNASTICS\b/i.test(nextMeaningfulLine)
     ) {
@@ -243,10 +257,11 @@ export function parseWeekText(weekText, weekNumber, options = {}) {
     if (blockDescriptor) {
       flushCurrentBlock();
       currentBlock = blockDescriptor.type;
-      currentBlockTitle = blockDescriptor.title;
-      currentBlockHints = pendingBlockHints;
+      currentBlockTitle = pendingBlockHints.compositeTitle || blockDescriptor.title;
+      currentBlockHints = { ...pendingBlockHints };
+      delete currentBlockHints.compositeTitle;
       pendingBlockHints = {};
-      currentLines = blockDescriptor.includeLine ? [line] : [];
+      currentLines = blockDescriptor.includeLine || currentBlockTitle !== blockDescriptor.title ? [line] : [];
       continue;
     }
 
@@ -370,7 +385,9 @@ function normalizeOcrArtifacts(line = '') {
     .replace(/\b(\d+)\s*[º°]\s*(?=[A-Za-zÀ-ÿ])/g, "$1' ")
     .replace(/\bW[O0]D\b/gi, 'WOD')
     .replace(/Ibs/gi, 'lbs')
+    .replace(/\bREST(?=\d)/gi, 'REST ')
     .replace(/^REST AS NEC[A-Z]+$/i, 'REST AS NECESSARY')
+    .replace(/^\[?ARDE\]?$/i, 'TARDE')
     .replace(/^\[(SEGUNDA|TERÇA|TERCA|QUARTA|QUINTA|SEXTA|SÁBADO|SABADO|DOMINGO|MANHÃ|MANHA|TARDE|WOD(?:\s*2)?)\]$/i, '$1');
 
   return normalizeSpaces(normalized);
@@ -474,18 +491,19 @@ function stripParentheticalSegments(line = '') {
 }
 
 function isStrengthSchemeLine(line = '') {
-  const compact = line.trim().replace(/\s+/g, '');
-  return /^(\d+\+)+\d+@\d+(?:\.\d+)?%$/i.test(compact)
-    || /^(\d+\+)+\d+@\?$/i.test(compact)
-    || /^\d+@\d+(?:\.\d+)?%(?:(?:\(x\d+\))|(?:x\d+))?$/i.test(compact)
-    || /^\d+@\?(\+\d+)?$/i.test(compact)
-    || /^\d+@\d+(?:\.\d+)?%\+\d+$/i.test(compact)
-    || /^\d+x\d+@\d+(?:\.\d+)?%$/i.test(compact)
-    || /^\d+x\d+@\d+(?:\.\d+)?%\+\d+$/i.test(compact);
+  const compact = normalizeStrengthSchemeInput(line);
+  const base = compact.replace(/(?:\(x\d+\)|x\d+)$/i, '');
+  return /^(\d+\+)+\d+@\d+(?:\.\d+)?%$/i.test(base)
+    || /^(\d+\+)+\d+@\?$/i.test(base)
+    || /^\d+@\d+(?:\.\d+)?%$/i.test(base)
+    || /^\d+@\?(\+\d+)?$/i.test(base)
+    || /^\d+@\d+(?:\.\d+)?%\+\d+$/i.test(base)
+    || /^\d+x\d+@\d+(?:\.\d+)?%$/i.test(base)
+    || /^\d+x\d+@\d+(?:\.\d+)?%\+\d+$/i.test(base);
 }
 
 function isAccessorySchemeLine(line = '') {
-  return /^\d+\s*x\s*\d+(?:\s*\([^)]*\))?$/i.test(line.trim());
+  return !!parseAccessorySchemeFields(line);
 }
 
 function isCadenceLine(line = '') {
@@ -502,8 +520,8 @@ function mapLegacyBlockTypeToStructuredType(type) {
 
 function buildStructuredBlock({ type, title, period, lines, hints = {} }) {
   const normalizedLines = (lines || []).map((line) => String(line || '').trim()).filter(Boolean);
-  const references = normalizedLines.filter((line) => /https?:\/\/\S+/i.test(line));
-  const effectiveLines = normalizedLines.filter((line) => !/https?:\/\/\S+/i.test(line));
+  const references = normalizedLines.filter((line) => isReferenceLikeLine(line));
+  const effectiveLines = normalizedLines.filter((line) => !isReferenceLikeLine(line));
   const parsed = parseStructuredBlockContent({
     type,
     title,
@@ -660,7 +678,7 @@ function parseStructuredBlockContent({ type, title, period, lines, hints = {} })
       continue;
     }
 
-    if (/^https?:\/\//i.test(line)) {
+    if (isReferenceLikeLine(line)) {
       items.push({ type: 'reference', url: line.trim(), raw: line });
       continue;
     }
@@ -679,12 +697,12 @@ function parseStructuredBlockContent({ type, title, period, lines, hints = {} })
     }
 
     if (isAccessorySchemeLine(line)) {
-      const match = line.trim().match(/^(\d+)\s*x\s*(\d+)(?:\s*\(([^)]*)\))?$/i);
+      const match = parseAccessorySchemeFields(line);
       items.push({
         type: 'scheme',
-        sets: Number(match[1]),
-        reps: Number(match[2]),
-        notes: String(match[3] || '').trim() || '',
+        sets: match.sets,
+        reps: match.reps,
+        notes: match.notes,
         raw: line,
       });
       continue;
@@ -977,6 +995,11 @@ function roundKg(value) {
 
 function parseRestLine(line) {
   const upper = normalizeOcrArtifacts(String(line || '').trim().replace(/^\*+/, '').trim()).toUpperCase();
+  const forwardRestMatch = upper.match(/^REST(?:\s+TOTAL)?\s*(\d+)\s*['’`´]?$/);
+  if (forwardRestMatch) {
+    return { type: 'rest', durationMinutes: Number(forwardRestMatch[1]), raw: line };
+  }
+
   const restMatch = upper.match(/^(?:(\d+)\s*['’`´]\s*)?REST(?:\s+TOTAL)?(?:\s+(\d+)\s*['’`´])?$/);
   if (restMatch) {
     const minutes = Number(restMatch[1] || restMatch[2] || 0);
@@ -1023,7 +1046,7 @@ function parseRestLine(line) {
 
 function parseStrengthSchemeLine(line) {
   const raw = String(line || '').trim();
-  const compact = raw.replace(/\s+/g, '');
+  const compact = normalizeStrengthSchemeInput(raw);
   const repeatMatch = compact.match(/^(.*?)(?:\(x(\d+)\)|x(\d+))$/i);
   const repeatCount = repeatMatch ? Number(repeatMatch[2] || repeatMatch[3]) : null;
   const base = repeatMatch ? repeatMatch[1] : compact;
@@ -1204,19 +1227,31 @@ function parseAccessoryLine(line) {
   const raw = String(line || '').trim();
   if (!raw) return null;
 
-  const schemeOnlyMatch = raw.match(/^(\d+)\s*x\s*(\d+)(?:\s*\(([^)]+)\))?$/i);
-  if (schemeOnlyMatch) {
+  const schemeOnly = parseAccessorySchemeFields(raw);
+  if (schemeOnly) {
     return {
       type: 'accessory_scheme',
-      sets: Number(schemeOnlyMatch[1]),
-      reps: Number(schemeOnlyMatch[2]),
-      notes: String(schemeOnlyMatch[3] || '').trim() || '',
+      sets: schemeOnly.sets,
+      reps: schemeOnly.reps,
+      notes: schemeOnly.notes,
       raw,
     };
   }
 
-  const match = raw.match(/^(.*?)\s+(\d+)\s*x\s*(\d+)(?:\s*\(([^)]+)\))?$/i);
+  const match = raw.match(/^(.*?)\s+(\d+)\s*x\s*(\d+)(.*)$/i);
   if (match) {
+    const notes = normalizeAccessoryNotes(match[4]);
+    if (notes.includes('@')) {
+      const normalizedName = normalizeMovementName(raw);
+      return {
+        type: 'accessory_name',
+        name: normalizedName.name,
+        displayName: normalizedName.displayName,
+        canonicalName: normalizedName.canonicalName,
+        canonicalSlug: normalizedName.canonicalSlug,
+        raw,
+      };
+    }
     const normalized = normalizeMovementName(match[1].trim());
     return {
       type: 'accessory_item',
@@ -1226,7 +1261,7 @@ function parseAccessoryLine(line) {
       canonicalSlug: normalized.canonicalSlug,
       sets: Number(match[2]),
       reps: Number(match[3]),
-      notes: String(match[4] || '').trim() || '',
+      notes,
       raw,
     };
   }
@@ -1240,6 +1275,31 @@ function parseAccessoryLine(line) {
     canonicalSlug: normalized.canonicalSlug,
     raw,
   };
+}
+
+function parseAccessorySchemeFields(line = '') {
+  const raw = String(line || '').trim();
+  const match = raw.match(/^(\d+)\s*x\s*(\d+)(.*)$/i);
+  if (!match) return null;
+
+  const notes = normalizeAccessoryNotes(match[3]);
+  if (notes.includes('@')) return null;
+
+  return {
+    sets: Number(match[1]),
+    reps: Number(match[2]),
+    notes,
+  };
+}
+
+function normalizeAccessoryNotes(raw = '') {
+  const trimmed = String(raw || '').trim();
+  if (!trimmed) return '';
+
+  const wrappedOnly = trimmed.match(/^\(([^)]+)\)$/);
+  if (wrappedOnly) return wrappedOnly[1].trim();
+
+  return trimmed.replace(/\s+/g, ' ').trim();
 }
 
 function buildAccessoryItems(items) {
@@ -1276,6 +1336,49 @@ function buildAccessoryItems(items) {
   }
 
   return accessoryItems;
+}
+
+function normalizeStrengthSchemeInput(line = '') {
+  const compact = String(line || '').trim().replace(/\s+/g, '');
+  const repeatMatch = compact.match(/^(.*?)(?:\(x(\d+)\)|x(\d+))$/i);
+  if (!repeatMatch) {
+    return repairCollapsedSingleRepSequence(compact);
+  }
+
+  const base = repairCollapsedSingleRepSequence(repeatMatch[1]);
+  const suffix = repeatMatch[2] ? `(x${repeatMatch[2]})` : `x${repeatMatch[3]}`;
+  return `${base}${suffix}`;
+}
+
+function repairCollapsedSingleRepSequence(compact = '') {
+  const atIndex = compact.indexOf('@');
+  if (atIndex === -1) return compact;
+
+  const schemePart = compact.slice(0, atIndex);
+  if (!schemePart || /[^14+]/.test(schemePart)) return compact;
+
+  const oneCount = (schemePart.match(/1/g) || []).length;
+  if (oneCount < 3 || oneCount > 6) return compact;
+
+  const repairedScheme = Array.from({ length: oneCount }, () => '1').join('+');
+  return `${repairedScheme}${compact.slice(atIndex)}`;
+}
+
+function isReferenceLikeLine(line = '') {
+  const raw = String(line || '').trim();
+  if (!raw) return false;
+
+  const compact = raw
+    .toLowerCase()
+    .replace(/\s+/g, '')
+    .replace(/[()]/g, '');
+
+  return compact.includes('youtube')
+    || compact.includes('youtu.be')
+    || compact.includes('watch?v=')
+    || compact.includes('bsbstrongcom')
+    || /^https?:/.test(compact)
+    || compact.startsWith('www.');
 }
 
 function buildEngineSummary(items, context = {}) {

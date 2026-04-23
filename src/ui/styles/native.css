@@ -43,9 +43,9 @@
   }
 
   .app-header-native {
-    padding-inline: 14px;
-    padding-top: calc(var(--safe-top) + 10px);
-    padding-bottom: 10px;
+    padding-inline: 12px;
+    padding-top: calc(var(--safe-top) + 8px);
+    padding-bottom: 8px;
     border-bottom: 0;
     background:
       linear-gradient(180deg, rgba(6, 10, 16, 0.96), rgba(6, 10, 16, 0.82));
@@ -56,45 +56,38 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: 10px;
   }
 
   .native-appBrand {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     min-width: 0;
   }
 
   .native-appMark {
-    width: 42px;
-    height: 42px;
-    border-radius: 14px;
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+    width: 34px;
+    height: 34px;
+    border-radius: 12px;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
     background:
       radial-gradient(circle at top, rgba(138, 180, 255, 0.2), transparent 58%),
       rgba(20, 29, 41, 0.94);
   }
 
   .native-appBrandCopy {
-    display: grid;
-    gap: 2px;
     min-width: 0;
-  }
-
-  .native-appEyebrow {
-    color: var(--text-muted);
-    font-size: 0.62rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
   }
 
   .native-appTitle {
     color: var(--text-primary);
-    font-size: 0.96rem;
+    font-size: 0.9rem;
     line-height: 1.08;
     letter-spacing: -0.02em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .header-account-native {
@@ -102,24 +95,24 @@
   }
 
   .header-accountGroup-native {
-    gap: 10px;
+    gap: 8px;
   }
 
   .native-accountBtn {
     display: inline-flex;
     align-items: center;
-    gap: 10px;
-    min-height: 50px;
+    gap: 8px;
+    min-height: 42px;
     min-width: 0;
-    max-width: 220px;
-    padding: 0 12px;
-    border-radius: 18px;
+    max-width: 160px;
+    padding: 0 10px;
+    border-radius: 16px;
     border: 1px solid rgba(255, 255, 255, 0.08);
     background:
       linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.018)),
       rgba(15, 23, 33, 0.94);
     color: var(--text-primary);
-    box-shadow: 0 16px 34px rgba(0, 0, 0, 0.22);
+    box-shadow: 0 12px 26px rgba(0, 0, 0, 0.18);
   }
 
   .native-accountBtn.isActive {
@@ -130,32 +123,22 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 30px;
-    height: 30px;
+    width: 28px;
+    height: 28px;
     flex-shrink: 0;
-    border-radius: 12px;
+    border-radius: 10px;
     background:
       linear-gradient(180deg, rgba(138, 180, 255, 0.2), rgba(138, 180, 255, 0.08)),
       rgba(26, 34, 46, 0.94);
     color: #eff6ff;
-    font-size: 0.72rem;
+    font-size: 0.68rem;
     font-weight: 800;
     letter-spacing: 0.06em;
   }
 
   .native-accountCopy {
-    display: grid;
-    gap: 1px;
     min-width: 0;
     text-align: left;
-  }
-
-  .native-accountLabel {
-    color: var(--text-muted);
-    font-size: 0.58rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
   }
 
   .native-accountName {
@@ -164,7 +147,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-size: 0.8rem;
+    font-size: 0.78rem;
     line-height: 1.1;
     letter-spacing: -0.02em;
   }

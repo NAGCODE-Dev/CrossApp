@@ -84,6 +84,8 @@ export function renderBottomTools(state, { escapeHtml, platformVariant = 'web' }
   if (currentPage !== 'today') return '';
   const hasWorkout = !!(state?.workout?.blocks?.length || state?.workoutOfDay?.blocks?.length);
   const hasWeeks = (state?.weeks?.length ?? 0) > 0;
+  const showNyxHints = state?.preferences?.showNyxHints !== false;
+  const nyxGuideCompleted = state?.preferences?.nyxGuideCompleted === true;
   const isNative = platformVariant === 'native';
 
   if (!hasWorkout && !hasWeeks) return '';
@@ -106,12 +108,26 @@ export function renderBottomTools(state, { escapeHtml, platformVariant = 'web' }
           <span class="quick-actionLabel">Trocar treino</span>
           <span class="quick-actionMeta">${isNative ? 'Abra outra planilha.' : 'Substitua a planilha atual sem perder a navegação.'}</span>
         </button>
+        ${(showNyxHints || nyxGuideCompleted) ? `
+          <button class="quick-action ${isNative ? 'quick-action-native' : ''}" data-action="modal:open" data-modal="nyx-guide" data-guide-step="0" type="button">
+            <span class="quick-actionIcon">NYX</span>
+            <span class="quick-actionLabel">${nyxGuideCompleted ? 'Rever tour' : 'Tour com Nyx'}</span>
+            <span class="quick-actionMeta">${isNative ? 'Relembre os atalhos do app.' : 'Passe novamente pelo fluxo guiado do app.'}</span>
+          </button>
+        ` : ''}
       ` : `
         <button class="quick-action ${isNative ? 'quick-action-native' : ''} quick-action-primary quick-action-wide" data-action="modal:open" data-modal="import" data-guide-target="today-import" type="button">
           <span class="quick-actionIcon">+</span>
           <span class="quick-actionLabel">Importar treino</span>
           <span class="quick-actionMeta">${isNative ? 'PDF, imagem, vídeo, texto ou planilha.' : 'PDF, imagem, vídeo, texto ou planilha em um só fluxo.'}</span>
         </button>
+        ${(showNyxHints || nyxGuideCompleted) ? `
+          <button class="quick-action ${isNative ? 'quick-action-native' : ''}" data-action="modal:open" data-modal="nyx-guide" data-guide-step="0" type="button">
+            <span class="quick-actionIcon">NYX</span>
+            <span class="quick-actionLabel">${nyxGuideCompleted ? 'Rever tour' : 'Tour com Nyx'}</span>
+            <span class="quick-actionMeta">${isNative ? 'Conheça o fluxo do app.' : 'Abra o guia rápido para navegar pelo app.'}</span>
+          </button>
+        ` : ''}
       `}
       </div>
     </div>

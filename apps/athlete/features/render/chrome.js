@@ -20,7 +20,6 @@ export function renderAthleteAppShell({ escapeHtml, getAppLabel, platformVariant
               <div class="native-appBrand">
                 <img class="native-appMark" src="/branding/exports/ryxen-icon-64.png" alt="" aria-hidden="true">
                 <div class="native-appBrandCopy">
-                  <span class="native-appEyebrow">Ryxen</span>
                   <strong class="native-appTitle">${escapeHtml(appLabel)}</strong>
                 </div>
               </div>
@@ -55,6 +54,7 @@ export function renderAthleteAppShell({ escapeHtml, getAppLabel, platformVariant
 function renderSessionStatusChip(sessionRestore, platformVariant) {
   if (sessionRestore === 'ready' || sessionRestore === 'idle') return '';
   const isNative = isAthleteNativeVariant(platformVariant);
+  if (isNative) return '';
   const toneClass = sessionRestore === 'failed' ? 'isWarn' : 'isInfo';
   const label = sessionRestore === 'failed' ? 'Sem sincronizar' : 'Reconectando';
   return `<span class="session-statusChip ${toneClass} ${isNative ? 'session-statusChip-native' : ''}">${label}</span>`;
@@ -81,8 +81,7 @@ function renderAccountButton({ escapeHtml, displayName, notificationCount, isNat
     <button class="native-accountBtn isActive" data-action="modal:open" data-modal="auth" type="button">
       <span class="native-accountAvatar" aria-hidden="true">${escapeHtml(initials)}</span>
       <span class="native-accountCopy">
-        <span class="native-accountLabel">Conta</span>
-        <strong class="native-accountName">${escapeHtml(displayName)}</strong>
+        <strong class="native-accountName">${escapeHtml(String(displayName || '').split(/\s+/)[0] || displayName)}</strong>
       </span>
       ${notificationCount > 0 ? `<span class="header-accountBadge">${Math.min(notificationCount, 99)}</span>` : ''}
     </button>
@@ -102,7 +101,7 @@ export function renderAthleteHeaderAccount(state, { escapeHtml, platformVariant 
         ${sessionChip}
         <button class="${isNative ? 'native-accountBtn' : 'header-account-btn'}" data-action="modal:open" data-modal="auth" type="button">
           ${isNative
-            ? '<span class="native-accountAvatar" aria-hidden="true">IN</span><span class="native-accountCopy"><span class="native-accountLabel">Conta</span><strong class="native-accountName">Entrar</strong></span>'
+            ? '<span class="native-accountAvatar" aria-hidden="true">IN</span><span class="native-accountCopy"><strong class="native-accountName">Entrar</strong></span>'
             : 'Entrar'}
         </button>
       </div>
