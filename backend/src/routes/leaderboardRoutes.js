@@ -5,10 +5,15 @@ import { canManageMembership, getMembershipForUser } from '../access.js';
 import { getBenchmarkLeaderboard } from '../queries/leaderboardQueries.js';
 import { normalizeSportType } from '../utils/sportType.js';
 
-export function createLeaderboardRouter() {
+export function createLeaderboardRouter({
+  authMiddleware = authRequired,
+  getMembershipForUserFn = getMembershipForUser,
+  canManageMembershipFn = canManageMembership,
+  getBenchmarkLeaderboardFn = getBenchmarkLeaderboard,
+} = {}) {
   const router = express.Router();
 
-  router.get('/leaderboards/benchmarks/:slug', authRequired, async (req, res) => {
+  router.get('/leaderboards/benchmarks/:slug', authMiddleware, async (req, res) => {
     const slug = String(req.params.slug || '').trim().toLowerCase();
     const sportType = normalizeSportType(req.query?.sportType);
     const gymId = req.query?.gymId !== undefined && req.query?.gymId !== '' ? Number(req.query.gymId) : null;
@@ -20,18 +25,18 @@ export function createLeaderboardRouter() {
     }
 
     if (Number.isFinite(gymId)) {
-      viewerMembership = await getMembershipForUser(gymId, req.user.userId);
+      viewerMembership = await getMembershipForUserFn(gymId, req.user.userId);
       if (!viewerMembership) {
         return res.status(404).json({ error: 'Gym não encontrado para este usuário' });
       }
     }
 
-    const payload = await getBenchmarkLeaderboard({
+    const payload = await getBenchmarkLeaderboardFn({
       slug,
       sportType,
       gymId,
       limit,
-      showPrivateAthleteData: canManageMembership(viewerMembership),
+      showPrivateAthleteData: canManageMembershipFn(viewerMembership),
     });
     if (!payload) {
       return res.status(404).json({ error: 'Benchmark não encontrado' });

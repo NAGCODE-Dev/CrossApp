@@ -8,10 +8,15 @@ import { loadGymInsights, loadVisibleWorkoutFeed } from '../queries/coachDashboa
 import { createAthleteGroup, createWorkoutForAudience, inviteGymMembership } from '../services/gymWriteServices.js';
 import { normalizeSportType } from '../utils/sportType.js';
 
-export function createGymRouter({ requireGymManager, slugify, enrichWorkoutWithBenchmark }) {
+export function createGymRouter({
+  authMiddleware = authRequired,
+  requireGymManager,
+  slugify,
+  enrichWorkoutWithBenchmark,
+} = {}) {
   const router = express.Router();
 
-  router.get('/access/context', authRequired, async (req, res) => {
+  router.get('/access/context', authMiddleware, async (req, res) => {
     const [gyms, personalSubscription] = await Promise.all([
       getAccessContextForUser(req.user.userId),
       getActiveSubscriptionForUser(req.user.userId),
@@ -28,7 +33,7 @@ export function createGymRouter({ requireGymManager, slugify, enrichWorkoutWithB
     });
   });
 
-  router.post('/gyms', authRequired, async (req, res) => {
+  router.post('/gyms', authMiddleware, async (req, res) => {
     const name = String(req.body?.name || '').trim();
     const slug = slugify(req.body?.slug || name);
     if (!name || !slug) {
@@ -56,7 +61,7 @@ export function createGymRouter({ requireGymManager, slugify, enrichWorkoutWithB
     }
   });
 
-  router.get('/gyms/me', authRequired, async (req, res) => {
+  router.get('/gyms/me', authMiddleware, async (req, res) => {
     const memberships = await getAccessContextForUser(req.user.userId);
     return res.json({
       gyms: memberships.map((ctx) => ({
@@ -70,7 +75,7 @@ export function createGymRouter({ requireGymManager, slugify, enrichWorkoutWithB
     });
   });
 
-  router.post('/gyms/:gymId/memberships', authRequired, async (req, res) => {
+  router.post('/gyms/:gymId/memberships', authMiddleware, async (req, res) => {
     const gymId = Number(req.params.gymId);
     const role = String(req.body?.role || 'athlete');
     const email = String(req.body?.email || '').toLowerCase().trim();
@@ -99,7 +104,7 @@ export function createGymRouter({ requireGymManager, slugify, enrichWorkoutWithB
     }
   });
 
-  router.get('/gyms/:gymId/memberships', authRequired, async (req, res) => {
+  router.get('/gyms/:gymId/memberships', authMiddleware, async (req, res) => {
     const gymId = Number(req.params.gymId);
     const manager = await requireGymManager(gymId, req.user.userId);
     if (!manager.success) {
@@ -118,7 +123,7 @@ export function createGymRouter({ requireGymManager, slugify, enrichWorkoutWithB
     return res.json({ memberships: rows.rows });
   });
 
-  router.get('/gyms/:gymId/groups', authRequired, async (req, res) => {
+  router.get('/gyms/:gymId/groups', authMiddleware, async (req, res) => {
     const gymId = Number(req.params.gymId);
     const sportType = normalizeSportType(req.query?.sportType);
     const manager = await requireGymManager(gymId, req.user.userId);
@@ -182,7 +187,7 @@ export function createGymRouter({ requireGymManager, slugify, enrichWorkoutWithB
     });
   });
 
-  router.post('/gyms/:gymId/groups', authRequired, async (req, res) => {
+  router.post('/gyms/:gymId/groups', authMiddleware, async (req, res) => {
     const gymId = Number(req.params.gymId);
     const sportType = normalizeSportType(req.body?.sportType);
     const name = String(req.body?.name || '').trim();
@@ -215,7 +220,7 @@ export function createGymRouter({ requireGymManager, slugify, enrichWorkoutWithB
     }
   });
 
-  router.post('/gyms/:gymId/workouts', authRequired, async (req, res) => {
+  router.post('/gyms/:gymId/workouts', authMiddleware, async (req, res) => {
     const gymId = Number(req.params.gymId);
     const sportType = normalizeSportType(req.body?.sportType);
     const title = String(req.body?.title || '').trim();
@@ -265,7 +270,7 @@ export function createGymRouter({ requireGymManager, slugify, enrichWorkoutWithB
     return res.json(created);
   });
 
-  router.get('/workouts/feed', authRequired, async (req, res) => {
+  router.get('/workouts/feed', authMiddleware, async (req, res) => {
     const sportType = normalizeSportType(req.query?.sportType);
     const workouts = await loadVisibleWorkoutFeed({
       userId: req.user.userId,
@@ -275,7 +280,7 @@ export function createGymRouter({ requireGymManager, slugify, enrichWorkoutWithB
     return res.json({ workouts });
   });
 
-  router.get('/gyms/:gymId/insights', authRequired, async (req, res) => {
+  router.get('/gyms/:gymId/insights', authMiddleware, async (req, res) => {
     const gymId = Number(req.params.gymId);
     const sportType = normalizeSportType(req.query?.sportType);
     if (!Number.isFinite(gymId)) {
