@@ -169,21 +169,33 @@ textarea {
   justify-content: center;
 }
 
-.hub-wordmark {
+.hub-logoLockup {
   display: block;
-  width: min(100%, 272px);
-  height: auto;
-  aspect-ratio: 47 / 12;
-  margin-bottom: 14px;
+  width: min(100%, 254px);
+  min-height: 66px;
+  margin-bottom: 18px;
 }
 
-.hub-brandLockup {
+.hub-wordmark {
+  display: block;
+  width: min(100%, 252px);
+  height: auto;
+  aspect-ratio: 47 / 12;
+  object-fit: contain;
+  object-position: left center;
+}
+
+.hub-wordmark[src=""],
+.hub-wordmark:not([src]) {
+  display: none;
+}
+
+.hub-logoFallback {
   display: inline-flex;
   align-items: center;
   gap: 12px;
   width: max-content;
   min-height: 48px;
-  margin-bottom: 18px;
   padding: 7px 14px 7px 8px;
   border: 1px solid rgba(196, 210, 233, 0.14);
   border-radius: 999px;
@@ -193,6 +205,15 @@ textarea {
   font-weight: 800;
   letter-spacing: -0.02em;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.hub-wordmark + .hub-logoFallback {
+  display: none;
+}
+
+.hub-wordmark[src=""] + .hub-logoFallback,
+.hub-wordmark:not([src]) + .hub-logoFallback {
+  display: inline-flex;
 }
 
 .hub-brandMark {

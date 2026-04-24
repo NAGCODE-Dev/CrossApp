@@ -9,10 +9,10 @@ const LEGACY_HUB_SEEN_KEY = 'crossapp-hub-seen-v1';
 const ENTRY_TARGET_KEY = 'ryxen-entry-target';
 const LEGACY_ENTRY_TARGET_KEY = 'crossapp-entry-target';
 const WORDMARK_SOURCES = [
+  './branding/exports/ryxen-logo-white.png',
+  '/branding/exports/ryxen-logo-white.png',
   './branding/exports/ryxen-logo-horizontal-alt.png',
   '/branding/exports/ryxen-logo-horizontal-alt.png',
-  './branding/exports/ryxen-logo-horizontal.png',
-  '/branding/exports/ryxen-logo-horizontal.png',
 ];
 
 boot();
@@ -125,7 +125,10 @@ function bindWordmarkFallback(root) {
 
   image.addEventListener('error', () => {
     sourceIndex += 1;
-    if (sourceIndex >= WORDMARK_SOURCES.length) return;
+    if (sourceIndex >= WORDMARK_SOURCES.length) {
+      image.removeAttribute('src');
+      return;
+    }
     image.src = WORDMARK_SOURCES[sourceIndex];
   });
 }
@@ -137,9 +140,12 @@ function renderHub({ sports, availableSports, lastSport, lastSportUrl, coachUrl,
       <section class="hub-hero isolate">
         <div class="hub-heroGrid items-start xl:items-center">
           <div class="hub-heroMain max-w-3xl md:pr-6">
-            <div class="hub-brandLockup" aria-label="Ryxen">
-              <img class="hub-brandMark" src="./branding/exports/ryxen-icon-64.png" alt="" width="64" height="64" fetchpriority="high">
-              <span>Ryxen</span>
+            <div class="hub-logoLockup">
+              <img class="hub-wordmark" data-hub-wordmark src="./branding/exports/ryxen-logo-white.png" alt="Ryxen" width="940" height="240" fetchpriority="high">
+              <span class="hub-logoFallback" aria-hidden="true">
+                <img class="hub-brandMark" src="./branding/exports/ryxen-icon-64.png" alt="" width="64" height="64" fetchpriority="high">
+                <span>Ryxen</span>
+              </span>
             </div>
             <div class="hub-kicker max-w-max border-white/10 bg-white/5 px-4">Atleta e coach</div>
             <h1 class="max-w-[12ch]">Atleta ou coach</h1>
