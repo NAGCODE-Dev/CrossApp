@@ -9,6 +9,7 @@ import '../coach/styles.css';
 
 const CoachWorkspace = React.lazy(() => import('./workspace.js'));
 const DEFAULT_COACH_RETURN_TO = '/coach/';
+const RYXEN_ICON_SRC = new URL('../branding/exports/ryxen-icon-64.png', import.meta.url).href;
 
 const STORAGE_KEYS = {
   token: 'ryxen-auth-token',
@@ -105,7 +106,7 @@ function App() {
           React.createElement('div', { className: 'auth-brandLockup' },
             React.createElement('img', {
               className: 'auth-brandMark',
-              src: '/branding/exports/ryxen-icon-64.png',
+              src: RYXEN_ICON_SRC,
               alt: '',
               width: 64,
               height: 64,
