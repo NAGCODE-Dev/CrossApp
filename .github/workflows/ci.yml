@@ -52,6 +52,49 @@ jobs:
       - name: Run Tests
         run: npm test
 
+  codeql-java:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: package-lock.json
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Install web dependencies
+        run: npm ci --ignore-scripts || npm install --ignore-scripts
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: java
+          build-mode: manual
+
+      - name: Prepare Android assets
+        run: npm run build:android
+
+      - name: Build Android project for CodeQL
+        run: |
+          chmod +x android/gradlew
+          cd android
+          ./gradlew clean assembleDebug --no-daemon --stacktrace
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4
+
   rebuild-prepare:
     needs: changes
     if: needs.changes.outputs.rebuild == 'true'
