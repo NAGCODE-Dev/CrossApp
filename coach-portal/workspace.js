@@ -18,6 +18,7 @@ import {
   benchmarkCategoryLabel,
   benchmarkSourceLabel,
   formatDateLabel,
+  formatDateTimeLabel,
   formatNumericValue,
   getAvailableSportOptions,
   getDaysRemaining,
@@ -60,6 +61,7 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
     eventLeaderboard: { competition: null, event: null, benchmark: null, results: [] },
     members: [],
     groups: [],
+    checkinSessions: [],
     selectedGymId: null,
     selectedSportType: 'cross',
     insights: null,
@@ -72,6 +74,13 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
     groupName: '',
     groupDescription: '',
     selectedGroupMemberIds: [],
+    sessionTitle: '',
+    sessionStartsAt: '',
+    sessionEndsAt: '',
+    sessionCheckInClosesAt: '',
+    sessionCapacity: '',
+    sessionLocation: '',
+    sessionNotes: '',
     ...DEFAULT_WORKOUT_DRAFT,
     benchmarkQuery: '',
     benchmarkCategory: '',
@@ -175,9 +184,10 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
       let members = [];
       let groups = [];
       let insights = null;
+      let checkinSessions = [];
       if (selectedGymId) {
         const selectedGymAccess = gymAccessById.get(Number(selectedGymId)) || null;
-        const [membersRes, groupsRes, insightsRes] = await Promise.all([
+        const [membersRes, groupsRes, insightsRes, checkinSessionsRes] = await Promise.all([
           selectedGymAccess?.canCoachManage
             ? apiRequest(`/gyms/${selectedGymId}/memberships`)
             : coachRequestOptional(apiRequest, `/gyms/${selectedGymId}/memberships`, { memberships: [] }),
@@ -187,10 +197,14 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
           selectedGymAccess?.canCoachManage
             ? apiRequest(`/gyms/${selectedGymId}/insights?sportType=${encodeURIComponent(selectedSportType)}`)
             : coachRequestOptional(apiRequest, `/gyms/${selectedGymId}/insights?sportType=${encodeURIComponent(selectedSportType)}`, null),
+          selectedGymAccess?.canCoachManage
+            ? apiRequest(`/gyms/${selectedGymId}/checkin-sessions?sportType=${encodeURIComponent(selectedSportType)}&limit=8`)
+            : coachRequestOptional(apiRequest, `/gyms/${selectedGymId}/checkin-sessions?sportType=${encodeURIComponent(selectedSportType)}&limit=8`, { sessions: [] }),
         ]);
         members = membersRes?.memberships || [];
         groups = groupsRes?.groups || [];
         insights = insightsRes || null;
+        checkinSessions = checkinSessionsRes?.sessions || [];
       }
 
       setDashboard({
@@ -211,6 +225,7 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
         eventLeaderboard: dashboard.eventLeaderboard || { competition: null, event: null, benchmark: null, results: [] },
         members,
         groups,
+        checkinSessions,
         selectedGymId,
         selectedSportType,
         insights,
@@ -297,6 +312,81 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
       await loadDashboard(dashboard.selectedGymId, dashboard.selectedSportType);
     } catch (err) {
       setError(err.message || 'Erro ao criar grupo');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleCreateCheckinSession(event) {
+    event.preventDefault();
+    if (!dashboard.selectedGymId) return;
+    setLoading(true);
+    setError('');
+    try {
+      await apiRequest(`/gyms/${dashboard.selectedGymId}/checkin-sessions`, {
+        method: 'POST',
+        body: {
+          sportType: dashboard.selectedSportType,
+          title: forms.sessionTitle,
+          startsAt: forms.sessionStartsAt,
+          endsAt: forms.sessionEndsAt || null,
+          checkInClosesAt: forms.sessionCheckInClosesAt || null,
+          capacity: forms.sessionCapacity || null,
+          location: forms.sessionLocation,
+          notes: forms.sessionNotes,
+          status: 'scheduled',
+        },
+      });
+      setForms((prev) => ({
+        ...prev,
+        sessionTitle: '',
+        sessionStartsAt: '',
+        sessionEndsAt: '',
+        sessionCheckInClosesAt: '',
+        sessionCapacity: '',
+        sessionLocation: '',
+        sessionNotes: '',
+      }));
+      setMessage('Sessão criada');
+      await loadDashboard(dashboard.selectedGymId, dashboard.selectedSportType);
+    } catch (err) {
+      setError(err.message || 'Erro ao criar sessão');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleMarkSessionCheckIn(sessionId, gymMembershipId) {
+    if (!dashboard.selectedGymId || !sessionId || !gymMembershipId) return;
+    setLoading(true);
+    setError('');
+    try {
+      await apiRequest(`/gyms/${dashboard.selectedGymId}/checkin-sessions/${sessionId}/checkins`, {
+        method: 'POST',
+        body: { gymMembershipId },
+      });
+      setMessage('Check-in registrado');
+      await loadDashboard(dashboard.selectedGymId, dashboard.selectedSportType);
+    } catch (err) {
+      setError(err.message || 'Erro ao registrar check-in');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleCancelSessionCheckIn(sessionId, gymMembershipId) {
+    if (!dashboard.selectedGymId || !sessionId || !gymMembershipId) return;
+    setLoading(true);
+    setError('');
+    try {
+      await apiRequest(`/gyms/${dashboard.selectedGymId}/checkin-sessions/${sessionId}/checkins/cancel`, {
+        method: 'POST',
+        body: { gymMembershipId },
+      });
+      setMessage('Check-in cancelado');
+      await loadDashboard(dashboard.selectedGymId, dashboard.selectedSportType);
+    } catch (err) {
+      setError(err.message || 'Erro ao cancelar check-in');
     } finally {
       setLoading(false);
     }
@@ -1344,6 +1434,118 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
             )
           ),
           React.createElement('div', { className: 'stack operation-secondaryRail' },
+            React.createElement('div', { className: 'card nested-card operation-card' },
+              React.createElement('div', { className: 'publish-formSectionHead' },
+                React.createElement('div', { className: 'eyebrow' }, 'Agenda e check-in'),
+                React.createElement('strong', null, selectedGym ? `Sessões de ${selectedGym.name}` : 'Sessões do gym')
+              ),
+              React.createElement('p', { className: 'muted' }, `Base pronta para reserva, presença e recepção em ${sportLabel(dashboard.selectedSportType)}.`),
+              React.createElement('div', { className: 'stack list-block' },
+                showSkeleton
+                  ? portalSkeletonList(2)
+                  : (dashboard.checkinSessions || []).map((session) =>
+                      React.createElement('div', { key: session.id, className: 'list-item static' },
+                        React.createElement('strong', null, session.title || 'Sessão'),
+                        React.createElement(
+                          'span',
+                          null,
+                          `${formatDateTimeLabel(session.starts_at)}${session.location ? ` • ${session.location}` : ''}${session.capacity ? ` • ${session.summary?.totalEntries || 0}/${session.capacity}` : ''}${session.rules?.checkInClosesAt ? ` • check-in até ${formatDateTimeLabel(session.rules.checkInClosesAt)}` : ''}`
+                        ),
+                        React.createElement('span', { className: 'muted' },
+                          session.rules?.checkInClosed
+                            ? 'Janela de check-in encerrada'
+                            : (session.summary?.availableSpots !== null ? `${session.summary?.availableSpots || 0} vaga(s) restante(s)` : 'Sem limite de vagas')
+                        ),
+                        React.createElement('div', { className: 'stack list-block' },
+                          (session.entries || []).length
+                            ? session.entries.slice(0, 6).map((entry) =>
+                                React.createElement('div', { key: entry.id, className: 'list-item static' },
+                                  React.createElement('strong', null, entry.attendeeLabel || entry.attendeeEmail || 'Atleta'),
+                                  React.createElement(
+                                    'span',
+                                    null,
+                                    `${entry.status}${entry.checkedInAt ? ` • ${formatDateTimeLabel(entry.checkedInAt)}` : ''}${entry.canceledAt ? ` • cancelado em ${formatDateTimeLabel(entry.canceledAt)}` : ''}`
+                                  ),
+                                  entry.status !== 'checked_in'
+                                    ? React.createElement('button', {
+                                      type: 'button',
+                                      className: 'btn btn-secondary',
+                                      onClick: () => handleMarkSessionCheckIn(session.id, entry.gymMembershipId),
+                                      disabled: loading || session.rules?.checkInClosed,
+                                    }, 'Marcar check-in')
+                                    : null,
+                                  entry.status !== 'canceled'
+                                    ? React.createElement('button', {
+                                      type: 'button',
+                                      className: 'btn btn-secondary',
+                                      onClick: () => handleCancelSessionCheckIn(session.id, entry.gymMembershipId),
+                                      disabled: loading,
+                                    }, 'Cancelar check-in')
+                                    : null
+                                )
+                              )
+                            : React.createElement('p', { className: 'muted' }, 'Sem reservas ainda nesta sessão.')
+                        )
+                      )
+                    ),
+                !(dashboard.checkinSessions || []).length ? React.createElement('p', { className: 'muted' }, 'Crie a primeira sessão para começar agenda e presença.') : null
+              ),
+              React.createElement('form', { className: 'stack operation-form', onSubmit: handleCreateCheckinSession },
+                React.createElement('div', { className: 'publish-formSectionHead' },
+                  React.createElement('div', { className: 'eyebrow' }, 'Nova sessão'),
+                  React.createElement('span', { className: 'muted' }, 'MVP pronto para crescer depois com QR, recepção e reservas pelo atleta.')
+                ),
+                React.createElement('input', {
+                  className: 'field',
+                  placeholder: 'Título da sessão',
+                  value: forms.sessionTitle,
+                  onChange: (e) => setForms((prev) => ({ ...prev, sessionTitle: e.target.value })),
+                }),
+                React.createElement('div', { className: 'grid dual-grid' },
+                  React.createElement('input', {
+                    className: 'field',
+                    type: 'datetime-local',
+                    value: forms.sessionStartsAt,
+                    onChange: (e) => setForms((prev) => ({ ...prev, sessionStartsAt: e.target.value })),
+                  }),
+                  React.createElement('input', {
+                    className: 'field',
+                    type: 'datetime-local',
+                    value: forms.sessionEndsAt,
+                    onChange: (e) => setForms((prev) => ({ ...prev, sessionEndsAt: e.target.value })),
+                  }),
+                  React.createElement('input', {
+                    className: 'field',
+                    type: 'datetime-local',
+                    value: forms.sessionCheckInClosesAt,
+                    onChange: (e) => setForms((prev) => ({ ...prev, sessionCheckInClosesAt: e.target.value })),
+                    placeholder: 'Limite do check-in',
+                  }),
+                  React.createElement('input', {
+                    className: 'field',
+                    type: 'number',
+                    min: '1',
+                    step: '1',
+                    placeholder: 'Capacidade',
+                    value: forms.sessionCapacity,
+                    onChange: (e) => setForms((prev) => ({ ...prev, sessionCapacity: e.target.value })),
+                  }),
+                  React.createElement('input', {
+                    className: 'field',
+                    placeholder: 'Local',
+                    value: forms.sessionLocation,
+                    onChange: (e) => setForms((prev) => ({ ...prev, sessionLocation: e.target.value })),
+                  }),
+                ),
+                React.createElement('textarea', {
+                  className: 'field textarea',
+                  placeholder: 'Notas rápidas da aula / sessão',
+                  value: forms.sessionNotes,
+                  onChange: (e) => setForms((prev) => ({ ...prev, sessionNotes: e.target.value })),
+                }),
+                React.createElement('button', { className: 'btn btn-secondary', type: 'submit', disabled: loading || !selectedGym || !forms.sessionTitle || !forms.sessionStartsAt }, 'Criar sessão')
+              )
+            ),
             React.createElement('div', { className: 'card nested-card operation-card' },
               React.createElement('div', { className: 'publish-formSectionHead' },
                 React.createElement('div', { className: 'eyebrow' }, 'Grupos'),

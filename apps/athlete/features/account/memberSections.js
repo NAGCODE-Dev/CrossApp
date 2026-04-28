@@ -110,6 +110,89 @@ export function renderAccountActivitySection(renderPageFold, view) {
   });
 }
 
+function formatDateTimeShort(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+export function renderAccountCheckinSection(renderPageFold, view) {
+  const {
+    selectedGym = null,
+    selectedGymId = null,
+    checkinSessions = [],
+    isCheckinsLoading = false,
+    escapeHtml,
+  } = view;
+
+  const content = !selectedGymId
+    ? '<p class="account-hint">Entre em um gym para ver aulas e check-ins disponíveis.</p>'
+    : isCheckinsLoading
+      ? '<p class="account-hint">Carregando aulas e presença...</p>'
+      : !checkinSessions.length
+        ? `<p class="account-hint">Nenhuma aula disponível agora${selectedGym?.name ? ` em ${escapeHtml(selectedGym.name)}` : ''}.</p>`
+        : `
+          <div class="coach-list coach-listCompact">
+            ${checkinSessions.map((session) => {
+              const statusBadges = [
+                session?.rules?.checkInClosed ? 'Janela encerrada' : null,
+                Number.isFinite(Number(session?.capacity)) && Number(session?.summary?.availableSpots) === 0 ? 'Lotada' : null,
+                session?.summary?.canceledCount ? `${Number(session.summary.canceledCount)} cancelado(s)` : null,
+              ].filter(Boolean);
+              return `
+                <div class="coach-listItem static account-sessionItem">
+                  <strong>${escapeHtml(session?.title || 'Sessão')}</strong>
+                  <span>${escapeHtml(formatDateTimeShort(session?.starts_at))}${session?.location ? ` • ${escapeHtml(session.location)}` : ''}</span>
+                  <span>
+                    ${session?.rules?.checkInClosesAt ? `Check-in até ${escapeHtml(formatDateTimeShort(session.rules.checkInClosesAt))}` : 'Sem limite de check-in'}
+                    ${Number.isFinite(Number(session?.capacity)) ? ` • ${Number(session?.summary?.totalEntries || 0)}/${Number(session.capacity)}` : ''}
+                  </span>
+                  ${statusBadges.length ? `<span>${escapeHtml(statusBadges.join(' • '))}</span>` : ''}
+                  <div class="page-actions">
+                    <button
+                      class="btn-secondary"
+                      data-action="athlete:session:reserve"
+                      data-session-id="${Number(session?.id || 0)}"
+                      data-gym-id="${Number(selectedGymId || 0)}"
+                      type="button"
+                      ${session?.rules?.checkInClosed || Number(session?.summary?.availableSpots) === 0 ? 'disabled' : ''}
+                    >Reservar</button>
+                    <button
+                      class="btn-secondary"
+                      data-action="athlete:session:checkin"
+                      data-session-id="${Number(session?.id || 0)}"
+                      data-gym-id="${Number(selectedGymId || 0)}"
+                      type="button"
+                      ${session?.rules?.checkInClosed ? 'disabled' : ''}
+                    >Fazer check-in</button>
+                    <button
+                      class="btn-secondary"
+                      data-action="athlete:session:cancel"
+                      data-session-id="${Number(session?.id || 0)}"
+                      data-gym-id="${Number(selectedGymId || 0)}"
+                      type="button"
+                    >Cancelar</button>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+
+  return renderPageFold({
+    title: 'Aulas e check-in',
+    subtitle: selectedGym?.name ? `Agenda disponível em ${selectedGym.name}.` : 'Reserve vaga e faça check-in dentro da janela permitida.',
+    guideTarget: 'account-checkins',
+    content,
+  });
+}
+
 function renderOptionCard({
   name,
   key,

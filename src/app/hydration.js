@@ -16,6 +16,7 @@ export function createHydrationController({
   getAthleteSummary,
   getAthleteResultsSummary,
   getAthleteWorkoutsRecent,
+  getAthleteCheckinSessions,
 }) {
   const HYDRATION_METRICS_KEY = '__RYXEN_HYDRATION_METRICS__';
 
@@ -88,6 +89,7 @@ export function createHydrationController({
     getAthleteSummary,
     getAthleteResultsSummary,
     getAthleteWorkoutsRecent,
+    getAthleteCheckinSessions,
   });
   const {
     invalidateCoachCache,
@@ -101,12 +103,15 @@ export function createHydrationController({
     loadAthleteSummaryBlock,
     loadAthleteResultsBlock,
     loadAthleteWorkoutsBlock,
+    loadAthleteCheckinsBlock,
     peekAthleteSummaryBlock,
     peekAthleteResultsBlock,
     peekAthleteWorkoutsBlock,
+    peekAthleteCheckinsBlock,
     isAthleteSummaryFresh,
     isAthleteResultsFresh,
     isAthleteWorkoutsFresh,
+    isAthleteCheckinsFresh,
   } = athleteOverviewDomain;
 
   async function patchAthleteBlock(block, status, partial = null, error = '') {
@@ -316,12 +321,63 @@ export function createHydrationController({
     }
   }
 
+  async function hydrateAthleteCheckinsBlock(profile, gymId, { force = false, page = 'account' } = {}) {
+    if (!profile?.email || !Number(gymId)) return emptyAthleteOverview();
+    const current = getUiState?.()?.athleteOverview || {};
+    const email = getProfileEmail(profile);
+    const normalizedGymId = Number(gymId);
+    if (!force && current?.blocks?.checkins?.status === 'ready' && Number(current?.checkinGymId) === normalizedGymId) return current;
+    if (!force) {
+      const cached = peekAthleteCheckinsBlock(email, normalizedGymId);
+      if (cached) {
+        if (shouldApplyPagePatch(page)) {
+          await patchUiState((s) => ({
+            ...s,
+            athleteOverview: buildReadyOverviewFromSnapshot(
+              s?.athleteOverview,
+              { ...cached, checkinGymId: normalizedGymId, source: 'snapshot', stale: !isAthleteCheckinsFresh(email, normalizedGymId) },
+              'checkins',
+            ),
+          }));
+          await rerender();
+        }
+        pushHydrationMetric({ page, block: 'checkins', source: 'snapshot' });
+        if (isAthleteCheckinsFresh(email, normalizedGymId)) return cached;
+      } else if (shouldApplyPagePatch(page)) {
+        await patchAthleteBlock('checkins', 'loading');
+      }
+    } else if (shouldApplyPagePatch(page) && Number(current?.checkinGymId) !== normalizedGymId) {
+      await patchAthleteBlock('checkins', 'loading');
+    }
+    try {
+      const checkins = await loadAthleteCheckinsBlock(email, normalizedGymId, { force });
+      if (shouldApplyPagePatch(page)) {
+        await patchAthleteBlock('checkins', 'ready', { ...checkins, checkinGymId: normalizedGymId, source: 'network', stale: false });
+      }
+      pushHydrationMetric({ page, block: 'checkins', source: 'network' });
+      return checkins;
+    } catch (error) {
+      if (current?.blocks?.checkins?.status === 'ready' && Number(current?.checkinGymId) === normalizedGymId) {
+        return current;
+      }
+      if (shouldApplyPagePatch(page)) {
+        await patchAthleteBlock('checkins', 'error', null, error?.message || 'Falha ao carregar aulas');
+      }
+      return current;
+    }
+  }
+
   async function hydrateAccountSummary(profile, selectedGymId = null, { force = false } = {}) {
     if (!profile?.email) return;
-    await Promise.all([
-      hydrateCoachBlock(profile, selectedGymId, { force, page: 'account' }),
-      hydrateAthleteSummary(profile, { force, page: 'account' }),
-    ]);
+    const coachPortal = await hydrateCoachBlock(profile, selectedGymId, { force, page: 'account' });
+    const summary = await hydrateAthleteSummary(profile, { force, page: 'account' });
+    const fallbackGymId = coachPortal?.selectedGymId
+      || coachPortal?.gyms?.[0]?.id
+      || summary?.gymAccess?.find((item) => item?.gymId)?.gymId
+      || null;
+    if (fallbackGymId) {
+      await hydrateAthleteCheckinsBlock(profile, fallbackGymId, { force, page: 'account' });
+    }
   }
 
   function hydrateAccountLazyBlocks(profile, { force = false } = {}) {
@@ -398,6 +454,14 @@ export function createHydrationController({
     if (options.includeAthlete !== false) {
       const summary = await loadAthleteSummaryBlock(getProfileEmail(profile), { force: !!options.force });
       nextState.athleteOverview = buildAthleteOverviewPatch(nextState.athleteOverview, { ...summary, source: 'network' }, 'summary', 'ready');
+      const fallbackGymId = nextState.coachPortal?.selectedGymId
+        || nextState.coachPortal?.gyms?.[0]?.id
+        || summary?.gymAccess?.find((item) => item?.gymId)?.gymId
+        || null;
+      if (fallbackGymId) {
+        const checkins = await loadAthleteCheckinsBlock(getProfileEmail(profile), fallbackGymId, { force: !!options.force });
+        nextState.athleteOverview = buildAthleteOverviewPatch(nextState.athleteOverview, { ...checkins, checkinGymId: fallbackGymId, source: 'network' }, 'checkins', 'ready');
+      }
       if (options.includeAthleteResults) {
         const results = await loadAthleteResultsBlock(getProfileEmail(profile), { force: !!options.force });
         nextState.athleteOverview = buildAthleteOverviewPatch(nextState.athleteOverview, { ...results, source: 'network' }, 'results', 'ready');
@@ -430,6 +494,7 @@ export function createHydrationController({
     hydrateAthleteSummary,
     hydrateAthleteResultsBlock,
     hydrateAthleteWorkoutsBlock,
+    hydrateAthleteCheckinsBlock,
     hydrateAccountLazyBlocks,
     hydrateHistoryLazyBlocks,
     hydrateAccountSnapshotInBackground,

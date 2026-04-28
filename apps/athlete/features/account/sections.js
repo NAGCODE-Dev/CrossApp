@@ -5,6 +5,7 @@ export {
 export {
   renderAccountAccessSection,
   renderAccountActivitySection,
+  renderAccountCheckinSection,
   renderAccountCoachPortalSection,
   renderAccountDataSections,
   renderAccountPreferencesSections,

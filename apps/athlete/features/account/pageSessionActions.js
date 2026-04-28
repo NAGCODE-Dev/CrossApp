@@ -90,6 +90,43 @@ export async function handleAthletePageSessionAction(action, context) {
       return true;
     }
 
+    case 'athlete:session:reserve':
+    case 'athlete:session:checkin':
+    case 'athlete:session:cancel': {
+      const sessionId = Number(element?.dataset?.sessionId);
+      const gymId = Number(element?.dataset?.gymId);
+      if (!Number.isFinite(sessionId) || !Number.isFinite(gymId)) {
+        throw new Error('Sessão inválida');
+      }
+      const bridge = getAppBridge();
+      if (!bridge) {
+        throw new Error('Bridge indisponível');
+      }
+
+      if (action === 'athlete:session:reserve') {
+        await bridge.reserveAthleteCheckinSession?.(sessionId, { gymId });
+      } else if (action === 'athlete:session:checkin') {
+        await bridge.checkInAthleteSession?.(sessionId, { gymId });
+      } else {
+        await bridge.cancelAthleteCheckinSession?.(sessionId, { gymId });
+      }
+
+      invalidateHydrationCache({ coach: false, athlete: true, account: true });
+      const profile = bridge.getProfile?.()?.data || null;
+      const ui = getUiState?.() || {};
+      await finalizeUiChange({
+        toastMessage: action === 'athlete:session:reserve'
+          ? 'Reserva confirmada'
+          : action === 'athlete:session:checkin'
+            ? 'Check-in realizado'
+            : 'Reserva cancelada',
+      });
+      if (profile?.email) {
+        hydratePage(profile, 'account', gymId || ui?.coachPortal?.selectedGymId || null, { force: true });
+      }
+      return true;
+    }
+
     default:
       return false;
   }

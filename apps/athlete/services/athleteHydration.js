@@ -25,6 +25,7 @@ export function createAthleteHydrationBindings(deps) {
     getAthleteSummary: () => getAppBridge()?.getAthleteSummary?.(),
     getAthleteResultsSummary: () => getAppBridge()?.getAthleteResultsSummary?.(),
     getAthleteWorkoutsRecent: () => getAppBridge()?.getAthleteWorkoutsRecent?.(),
+    getAthleteCheckinSessions: (params) => getAppBridge()?.getAthleteCheckinSessions?.(params),
   });
 
   async function syncAthletePrIfAuthenticated() {

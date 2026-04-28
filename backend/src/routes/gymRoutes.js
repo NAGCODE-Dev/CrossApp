@@ -6,6 +6,12 @@ import { getAccessContextForUser, getActiveSubscriptionForUser } from '../access
 import { selectEffectiveAthleteBenefits } from '../accessPolicy.js';
 import { loadGymInsights, loadVisibleWorkoutFeed } from '../queries/coachDashboardQueries.js';
 import {
+  cancelGymClassCheckIn,
+  createGymClassSession,
+  listGymClassSessions,
+  markGymClassCheckIn,
+} from '../services/gymOperationsServices.js';
+import {
   createAthleteGroup,
   createGymWithOwnerMembership,
   createWorkoutForAudience,
@@ -299,6 +305,124 @@ export function createGymRouter({
       access: manager.access,
     });
     return res.json(insights);
+  });
+
+  router.get('/gyms/:gymId/checkin-sessions', gymReadRateLimit, authMiddleware, async (req, res) => {
+    const gymId = Number(req.params.gymId);
+    const sportType = normalizeSportType(req.query?.sportType);
+    const limit = Math.min(Math.max(Number(req.query?.limit) || 12, 1), 50);
+    const from = String(req.query?.from || '').trim() || new Date().toISOString();
+
+    const manager = await requireGymManager(gymId, req.user.userId);
+    if (!manager.success) {
+      return res.status(manager.code).json({ error: manager.error });
+    }
+
+    const sessions = await listGymClassSessions({ gymId, sportType, limit, from });
+    return res.json(sessions);
+  });
+
+  router.post('/gyms/:gymId/checkin-sessions', gymWriteRateLimit, authMiddleware, async (req, res) => {
+    const gymId = Number(req.params.gymId);
+    const sportType = normalizeSportType(req.body?.sportType);
+    const title = String(req.body?.title || '').trim();
+    const startsAt = String(req.body?.startsAt || '').trim();
+    const endsAt = String(req.body?.endsAt || '').trim();
+    const checkInClosesAt = String(req.body?.checkInClosesAt || '').trim();
+    const location = String(req.body?.location || '').trim();
+    const notes = String(req.body?.notes || '').trim();
+    const status = String(req.body?.status || 'scheduled').trim().toLowerCase();
+    const capacity = req.body?.capacity !== undefined && req.body?.capacity !== '' ? Number(req.body.capacity) : null;
+
+    if (!Number.isFinite(gymId) || !title || !startsAt) {
+      return res.status(400).json({ error: 'gymId, title e startsAt são obrigatórios' });
+    }
+    if (endsAt && Number.isNaN(new Date(endsAt).getTime())) {
+      return res.status(400).json({ error: 'endsAt inválido' });
+    }
+    if (checkInClosesAt && Number.isNaN(new Date(checkInClosesAt).getTime())) {
+      return res.status(400).json({ error: 'checkInClosesAt inválido' });
+    }
+    if (Number.isNaN(new Date(startsAt).getTime())) {
+      return res.status(400).json({ error: 'startsAt inválido' });
+    }
+    if (!['scheduled', 'open', 'closed', 'canceled'].includes(status)) {
+      return res.status(400).json({ error: 'status inválido' });
+    }
+
+    const manager = await requireGymManager(gymId, req.user.userId);
+    if (!manager.success) {
+      return res.status(manager.code).json({ error: manager.error });
+    }
+
+    const created = await createGymClassSession({
+      gymId,
+      sportType,
+      title,
+      startsAt,
+      endsAt: endsAt || null,
+      checkInClosesAt: checkInClosesAt || null,
+      capacity: Number.isFinite(capacity) ? capacity : null,
+      location,
+      notes,
+      coachUserId: req.user.userId,
+      status,
+    });
+    return res.json(created);
+  });
+
+  router.post('/gyms/:gymId/checkin-sessions/:sessionId/checkins', gymWriteRateLimit, authMiddleware, async (req, res) => {
+    const gymId = Number(req.params.gymId);
+    const sessionId = Number(req.params.sessionId);
+    const gymMembershipId = Number(req.body?.gymMembershipId);
+
+    if (!Number.isFinite(gymId) || !Number.isFinite(sessionId) || !Number.isFinite(gymMembershipId)) {
+      return res.status(400).json({ error: 'gymId, sessionId e gymMembershipId válidos são obrigatórios' });
+    }
+
+    const manager = await requireGymManager(gymId, req.user.userId);
+    if (!manager.success) {
+      return res.status(manager.code).json({ error: manager.error });
+    }
+
+    const result = await markGymClassCheckIn({
+      sessionId,
+      gymMembershipId,
+      userId: req.user.userId,
+      source: 'coach_portal',
+    });
+    if (result.error) {
+      return res.status(result.code || 400).json({ error: result.error });
+    }
+    return res.json(result);
+  });
+
+  router.post('/gyms/:gymId/checkin-sessions/:sessionId/checkins/cancel', gymWriteRateLimit, authMiddleware, async (req, res) => {
+    const gymId = Number(req.params.gymId);
+    const sessionId = Number(req.params.sessionId);
+    const gymMembershipId = Number(req.body?.gymMembershipId);
+    const reason = String(req.body?.reason || '').trim();
+
+    if (!Number.isFinite(gymId) || !Number.isFinite(sessionId) || !Number.isFinite(gymMembershipId)) {
+      return res.status(400).json({ error: 'gymId, sessionId e gymMembershipId válidos são obrigatórios' });
+    }
+
+    const manager = await requireGymManager(gymId, req.user.userId);
+    if (!manager.success) {
+      return res.status(manager.code).json({ error: manager.error });
+    }
+
+    const result = await cancelGymClassCheckIn({
+      sessionId,
+      gymMembershipId,
+      userId: req.user.userId,
+      source: 'coach_portal',
+      reason,
+    });
+    if (result.error) {
+      return res.status(result.code || 400).json({ error: result.error });
+    }
+    return res.json(result);
   });
 
   return router;

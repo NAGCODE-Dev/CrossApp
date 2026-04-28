@@ -1,6 +1,7 @@
 import {
   renderAccountAccessSection,
   renderAccountActivitySection,
+  renderAccountCheckinSection,
   renderAccountCoachPortalSection,
   renderAccountDataSections,
   renderAccountPreferencesSections,
@@ -50,11 +51,15 @@ export function renderAthleteAccountPage(state, helpers) {
     athleteBenefitSource,
     athleteResults,
     athleteWorkouts,
+    checkinSessions,
     preferences,
     accountView,
     isSummaryLoading,
     isWorkoutsLoading,
     isResultsLoading,
+    isCheckinsLoading,
+    selectedGymId,
+    selectedGym,
     showSnapshotNotice,
   } = buildAthleteAccountPageState(state, helpers);
 
@@ -175,6 +180,14 @@ export function renderAthleteAccountPage(state, helpers) {
               isWorkoutsLoading,
               athleteResultsCount: athleteResults.length,
               athleteWorkoutsCount: athleteWorkouts.length,
+            })}
+
+            ${renderAccountCheckinSection(renderPageFold, {
+              selectedGym,
+              selectedGymId,
+              checkinSessions,
+              isCheckinsLoading,
+              escapeHtml,
             })}
           `}
     </div>

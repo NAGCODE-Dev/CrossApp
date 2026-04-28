@@ -48,6 +48,7 @@ export function normalizeAthleteOverviewState(athleteOverview) {
   if (typeof next.detailLevel !== 'string') next.detailLevel = 'none';
   if (!Array.isArray(next.recentResults)) next.recentResults = [];
   if (!Array.isArray(next.recentWorkouts)) next.recentWorkouts = [];
+  if (!Array.isArray(next.checkinSessions)) next.checkinSessions = [];
   if (!Array.isArray(next.benchmarkHistory)) next.benchmarkHistory = [];
   if (!Array.isArray(next.prHistory)) next.prHistory = [];
   if (!next.prCurrent || typeof next.prCurrent !== 'object') next.prCurrent = {};
@@ -59,7 +60,7 @@ export function normalizeAthleteOverviewState(athleteOverview) {
   if (!next.athleteBenefits || typeof next.athleteBenefits !== 'object') next.athleteBenefits = null;
 
   next.blocks = next.blocks && typeof next.blocks === 'object' ? next.blocks : {};
-  for (const key of ['summary', 'results', 'workouts']) {
+  for (const key of ['summary', 'results', 'workouts', 'checkins']) {
     const current = next.blocks[key];
     next.blocks[key] = current && typeof current === 'object'
       ? { status: typeof current.status === 'string' ? current.status : 'idle', error: String(current.error || '') }

@@ -3,6 +3,13 @@ import express from 'express';
 import { pool } from '../db.js';
 import { authRequired } from '../auth.js';
 import {
+  cancelGymClassCheckIn,
+  findActiveGymMembership,
+  listGymClassSessions,
+  markGymClassCheckIn,
+  reserveGymClassSessionForMembership,
+} from '../services/gymOperationsServices.js';
+import {
   loadAthleteAccessSnapshot,
   loadAthleteResultsBlock,
   loadAthleteSummaryBlock,
@@ -103,6 +110,104 @@ export function createAthleteRouter({ buildBenchmarkTrendSeries, buildPrTrendSer
     const access = await loadAthleteAccessSnapshot(req.user.userId, sportType);
     const workouts = await loadAthleteWorkoutsBlock(access);
     return res.json(workouts);
+  });
+
+  router.get('/athletes/me/checkin-sessions', authRequired, async (req, res) => {
+    const gymId = Number(req.query?.gymId);
+    const sportType = normalizeSportType(req.query?.sportType);
+    const limit = Math.min(Math.max(Number(req.query?.limit) || 12, 1), 50);
+    const from = String(req.query?.from || '').trim() || new Date().toISOString();
+
+    if (!Number.isFinite(gymId)) {
+      return res.status(400).json({ error: 'gymId válido é obrigatório' });
+    }
+
+    const membership = await findActiveGymMembership({ gymId, userId: req.user.userId });
+    if (!membership) {
+      return res.status(404).json({ error: 'Gym não encontrado para este atleta' });
+    }
+
+    const payload = await listGymClassSessions({ gymId, sportType, limit, from });
+    return res.json({
+      sessions: (payload.sessions || []).map((session) => ({
+        ...session,
+        entries: [],
+      })),
+    });
+  });
+
+  router.post('/athletes/me/checkin-sessions/:sessionId/reserve', authRequired, async (req, res) => {
+    const sessionId = Number(req.params.sessionId);
+    const gymId = Number(req.body?.gymId);
+    if (!Number.isFinite(sessionId) || !Number.isFinite(gymId)) {
+      return res.status(400).json({ error: 'sessionId e gymId válidos são obrigatórios' });
+    }
+
+    const membership = await findActiveGymMembership({ gymId, userId: req.user.userId });
+    if (!membership) {
+      return res.status(404).json({ error: 'Gym não encontrado para este atleta' });
+    }
+
+    const reserved = await reserveGymClassSessionForMembership({
+      sessionId,
+      gymMembershipId: membership.id,
+      userId: req.user.userId,
+      source: 'athlete_app',
+    });
+    if (reserved.error) {
+      return res.status(reserved.code || 400).json({ error: reserved.error });
+    }
+    return res.json(reserved);
+  });
+
+  router.post('/athletes/me/checkin-sessions/:sessionId/check-in', authRequired, async (req, res) => {
+    const sessionId = Number(req.params.sessionId);
+    const gymId = Number(req.body?.gymId);
+    if (!Number.isFinite(sessionId) || !Number.isFinite(gymId)) {
+      return res.status(400).json({ error: 'sessionId e gymId válidos são obrigatórios' });
+    }
+
+    const membership = await findActiveGymMembership({ gymId, userId: req.user.userId });
+    if (!membership) {
+      return res.status(404).json({ error: 'Gym não encontrado para este atleta' });
+    }
+
+    const checkedIn = await markGymClassCheckIn({
+      sessionId,
+      gymMembershipId: membership.id,
+      userId: req.user.userId,
+      source: 'athlete_app',
+    });
+    if (checkedIn.error) {
+      return res.status(checkedIn.code || 400).json({ error: checkedIn.error });
+    }
+    return res.json(checkedIn);
+  });
+
+  router.post('/athletes/me/checkin-sessions/:sessionId/cancel', authRequired, async (req, res) => {
+    const sessionId = Number(req.params.sessionId);
+    const gymId = Number(req.body?.gymId);
+    const reason = String(req.body?.reason || '').trim();
+    if (!Number.isFinite(sessionId) || !Number.isFinite(gymId)) {
+      return res.status(400).json({ error: 'sessionId e gymId válidos são obrigatórios' });
+    }
+
+    const membership = await findActiveGymMembership({ gymId, userId: req.user.userId });
+    if (!membership) {
+      return res.status(404).json({ error: 'Gym não encontrado para este atleta' });
+    }
+
+    const canceled = await cancelGymClassCheckIn({
+      sessionId,
+      gymMembershipId: membership.id,
+      userId: req.user.userId,
+      source: 'athlete_app',
+      reason,
+    });
+    if (canceled.error) {
+      return res.status(canceled.code || 400).json({ error: canceled.error });
+    }
+    return res.json(canceled);
   });
 
   router.get('/athletes/me/imported-plan', authRequired, async (req, res) => {

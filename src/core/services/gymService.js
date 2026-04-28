@@ -65,6 +65,28 @@ export async function getAthleteWorkoutsRecent(params = {}) {
   return apiRequest(`/athletes/me/workouts/recent${suffix}`, { method: 'GET' });
 }
 
+export async function getAthleteCheckinSessions(params = {}) {
+  const search = new URLSearchParams();
+  if (params?.gymId) search.set('gymId', String(params.gymId));
+  if (params?.sportType) search.set('sportType', params.sportType);
+  if (params?.limit) search.set('limit', String(params.limit));
+  if (params?.from) search.set('from', String(params.from));
+  const query = search.toString();
+  return apiRequest(`/athletes/me/checkin-sessions${query ? `?${query}` : ''}`, { method: 'GET' });
+}
+
+export async function reserveAthleteCheckinSession(sessionId, payload) {
+  return apiRequest(`/athletes/me/checkin-sessions/${sessionId}/reserve`, { method: 'POST', body: payload });
+}
+
+export async function checkInAthleteSession(sessionId, payload) {
+  return apiRequest(`/athletes/me/checkin-sessions/${sessionId}/check-in`, { method: 'POST', body: payload });
+}
+
+export async function cancelAthleteCheckinSession(sessionId, payload) {
+  return apiRequest(`/athletes/me/checkin-sessions/${sessionId}/cancel`, { method: 'POST', body: payload });
+}
+
 export async function getImportedPlanSnapshot() {
   return apiRequest('/athletes/me/imported-plan', { method: 'GET' });
 }

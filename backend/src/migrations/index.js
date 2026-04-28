@@ -21,6 +21,8 @@ import { migration as refreshBenchmarkLibraryExpansionMigration } from './021_re
 import { migration as securityHardeningMigration } from './022_security_hardening.js';
 import { migration as authRedirectGrantsMigration } from './023_auth_redirect_grants.js';
 import { migration as explicitBackendOnlyRlsPoliciesMigration } from './024_explicit_backend_only_rls_policies.js';
+import { migration as gymCheckinSessionsMigration } from './025_gym_checkin_sessions.js';
+import { migration as gymCheckinRulesMigration } from './026_gym_checkin_rules.js';
 
 const MIGRATIONS = [
   baseSchemaMigration,
@@ -45,6 +47,8 @@ const MIGRATIONS = [
   securityHardeningMigration,
   authRedirectGrantsMigration,
   explicitBackendOnlyRlsPoliciesMigration,
+  gymCheckinSessionsMigration,
+  gymCheckinRulesMigration,
 ];
 
 export async function runMigrations() {

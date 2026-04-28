@@ -4,6 +4,7 @@ export function createEmptyAthleteOverviewState() {
     stats: null,
     recentResults: [],
     recentWorkouts: [],
+    checkinSessions: [],
     benchmarkHistory: [],
     prHistory: [],
     prCurrent: {},
@@ -17,6 +18,7 @@ export function createEmptyAthleteOverviewState() {
       summary: { status: 'idle', error: '' },
       results: { status: 'idle', error: '' },
       workouts: { status: 'idle', error: '' },
+      checkins: { status: 'idle', error: '' },
     },
   };
 }

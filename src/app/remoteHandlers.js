@@ -18,9 +18,12 @@ import { activateCoachSubscription, approvePasswordResetSupportRequest, createMa
 import { openCheckout, getSubscriptionStatus, getEntitlements, activateMockSubscription } from '../core/services/subscriptionService.js';
 import {
   addGymMember,
+  cancelAthleteCheckinSession,
+  checkInAthleteSession,
   createGym,
   createGymGroup,
   getAccessContext,
+  getAthleteCheckinSessions,
   getAthleteResultsSummary,
   getAthleteSummary,
   getAthleteWorkoutsRecent,
@@ -34,6 +37,7 @@ import {
   logAthletePr,
   logRunningSession,
   logStrengthSession,
+  reserveAthleteCheckinSession,
   syncAthleteMeasurementsSnapshot,
   syncAthletePrSnapshot,
   getWorkoutFeed,
@@ -257,6 +261,29 @@ export function createRemoteHandlers({
 
     async handleGetAthleteWorkoutsRecent(params = {}) {
       const data = await getAthleteWorkoutsRecent({ ...params, sportType: getCurrentSportType() });
+      return { success: true, data };
+    },
+
+    async handleGetAthleteCheckinSessions(params = {}) {
+      const data = await getAthleteCheckinSessions({
+        ...params,
+        sportType: params?.sportType || getCurrentSportType(),
+      });
+      return { success: true, data };
+    },
+
+    async handleReserveAthleteCheckinSession(sessionId, payload = {}) {
+      const data = await reserveAthleteCheckinSession(sessionId, payload);
+      return { success: true, data };
+    },
+
+    async handleCheckInAthleteSession(sessionId, payload = {}) {
+      const data = await checkInAthleteSession(sessionId, payload);
+      return { success: true, data };
+    },
+
+    async handleCancelAthleteCheckinSession(sessionId, payload = {}) {
+      const data = await cancelAthleteCheckinSession(sessionId, payload);
       return { success: true, data };
     },
 

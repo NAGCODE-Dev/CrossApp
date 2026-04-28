@@ -27,6 +27,7 @@ export function buildAthleteAccountPageState(state, helpers) {
   const athleteBenefitSource = describeAthleteBenefitSource(athleteBenefits);
   const athleteResults = state?.__ui?.athleteOverview?.recentResults || [];
   const athleteWorkouts = state?.__ui?.athleteOverview?.recentWorkouts || [];
+  const checkinSessions = state?.__ui?.athleteOverview?.checkinSessions || [];
   const athleteOverview = state?.__ui?.athleteOverview || {};
   const preferences = state?.preferences || {};
   const accountView = ['overview', 'preferences', 'data'].includes(state?.__ui?.accountView)
@@ -35,6 +36,12 @@ export function buildAthleteAccountPageState(state, helpers) {
   const isSummaryLoading = coachPortal?.status === 'loading' || athleteBlocks?.summary?.status === 'loading';
   const isWorkoutsLoading = athleteBlocks?.workouts?.status === 'loading';
   const isResultsLoading = athleteBlocks?.results?.status === 'loading';
+  const isCheckinsLoading = athleteBlocks?.checkins?.status === 'loading';
+  const selectedGymId = coachPortal?.selectedGymId
+    || gyms?.[0]?.id
+    || gymAccess?.find((item) => item?.gymId)?.gymId
+    || null;
+  const selectedGym = gyms.find((gym) => Number(gym?.id) === Number(selectedGymId)) || null;
   const showSnapshotNotice = (
     coachPortal?.status === 'ready'
     && (coachPortal?.stale || coachPortal?.source === 'snapshot')
@@ -60,11 +67,15 @@ export function buildAthleteAccountPageState(state, helpers) {
     athleteBenefitSource,
     athleteResults,
     athleteWorkouts,
+    checkinSessions,
     preferences,
     accountView,
     isSummaryLoading,
     isWorkoutsLoading,
     isResultsLoading,
+    isCheckinsLoading,
+    selectedGymId,
+    selectedGym,
     showSnapshotNotice,
   };
 }
