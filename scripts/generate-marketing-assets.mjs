@@ -459,72 +459,76 @@ async function generateOgImage(browser) {
             position: relative;
             width: 100%;
             height: 100%;
-            padding: 42px 46px;
+            padding: 36px 38px;
             display: grid;
-            grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr);
-            gap: 34px;
+            grid-template-columns: minmax(0, 1fr) minmax(420px, 0.92fr);
+            gap: 28px;
           }
           .copy {
             display: flex;
             flex-direction: column;
             justify-content: space-between;
           }
-          .eyebrow {
+          .brandPlate {
             display: inline-flex;
             align-items: center;
             width: max-content;
-            min-height: 34px;
-            padding: 0 14px;
-            border-radius: 999px;
-            border: 1px solid rgba(148, 163, 184, 0.18);
-            background: rgba(255,255,255,0.04);
-            color: #60a5fa;
-            font-size: 14px;
-            font-weight: 700;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
+            padding: 16px 22px;
+            border-radius: 24px;
+            border: 1px solid rgba(148, 163, 184, 0.14);
+            background:
+              linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02)),
+              rgba(9, 17, 27, 0.72);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+            backdrop-filter: blur(10px);
           }
           .wordmark {
-            width: 230px;
+            width: 360px;
             height: auto;
-            margin: 18px 0 22px;
+            display: block;
           }
           h1 {
             margin: 0;
-            max-width: 9ch;
-            font-size: 68px;
-            line-height: 0.92;
+            max-width: 8.5ch;
+            font-size: 74px;
+            line-height: 0.9;
             letter-spacing: -0.065em;
           }
           p {
-            margin: 18px 0 0;
-            max-width: 31ch;
-            color: rgba(226, 232, 240, 0.82);
-            font-size: 23px;
-            line-height: 1.45;
+            margin: 22px 0 0;
+            max-width: 27ch;
+            color: rgba(226, 232, 240, 0.78);
+            font-size: 25px;
+            line-height: 1.42;
           }
           .signals {
             display: flex;
             gap: 12px;
             flex-wrap: wrap;
-            margin-top: 28px;
+            margin-top: 32px;
           }
           .signals span {
             display: inline-flex;
             align-items: center;
-            min-height: 38px;
-            padding: 0 14px;
+            min-height: 40px;
+            padding: 0 16px;
             border-radius: 999px;
             border: 1px solid rgba(148, 163, 184, 0.16);
             background: rgba(255,255,255,0.04);
             color: rgba(226, 232, 240, 0.86);
             font-size: 15px;
-            font-weight: 600;
+            font-weight: 700;
           }
           .shots {
             position: relative;
-            display: grid;
-            align-content: end;
+            padding: 28px;
+            border-radius: 34px;
+            border: 1px solid rgba(148, 163, 184, 0.12);
+            background:
+              linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.015)),
+              rgba(9, 14, 22, 0.7);
+            box-shadow: 0 26px 90px rgba(0, 0, 0, 0.24);
+            overflow: hidden;
           }
           .athleteShot,
           .coachShot {
@@ -535,15 +539,18 @@ async function generateOgImage(browser) {
             background: rgba(255,255,255,0.04);
           }
           .athleteShot {
-            width: 100%;
-            transform: rotate(-3deg) translateY(10px);
+            position: absolute;
+            right: -4px;
+            bottom: -18px;
+            width: 83%;
+            transform: rotate(-4deg);
           }
           .coachShot {
             position: absolute;
-            right: -12px;
-            top: 18px;
-            width: 58%;
-            transform: rotate(5deg);
+            right: 26px;
+            top: 26px;
+            width: 54%;
+            transform: rotate(6deg);
           }
           .athleteShot img,
           .coachShot img {
@@ -551,13 +558,59 @@ async function generateOgImage(browser) {
             width: 100%;
             height: auto;
           }
+          .productCard {
+            position: relative;
+            z-index: 2;
+            width: 56%;
+            min-height: 150px;
+            padding: 22px 22px 24px;
+            border-radius: 26px;
+            border: 1px solid rgba(148, 163, 184, 0.15);
+            background:
+              linear-gradient(180deg, rgba(17, 24, 36, 0.95), rgba(10, 15, 23, 0.98)),
+              rgba(255,255,255,0.04);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.28);
+          }
+          .productKicker {
+            display: inline-flex;
+            align-items: center;
+            min-height: 28px;
+            padding: 0 10px;
+            border-radius: 999px;
+            border: 1px solid rgba(148, 163, 184, 0.16);
+            color: #7dd3fc;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            background: rgba(37, 99, 235, 0.12);
+          }
+          .productCard strong {
+            display: block;
+            margin-top: 16px;
+            font-size: 30px;
+            line-height: 1.02;
+            letter-spacing: -0.05em;
+          }
+          .productCard span {
+            display: block;
+            margin-top: 10px;
+            color: rgba(226, 232, 240, 0.72);
+            font-size: 17px;
+            line-height: 1.45;
+          }
           .caption {
             display: flex;
             justify-content: space-between;
-            margin-top: 16px;
-            color: rgba(226, 232, 240, 0.74);
-            font-size: 15px;
+            align-items: center;
+            margin-top: 18px;
+            color: rgba(226, 232, 240, 0.66);
+            font-size: 14px;
             letter-spacing: -0.01em;
+          }
+          .caption strong {
+            color: rgba(248, 250, 252, 0.9);
+            font-weight: 700;
           }
         </style>
       </head>
@@ -565,8 +618,9 @@ async function generateOgImage(browser) {
         <div class="frame">
           <div class="copy">
             <div>
-              <div class="eyebrow">Ryxen</div>
-              <img class="wordmark" src="${wordmarkData}" alt="Ryxen">
+              <div class="brandPlate">
+                <img class="wordmark" src="${wordmarkData}" alt="Ryxen">
+              </div>
               <h1>Cada lado entra no lugar certo.</h1>
               <p>Treino, evolução e gestão em experiências próprias, claras e prontas para o uso real.</p>
               <div class="signals">
@@ -576,11 +630,16 @@ async function generateOgImage(browser) {
               </div>
             </div>
             <div class="caption">
-              <span>ryxen-app.vercel.app</span>
+              <span><strong>Ryxen</strong> para atleta e coach</span>
               <span>Cross no núcleo. Expansão com clareza.</span>
             </div>
           </div>
           <div class="shots">
+            <div class="productCard">
+              <div class="productKicker">Plataforma</div>
+              <strong>App do atleta e portal do coach, sem ruído.</strong>
+              <span>Treino, evolução e operação em superfícies próprias.</span>
+            </div>
             <div class="coachShot"><img src="${coachData}" alt=""></div>
             <div class="athleteShot"><img src="${athleteData}" alt=""></div>
           </div>
