@@ -1,62 +1,42 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { getRuntimeConfig } from '../packages/shared-web/runtime.js';
 import { coachRequestOptional, createCoachApiRequest, resolveCoachKiwifyCheckoutUrl } from './apiClient.js';
+import {
+  BENCHMARK_CATEGORY_TABS,
+  BENCHMARK_SOURCE_OPTIONS,
+  DEFAULT_WORKOUT_DRAFT,
+} from './constants.js';
+import {
+  clearWorkoutDraft,
+  hasWorkoutDraftContent,
+  readProfile,
+  readToken,
+  readWorkoutDraft,
+  writeWorkoutDraft,
+} from './storage.js';
+import {
+  benchmarkCategoryLabel,
+  benchmarkSourceLabel,
+  formatDateLabel,
+  formatNumericValue,
+  getAvailableSportOptions,
+  getDaysRemaining,
+  getPublishValidationErrors,
+  planCard,
+  portalSkeletonCard,
+  portalSkeletonList,
+  resolveBillingProvider,
+  sportLabel,
+  statCard,
+} from './workspaceHelpers.js';
 import '../coach/styles.css';
 
-const STORAGE_KEYS = {
-  token: 'ryxen-auth-token',
-  legacyToken: 'crossapp-auth-token',
-  profile: 'ryxen-user-profile',
-  legacyProfile: 'crossapp-user-profile',
-  runtime: 'ryxen-runtime-config',
-  legacyRuntime: 'crossapp-runtime-config',
-  workoutDraft: 'ryxen-coach-workout-draft',
-  legacyWorkoutDraft: 'crossapp-coach-workout-draft',
-};
-
-const DEFAULT_WORKOUT_DRAFT = {
-  workoutTitle: '',
-  workoutDate: '',
-  workoutBenchmarkSlug: '',
-  workoutLines: '',
-  runningSessionType: 'easy',
-  runningDistanceKm: '',
-  runningDurationMin: '',
-  runningTargetPace: '',
-  runningZone: '',
-  runningNotes: '',
-  runningSegments: [{ label: '', distanceMeters: '', targetPace: '', restSeconds: '' }],
-  strengthFocus: '',
-  strengthLoadGuidance: '',
-  strengthRir: '',
-  strengthRestSeconds: '',
-  strengthExercises: [{ name: '', sets: '', reps: '', load: '', rir: '' }],
-  workoutAudienceMode: 'all',
-  targetMembershipIds: [],
-  targetGroupIds: [],
-};
-
-const SPORT_OPTIONS = [
-  { value: 'cross', label: 'Cross' },
-  { value: 'running', label: 'Running' },
-  { value: 'strength', label: 'Strength' },
-];
-
 const apiRequest = createCoachApiRequest({ readToken });
-
-const BENCHMARK_SOURCE_OPTIONS = [
-  { value: '', label: 'Todas as fontes' },
-  { value: 'benchmark', label: 'Benchmark oficial' },
-  { value: 'hero', label: 'Hero' },
-  { value: 'open', label: 'Open' },
-];
-
-const BENCHMARK_CATEGORY_TABS = ['', 'girls', 'classic', 'hero', 'open'];
 
 export default function CoachWorkspace({ profile: initialProfile = null, onLogout = null } = {}) {
   const token = readToken();
   const profile = initialProfile || readProfile();
-  const availableSportOptions = getAvailableSportOptions(readRuntimeConfig());
+  const availableSportOptions = getAvailableSportOptions(getRuntimeConfig());
   const [loading, setLoading] = useState(false);
   const [activeSection, setActiveSection] = useState('overview');
   const [draftStatus, setDraftStatus] = useState('');
@@ -1999,273 +1979,4 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
       )
     )
   );
-}
-
-function statCard(label, value) {
-  return React.createElement('div', { className: 'stat-card card' },
-    React.createElement('span', { className: 'stat-label' }, label),
-    React.createElement('strong', { className: 'stat-value' }, value)
-  );
-}
-
-function portalSkeletonCard(key) {
-  return React.createElement('div', { key, className: 'stat-card card is-skeleton' },
-    React.createElement('div', { className: 'skeleton skeleton-line skeleton-line-sm' }),
-    React.createElement('div', { className: 'skeleton skeleton-line skeleton-line-lg' })
-  );
-}
-
-function portalSkeletonList(count = 3) {
-  return Array.from({ length: count }, (_, index) =>
-    React.createElement('div', { key: `sk-${index}`, className: 'list-item static is-skeleton' },
-      React.createElement('div', { className: 'skeleton skeleton-line skeleton-line-lg' }),
-      React.createElement('div', { className: 'skeleton skeleton-line' })
-    )
-  );
-}
-
-function planCard({ name, price, description, features = [], featured = false, action = null, loading = false }) {
-  return React.createElement('div', { className: `plan-card ${featured ? 'plan-card-featured' : ''}` },
-    React.createElement('span', { className: 'eyebrow' }, 'Acesso'),
-    React.createElement('h3', { className: 'plan-cardTitle' }, name),
-    React.createElement('strong', { className: 'plan-cardPrice' }, price),
-    React.createElement('p', { className: 'muted' }, description),
-    React.createElement('div', { className: 'plan-cardFeatures' },
-      features.map((feature) =>
-        React.createElement('span', { key: feature, className: 'plan-feature' }, feature)
-      )
-    ),
-    action
-      ? React.createElement('button', { className: 'btn btn-primary', onClick: action, disabled: loading }, loading ? 'Abrindo...' : 'Abrir cobrança')
-      : React.createElement('span', { className: 'plan-cardGhost' }, 'Em breve')
-  );
-}
-
-function getDaysRemaining(dateValue) {
-  if (!dateValue) return null;
-  const target = new Date(dateValue);
-  if (Number.isNaN(target.getTime())) return null;
-  const diff = target.getTime() - Date.now();
-  return Math.max(0, Math.ceil(diff / (24 * 60 * 60 * 1000)));
-}
-
-function formatDateLabel(dateValue) {
-  if (!dateValue) return '';
-  const date = new Date(dateValue);
-  if (Number.isNaN(date.getTime())) return String(dateValue);
-  return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-}
-
-function formatNumericValue(value) {
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) return String(value || '');
-  return Number.isInteger(numeric) ? String(numeric) : numeric.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
-}
-
-function benchmarkCategoryLabel(value) {
-  switch (String(value || '').toLowerCase()) {
-    case 'girls':
-      return 'Girls';
-    case 'classic':
-      return 'Classics';
-    case 'hero':
-      return 'Hero';
-    case 'open':
-      return 'Open';
-    case 'all':
-    case '':
-      return 'Todos';
-    default:
-      return String(value || 'Todos');
-  }
-}
-
-function benchmarkSourceLabel(value) {
-  switch (String(value || '').toLowerCase()) {
-    case 'benchmark':
-      return 'Benchmark oficial';
-    case 'hero':
-      return 'Hero';
-    case 'open':
-      return 'Open';
-    default:
-      return String(value || 'Sem fonte');
-  }
-}
-
-function sportLabel(value) {
-  switch (String(value || 'cross').toLowerCase()) {
-    case 'running':
-      return 'Running';
-    case 'strength':
-      return 'Strength';
-    default:
-      return 'Cross';
-  }
-}
-
-function readToken() {
-  try {
-    return localStorage.getItem(STORAGE_KEYS.token) || localStorage.getItem(STORAGE_KEYS.legacyToken) || '';
-  } catch {
-    return '';
-  }
-}
-
-function writeToken(token) {
-  localStorage.setItem(STORAGE_KEYS.token, token || '');
-  localStorage.setItem(STORAGE_KEYS.legacyToken, token || '');
-}
-
-function readProfile() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.profile) || localStorage.getItem(STORAGE_KEYS.legacyProfile);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
-function getWorkoutDraftPayload(forms = {}) {
-  return {
-    ...DEFAULT_WORKOUT_DRAFT,
-    workoutTitle: String(forms.workoutTitle || ''),
-    workoutDate: String(forms.workoutDate || ''),
-    workoutBenchmarkSlug: String(forms.workoutBenchmarkSlug || ''),
-    workoutLines: String(forms.workoutLines || ''),
-    runningSessionType: String(forms.runningSessionType || 'easy'),
-    runningDistanceKm: String(forms.runningDistanceKm || ''),
-    runningDurationMin: String(forms.runningDurationMin || ''),
-    runningTargetPace: String(forms.runningTargetPace || ''),
-    runningZone: String(forms.runningZone || ''),
-    runningNotes: String(forms.runningNotes || ''),
-    runningSegments: Array.isArray(forms.runningSegments) && forms.runningSegments.length
-      ? forms.runningSegments.map((segment) => ({
-          label: String(segment?.label || ''),
-          distanceMeters: String(segment?.distanceMeters || ''),
-          targetPace: String(segment?.targetPace || ''),
-          restSeconds: String(segment?.restSeconds || ''),
-        }))
-      : DEFAULT_WORKOUT_DRAFT.runningSegments,
-    strengthFocus: String(forms.strengthFocus || ''),
-    strengthLoadGuidance: String(forms.strengthLoadGuidance || ''),
-    strengthRir: String(forms.strengthRir || ''),
-    strengthRestSeconds: String(forms.strengthRestSeconds || ''),
-    strengthExercises: Array.isArray(forms.strengthExercises) && forms.strengthExercises.length
-      ? forms.strengthExercises.map((exercise) => ({
-          name: String(exercise?.name || ''),
-          sets: String(exercise?.sets || ''),
-          reps: String(exercise?.reps || ''),
-          load: String(exercise?.load || ''),
-          rir: String(exercise?.rir || ''),
-        }))
-      : DEFAULT_WORKOUT_DRAFT.strengthExercises,
-    workoutAudienceMode: String(forms.workoutAudienceMode || 'all'),
-    targetMembershipIds: Array.isArray(forms.targetMembershipIds) ? forms.targetMembershipIds.filter(Boolean) : [],
-    targetGroupIds: Array.isArray(forms.targetGroupIds) ? forms.targetGroupIds.filter(Boolean) : [],
-  };
-}
-
-function hasWorkoutDraftContent(forms = {}) {
-  const draft = getWorkoutDraftPayload(forms);
-  return !!(
-    draft.workoutTitle
-    || draft.workoutDate
-    || draft.workoutBenchmarkSlug
-    || draft.workoutLines
-    || draft.runningDistanceKm
-    || draft.runningDurationMin
-    || draft.runningTargetPace
-    || draft.runningZone
-    || draft.runningNotes
-    || draft.runningSegments.some((segment) => segment.label || segment.distanceMeters || segment.targetPace || segment.restSeconds)
-    || draft.strengthFocus
-    || draft.strengthLoadGuidance
-    || draft.strengthRir
-    || draft.strengthRestSeconds
-    || draft.strengthExercises.some((exercise) => exercise.name || exercise.sets || exercise.reps || exercise.load || exercise.rir)
-    || draft.workoutAudienceMode !== 'all'
-    || draft.targetMembershipIds.length
-    || draft.targetGroupIds.length
-  );
-}
-
-function readWorkoutDraft() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.workoutDraft) || localStorage.getItem(STORAGE_KEYS.legacyWorkoutDraft);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    return getWorkoutDraftPayload(parsed);
-  } catch {
-    return null;
-  }
-}
-
-function writeWorkoutDraft(forms = {}) {
-  try {
-    if (!hasWorkoutDraftContent(forms)) {
-      localStorage.removeItem(STORAGE_KEYS.workoutDraft);
-      localStorage.removeItem(STORAGE_KEYS.legacyWorkoutDraft);
-      return;
-    }
-    const serialized = JSON.stringify(getWorkoutDraftPayload(forms));
-    localStorage.setItem(STORAGE_KEYS.workoutDraft, serialized);
-    localStorage.setItem(STORAGE_KEYS.legacyWorkoutDraft, serialized);
-  } catch {
-    // no-op
-  }
-}
-
-function clearWorkoutDraft() {
-  try {
-    localStorage.removeItem(STORAGE_KEYS.workoutDraft);
-    localStorage.removeItem(STORAGE_KEYS.legacyWorkoutDraft);
-  } catch {
-    // no-op
-  }
-}
-
-function getPublishValidationErrors({ forms = {}, selectedGymId = '', athleteMembers = [], groups = [], canCoachManage = false } = {}) {
-  const errors = [];
-  const title = String(forms.workoutTitle || '').trim();
-  const date = String(forms.workoutDate || '').trim();
-  const lines = String(forms.workoutLines || '').split('\n').map((line) => line.trim()).filter(Boolean);
-  const audienceMode = String(forms.workoutAudienceMode || 'all');
-  const selectedAthletes = Array.isArray(forms.targetMembershipIds) ? forms.targetMembershipIds.filter(Boolean) : [];
-  const selectedGroups = Array.isArray(forms.targetGroupIds) ? forms.targetGroupIds.filter(Boolean) : [];
-
-  if (!selectedGymId) errors.push('Selecione um gym');
-  if (!canCoachManage) errors.push('Seu acesso atual não libera publicação no portal');
-  if (!title) errors.push('Defina um título para o treino');
-  if (!date) errors.push('Escolha a data da publicação');
-  if (!lines.length) errors.push('Adicione pelo menos uma linha no treino');
-  if (audienceMode === 'selected' && !selectedAthletes.length) errors.push('Escolha pelo menos um atleta');
-  if (audienceMode === 'groups' && !selectedGroups.length) errors.push('Escolha pelo menos um grupo');
-  if (audienceMode === 'selected' && !athleteMembers.length) errors.push('Não há atletas ativos para selecionar');
-  if (audienceMode === 'groups' && !groups.length) errors.push('Não há grupos disponíveis para esse gym');
-
-  return errors;
-}
-
-function writeProfile(profile) {
-  const serialized = JSON.stringify(profile || null);
-  localStorage.setItem(STORAGE_KEYS.profile, serialized);
-  localStorage.setItem(STORAGE_KEYS.legacyProfile, serialized);
-}
-
-function readRuntimeConfig() {
-  return getRuntimeConfig();
-}
-
-function resolveBillingProvider() {
-  const cfg = readRuntimeConfig();
-  return cfg?.billing?.provider || 'kiwify_link';
-}
-
-function getAvailableSportOptions(config) {
-  const rollout = config?.app?.rollout || {};
-  const coreSports = Array.isArray(rollout.coreSports) && rollout.coreSports.length ? rollout.coreSports : ['cross'];
-  const betaSports = rollout.showBetaSports ? (Array.isArray(rollout.betaSports) ? rollout.betaSports : []) : [];
-  const allowed = new Set([...coreSports, ...betaSports]);
-  return SPORT_OPTIONS.filter((sport) => allowed.has(sport.value));
 }

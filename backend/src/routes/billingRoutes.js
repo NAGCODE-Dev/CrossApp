@@ -1,7 +1,6 @@
 import express from 'express';
 
 import { buildRequestAuditContext } from '../adminAudit.js';
-import { pool } from '../db.js';
 import {
   DEFAULT_BILLING_SUCCESS_URL,
 } from '../config.js';
@@ -9,6 +8,7 @@ import { canUseDeveloperTools, normalizeEmail } from '../devAccess.js';
 import { authRequired } from '../auth.js';
 import { getKiwifySaleById, isKiwifyNativeApiConfigured } from '../kiwifyApi.js';
 import { getBillingStatusSnapshot, getEntitlementsSnapshot, resolveFallbackBillingPlanId } from '../queries/billingQueries.js';
+import { activateDeveloperSubscription, createPendingCheckoutSubscription } from '../services/billingWriteServices.js';
 import {
   extractKiwifyCustomerEmail as extractWebhookCustomerEmail,
   describeKiwifyTokenTransport,
@@ -22,7 +22,6 @@ import {
   resolveKiwifyPlanId as resolveWebhookPlanId,
 } from '../kiwifyWebhook.js';
 import {
-  grantSubscriptionToUser,
   queueBillingClaim,
   queueBillingReversalClaim,
 } from '../utils/subscriptionBilling.js';
@@ -61,10 +60,11 @@ export function createBillingRouter({
       });
     }
 
-    await pool.query(
-      `INSERT INTO subscriptions (user_id, plan_id, status, provider, updated_at) VALUES ($1,$2,'pending',$3,NOW())`,
-      [req.user.userId, String(planId), selectedProvider],
-    );
+    await createPendingCheckoutSubscription({
+      userId: req.user.userId,
+      planId,
+      provider: selectedProvider,
+    });
 
     return res.json({ checkoutUrl: DEFAULT_BILLING_SUCCESS_URL, mode: 'mock' });
   });
@@ -221,11 +221,10 @@ export function createBillingRouter({
     }
 
     const { planId = 'coach', provider = 'mock' } = req.body || {};
-    await grantSubscriptionToUser({
+    await activateDeveloperSubscription({
       userId: req.user.userId,
       planId,
       provider,
-      renewDays: 30,
     });
     return res.json({ success: true });
   });

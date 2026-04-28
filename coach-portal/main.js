@@ -2,23 +2,14 @@ import React, { Suspense, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { inject } from '@vercel/analytics';
 import { injectSpeedInsights } from '@vercel/speed-insights';
-import { getRuntimeConfig } from '../packages/shared-web/runtime.js';
 import { applyAuthRedirectFromUrl, buildGoogleRedirectUrl } from '../packages/shared-web/auth.js';
 import { createCoachApiRequest } from './apiClient.js';
+import { clearAuthSession, readProfile, readToken, writeProfile, writeToken } from './storage.js';
 import '../coach/styles.css';
 
 const CoachWorkspace = React.lazy(() => import('./workspace.js'));
 const DEFAULT_COACH_RETURN_TO = '/coach/';
 const RYXEN_ICON_SRC = new URL('../branding/exports/ryxen-icon-64.png', import.meta.url).href;
-
-const STORAGE_KEYS = {
-  token: 'ryxen-auth-token',
-  legacyToken: 'crossapp-auth-token',
-  profile: 'ryxen-user-profile',
-  legacyProfile: 'crossapp-user-profile',
-  runtime: 'ryxen-runtime-config',
-  legacyRuntime: 'crossapp-runtime-config',
-};
 
 const apiRequest = createCoachApiRequest({ readToken });
 
@@ -89,10 +80,7 @@ function App() {
   }
 
   function handleLogout() {
-    localStorage.removeItem(STORAGE_KEYS.token);
-    localStorage.removeItem(STORAGE_KEYS.legacyToken);
-    localStorage.removeItem(STORAGE_KEYS.profile);
-    localStorage.removeItem(STORAGE_KEYS.legacyProfile);
+    clearAuthSession();
     setToken('');
     setProfile(null);
     setMessage('Sessão encerrada');
@@ -188,34 +176,6 @@ function App() {
   );
 }
 
-function readToken() {
-  try {
-    return localStorage.getItem(STORAGE_KEYS.token) || localStorage.getItem(STORAGE_KEYS.legacyToken) || '';
-  } catch {
-    return '';
-  }
-}
-
-function writeToken(token) {
-  localStorage.setItem(STORAGE_KEYS.token, token || '');
-  localStorage.setItem(STORAGE_KEYS.legacyToken, token || '');
-}
-
-function readProfile() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.profile) || localStorage.getItem(STORAGE_KEYS.legacyProfile);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
-}
-
-function writeProfile(profile) {
-  const serialized = JSON.stringify(profile || null);
-  localStorage.setItem(STORAGE_KEYS.profile, serialized);
-  localStorage.setItem(STORAGE_KEYS.legacyProfile, serialized);
-}
-
 function applyAuthRedirectFromLocation() {
   return applyAuthRedirectFromUrl(window.location.href, { cleanupCurrentLocation: true });
 }
@@ -225,10 +185,6 @@ function authFeatureCard(title, copy) {
     React.createElement('strong', null, title),
     React.createElement('span', null, copy)
   );
-}
-
-function readRuntimeConfig() {
-  return getRuntimeConfig();
 }
 
 function normalizeReturnTo(value, fallback = DEFAULT_COACH_RETURN_TO) {

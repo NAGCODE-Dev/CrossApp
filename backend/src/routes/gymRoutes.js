@@ -5,7 +5,12 @@ import { authRequired } from '../auth.js';
 import { getAccessContextForUser, getActiveSubscriptionForUser } from '../access.js';
 import { selectEffectiveAthleteBenefits } from '../accessPolicy.js';
 import { loadGymInsights, loadVisibleWorkoutFeed } from '../queries/coachDashboardQueries.js';
-import { createAthleteGroup, createWorkoutForAudience, inviteGymMembership } from '../services/gymWriteServices.js';
+import {
+  createAthleteGroup,
+  createGymWithOwnerMembership,
+  createWorkoutForAudience,
+  inviteGymMembership,
+} from '../services/gymWriteServices.js';
 import { normalizeSportType } from '../utils/sportType.js';
 
 export function createGymRouter({
@@ -43,22 +48,16 @@ export function createGymRouter({
     }
 
     try {
-      const inserted = await pool.query(
-        `INSERT INTO gyms (name, slug, owner_user_id) VALUES ($1,$2,$3) RETURNING *`,
-        [name, slug, req.user.userId],
-      );
-      const gym = inserted.rows[0];
-
-      await pool.query(
-        `INSERT INTO gym_memberships (gym_id, user_id, role, status) VALUES ($1,$2,'owner','active')`,
-        [gym.id, req.user.userId],
-      );
-
-      return res.json({ gym });
-    } catch (error) {
-      if (error?.code === '23505' && String(error?.constraint || '').includes('gyms_slug_key')) {
-        return res.status(409).json({ error: 'Slug do gym já existe' });
+      const created = await createGymWithOwnerMembership({
+        name,
+        slug,
+        ownerUserId: req.user.userId,
+      });
+      if (created.error) {
+        return res.status(created.code || 400).json({ error: created.error });
       }
+      return res.json(created);
+    } catch (error) {
       return res.status(500).json({ error: 'Erro ao criar gym' });
     }
   });

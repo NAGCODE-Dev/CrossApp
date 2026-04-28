@@ -74,6 +74,43 @@ export async function inviteGymMembership({ gymId, email, role }) {
   }
 }
 
+export async function createGymWithOwnerMembership({ name, slug, ownerUserId }) {
+  let client;
+  try {
+    client = await pool.connect();
+    await client.query('BEGIN');
+
+    const inserted = await client.query(
+      `INSERT INTO gyms (name, slug, owner_user_id) VALUES ($1,$2,$3) RETURNING *`,
+      [name, slug, ownerUserId],
+    );
+    const gym = inserted.rows[0];
+
+    await client.query(
+      `INSERT INTO gym_memberships (gym_id, user_id, role, status) VALUES ($1,$2,'owner','active')`,
+      [gym.id, ownerUserId],
+    );
+
+    await client.query('COMMIT');
+    return { gym };
+  } catch (error) {
+    if (client) {
+      try {
+        await client.query('ROLLBACK');
+      } catch {
+        // no-op
+      }
+    }
+    const constraint = String(error?.constraint || error?.message || '');
+    if (error?.code === '23505' && constraint.includes('gyms_slug_key')) {
+      return { error: 'Slug do gym já existe', code: 409 };
+    }
+    throw error;
+  } finally {
+    client?.release();
+  }
+}
+
 export async function createWorkoutForAudience({
   gymId,
   userId,
