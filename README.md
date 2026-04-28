@@ -4,6 +4,27 @@ Ryxen é uma plataforma de performance para atleta e coach, com experiências se
 
 O atleta acompanha sua rotina com clareza. O coach publica, organiza e opera em um portal próprio. Tudo no mesmo ecossistema, com foco em uso real, progressão e estrutura.
 
+## Autoria
+
+Projeto autoral de `NikolasAGC` / `NAGCODE-Dev`.
+
+- Repositório oficial: `github.com/NAGCODE-Dev/Ryxen`
+- Manutenção, direção de produto e identidade da marca: `NikolasAGC`
+- Visualização e estudo privado são permitidos
+- Cópia, redistribuição, derivação pública e reapresentação como projeto de terceiros não são permitidas sem autorização
+
+## Licença e uso
+
+Este repositório não usa mais uma licença permissiva. O código está publicado
+para referência e visibilidade do projeto, mas não para reutilização livre.
+Consulte [LICENSE](/home/nikolas/Downloads/Ryxen/LICENSE:1).
+
+## Identidade
+
+`Ryxen` é a identidade deste produto neste repositório. Nome, posicionamento,
+copy, ativos visuais, contexto do produto e autoria do código continuam
+vinculados ao projeto original.
+
 Nota de compatibilidade:
 - variáveis `CROSSAPP_*`, chaves `crossapp-*`, nomes de banco/containers e alguns assets públicos continuam com prefixo legado para preservar installs já publicados, cache da PWA e integrações existentes durante a transição para `Ryxen`.
 
@@ -113,9 +134,8 @@ Notas rápidas do fluxo Docker:
 
 - `npm run docker:up` faz um preflight simples e falha cedo se o daemon do Docker não estiver ativo.
 - O Compose já injeta as variáveis principais do backend, então `backend/.env` não é obrigatório para subir o stack.
-- Se quiser um arquivo de referência para ambiente Docker, use `backend/.env.docker.example`.
 - O backend no Docker usa o hostname `db`, não `localhost`.
-- Se alguma porta já estiver ocupada na sua máquina, troque via variáveis de ambiente ou use `.env.docker.example` como referência. Exemplo: `CROSSAPP_DB_PORT=5433 npm run docker:up`.
+- Se alguma porta já estiver ocupada na sua máquina, troque via variáveis de ambiente. Exemplo: `CROSSAPP_DB_PORT=5433 npm run docker:up`.
 
 ### Sem Docker
 
@@ -129,10 +149,11 @@ Backend:
 
 ```bash
 cd backend
-cp .env.example .env
 npm install
 npm run start
 ```
+
+Crie `backend/.env` apenas se precisar sobrescrever variáveis locais.
 
 Para desenvolvimento local com `docker compose`:
 
@@ -151,15 +172,11 @@ Para desenvolvimento local com `docker compose`:
 Arquivos relevantes:
 
 - `vercel.json`
-- `.env.vercel.example`
 - `config.js`
-- `config.example.js`
 - `scripts/build-static.mjs`
 - `backend/Dockerfile`
 - `render.yaml`
 - `backend/railway.json`
-- `docs/deploy/VERCEL_RENDER_SUPABASE.md`
-- `docs/deploy/VERCEL_RAILWAY.md`
 
 ## Testes
 
@@ -285,5 +302,3 @@ Portal separado em framework:
 - Backend/API: `docs/ops/BACKEND_INTEGRATION.md`
 - Release/Rollback: `docs/ops/RELEASE_ROLLBACK_RUNBOOK.md`
 - Suporte: `docs/ops/SUPPORT_PLAYBOOK.md`
-- Deploy recomendado: `docs/deploy/VERCEL_RAILWAY.md`
-- Deploy sem custo inicial: `docs/deploy/VERCEL_RENDER_SUPABASE.md`

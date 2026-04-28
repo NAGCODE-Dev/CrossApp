@@ -11,8 +11,6 @@ export default [
       'test-results/**',
       'android/**',
       'src/libs/**',
-      '6.pdf',
-      '7.pdf',
     ],
   },
   {

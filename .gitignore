@@ -37,5 +37,9 @@ temp/
 /playwright/.cache/
 /playwright/.auth/
 .vercel
+.env
+.env.*
 .env*.local
+.continue/
+local-files/
 .playwright-web-server.lock

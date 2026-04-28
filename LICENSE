@@ -1,21 +1,51 @@
-MIT License
+Ryxen Source-Available License
 
 Copyright (c) 2026 NikolasAGC
+All rights reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+This repository is published to make the existence, direction, and authorship of
+the Ryxen project visible. Except as expressly allowed below, no license is
+granted to copy, modify, redistribute, sublicense, sell, republish, or present
+this work, in whole or in substantial part, as your own.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+Permitted without separate written permission:
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+1. Viewing this repository and its contents for personal reference.
+2. Cloning and running the project privately for evaluation, study, or internal
+   review.
+3. Quoting short excerpts for commentary, discussion, or review when proper
+   attribution is preserved.
+
+Not permitted without prior written permission from the copyright holder:
+
+1. Republishing this repository or substantial portions of it.
+2. Copying the code, product structure, copy, branding, assets, or distinctive
+   implementation into another public or private product.
+3. Creating or distributing derivative works based on this repository.
+4. Using the Ryxen name, brand, visuals, positioning, or repository history in a
+   way that implies ownership, authorship, endorsement, or original creation by
+   someone else.
+5. Removing, altering, or hiding copyright notices, attribution, or source
+   references.
+6. Selling, sublicensing, relicensing, or commercially exploiting this work.
+
+Attribution and integrity:
+
+1. Authorship remains with NikolasAGC.
+2. Any allowed references to this project must preserve attribution to the
+   original repository and author.
+3. You may not falsely claim this project, its codebase, or its product identity
+   as your own original work.
+
+Commercial, partnership, licensing, or reuse requests must be authorized in
+writing by the copyright holder.
+
+Contact for permission:
+- GitHub: https://github.com/NAGCODE-Dev/Ryxen
+- Security contact: nikolas.magnet177@gmail.com
+
+This software is provided "as is", without warranty of any kind, express or
+implied, including but not limited to merchantability, fitness for a particular
+purpose, and noninfringement. In no event shall the author or copyright holder
+be liable for any claim, damages, or other liability arising from, out of, or
+in connection with the software or the use or other dealings in the software.
