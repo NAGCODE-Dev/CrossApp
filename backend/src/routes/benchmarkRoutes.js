@@ -1,8 +1,14 @@
 import express from 'express';
 
 import { authRequired } from '../auth.js';
-import { getMembershipForUser } from '../access.js';
-import { createBenchmarkResult, searchBenchmarkLibrary } from '../queries/leaderboardQueries.js';
+import { canManageMembership, getMembershipForUser } from '../access.js';
+import {
+  createBenchmarkResult,
+  getBenchmarkBySlug,
+  getBenchmarkLeaderboard,
+  getViewerBenchmarkResult,
+  searchBenchmarkLibrary,
+} from '../queries/leaderboardQueries.js';
 import { normalizeSportType } from '../utils/sportType.js';
 
 export function createBenchmarkRouter({ resolveBenchmarkOrder }) {
@@ -25,6 +31,55 @@ export function createBenchmarkRouter({ resolveBenchmarkOrder }) {
       orderBy,
     });
     return res.json(payload);
+  });
+
+  router.get('/:slug', authRequired, async (req, res) => {
+    const slug = String(req.params.slug || '').trim().toLowerCase();
+    const sportType = normalizeSportType(req.query?.sportType);
+    const gymId = req.query?.gymId !== undefined && req.query?.gymId !== '' ? Number(req.query.gymId) : null;
+    const limit = Math.min(Math.max(Number(req.query.limit) || 8, 1), 30);
+
+    if (!slug) {
+      return res.status(400).json({ error: 'slug é obrigatório' });
+    }
+
+    let viewerMembership = null;
+    if (Number.isFinite(gymId)) {
+      viewerMembership = await getMembershipForUser(gymId, req.user.userId);
+      if (!viewerMembership) {
+        return res.status(404).json({ error: 'Gym não encontrado para este usuário' });
+      }
+    }
+
+    const benchmark = await getBenchmarkBySlug(slug);
+    if (!benchmark) {
+      return res.status(404).json({ error: 'Benchmark não encontrado' });
+    }
+
+    const leaderboardPayload = await getBenchmarkLeaderboard({
+      slug,
+      sportType,
+      gymId,
+      limit,
+      showPrivateAthleteData: canManageMembership(viewerMembership),
+    });
+    const latestResult = await getViewerBenchmarkResult({
+      slug,
+      userId: req.user.userId,
+      sportType,
+      gymId,
+    });
+
+    return res.json({
+      benchmark,
+      leaderboard: leaderboardPayload?.results || [],
+      viewerLatestResult: latestResult,
+      viewerContext: {
+        gymId: Number.isFinite(gymId) ? gymId : null,
+        scopedToGym: Number.isFinite(gymId),
+        canManageGym: canManageMembership(viewerMembership),
+      },
+    });
   });
 
   router.post('/:slug/results', authRequired, async (req, res) => {

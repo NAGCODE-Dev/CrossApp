@@ -1,21 +1,92 @@
 import { DEFAULT_WORKOUT_DRAFT, STORAGE_KEYS } from './constants.js';
 
-export function readToken() {
+function getStorage(preferred = 'local') {
   try {
-    return localStorage.getItem(STORAGE_KEYS.token) || localStorage.getItem(STORAGE_KEYS.legacyToken) || '';
+    if (preferred === 'session' && typeof sessionStorage !== 'undefined') {
+      return sessionStorage;
+    }
   } catch {
-    return '';
+    // ignore
+  }
+
+  try {
+    if (typeof localStorage !== 'undefined') {
+      return localStorage;
+    }
+  } catch {
+    // ignore
+  }
+
+  return null;
+}
+
+function readStoredValue(keys = [], preferred = 'local') {
+  const primary = getStorage(preferred);
+  const fallback = preferred === 'session' ? getStorage('local') : null;
+  for (const key of keys) {
+    const normalizedKey = String(key || '').trim();
+    if (!normalizedKey) continue;
+    try {
+      const value = primary?.getItem(normalizedKey);
+      if (value) return value;
+    } catch {
+      // ignore
+    }
+    try {
+      const value = fallback?.getItem(normalizedKey);
+      if (value) return value;
+    } catch {
+      // ignore
+    }
+  }
+  return '';
+}
+
+function writeStoredValue(keys = [], value, preferred = 'local') {
+  const storage = getStorage(preferred);
+  if (!storage) return;
+  for (const key of keys) {
+    const normalizedKey = String(key || '').trim();
+    if (!normalizedKey) continue;
+    try {
+      storage.setItem(normalizedKey, value);
+    } catch {
+      // ignore
+    }
   }
 }
 
+function removeStoredValue(keys = [], preferred = null) {
+  const storages = preferred
+    ? [getStorage(preferred)]
+    : [getStorage('session'), getStorage('local')];
+  for (const storage of storages) {
+    if (!storage) continue;
+    for (const key of keys) {
+      const normalizedKey = String(key || '').trim();
+      if (!normalizedKey) continue;
+      try {
+        storage.removeItem(normalizedKey);
+      } catch {
+        // ignore
+      }
+    }
+  }
+}
+
+export function readToken() {
+  return readStoredValue([STORAGE_KEYS.token, STORAGE_KEYS.legacyToken], 'session');
+}
+
 export function writeToken(token) {
-  localStorage.setItem(STORAGE_KEYS.token, token || '');
-  localStorage.setItem(STORAGE_KEYS.legacyToken, token || '');
+  const value = String(token || '');
+  writeStoredValue([STORAGE_KEYS.token, STORAGE_KEYS.legacyToken], value, 'session');
+  removeStoredValue([STORAGE_KEYS.token, STORAGE_KEYS.legacyToken], 'local');
 }
 
 export function readProfile() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.profile) || localStorage.getItem(STORAGE_KEYS.legacyProfile);
+    const raw = readStoredValue([STORAGE_KEYS.profile, STORAGE_KEYS.legacyProfile], 'session');
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
@@ -24,15 +95,17 @@ export function readProfile() {
 
 export function writeProfile(profile) {
   const serialized = JSON.stringify(profile || null);
-  localStorage.setItem(STORAGE_KEYS.profile, serialized);
-  localStorage.setItem(STORAGE_KEYS.legacyProfile, serialized);
+  writeStoredValue([STORAGE_KEYS.profile, STORAGE_KEYS.legacyProfile], serialized, 'session');
+  removeStoredValue([STORAGE_KEYS.profile, STORAGE_KEYS.legacyProfile], 'local');
 }
 
 export function clearAuthSession() {
-  localStorage.removeItem(STORAGE_KEYS.token);
-  localStorage.removeItem(STORAGE_KEYS.legacyToken);
-  localStorage.removeItem(STORAGE_KEYS.profile);
-  localStorage.removeItem(STORAGE_KEYS.legacyProfile);
+  removeStoredValue([
+    STORAGE_KEYS.token,
+    STORAGE_KEYS.legacyToken,
+    STORAGE_KEYS.profile,
+    STORAGE_KEYS.legacyProfile,
+  ]);
 }
 
 export function getWorkoutDraftPayload(forms = {}) {
@@ -101,7 +174,7 @@ export function hasWorkoutDraftContent(forms = {}) {
 
 export function readWorkoutDraft() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEYS.workoutDraft) || localStorage.getItem(STORAGE_KEYS.legacyWorkoutDraft);
+    const raw = readStoredValue([STORAGE_KEYS.workoutDraft, STORAGE_KEYS.legacyWorkoutDraft], 'local');
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     return getWorkoutDraftPayload(parsed);
@@ -113,23 +186,16 @@ export function readWorkoutDraft() {
 export function writeWorkoutDraft(forms = {}) {
   try {
     if (!hasWorkoutDraftContent(forms)) {
-      localStorage.removeItem(STORAGE_KEYS.workoutDraft);
-      localStorage.removeItem(STORAGE_KEYS.legacyWorkoutDraft);
+      removeStoredValue([STORAGE_KEYS.workoutDraft, STORAGE_KEYS.legacyWorkoutDraft], 'local');
       return;
     }
     const serialized = JSON.stringify(getWorkoutDraftPayload(forms));
-    localStorage.setItem(STORAGE_KEYS.workoutDraft, serialized);
-    localStorage.setItem(STORAGE_KEYS.legacyWorkoutDraft, serialized);
+    writeStoredValue([STORAGE_KEYS.workoutDraft, STORAGE_KEYS.legacyWorkoutDraft], serialized, 'local');
   } catch {
     // no-op
   }
 }
 
 export function clearWorkoutDraft() {
-  try {
-    localStorage.removeItem(STORAGE_KEYS.workoutDraft);
-    localStorage.removeItem(STORAGE_KEYS.legacyWorkoutDraft);
-  } catch {
-    // no-op
-  }
+  removeStoredValue([STORAGE_KEYS.workoutDraft, STORAGE_KEYS.legacyWorkoutDraft], 'local');
 }

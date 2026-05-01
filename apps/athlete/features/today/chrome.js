@@ -2,29 +2,17 @@ export function renderTodayEmptyState(state, { escapeHtml, formatDay }) {
   const hasWeeks = (state?.weeks?.length ?? 0) > 0;
   const day = formatDay(state?.currentDay);
   const isAuthenticated = !!state?.__ui?.auth?.profile?.email;
-  const showNyxHints = state?.preferences?.showNyxHints !== false;
-  const nyxGuideCompleted = state?.preferences?.nyxGuideCompleted === true;
-
-  const nyxTeaser = showNyxHints && !nyxGuideCompleted
-    ? `
-      <div class="page-actions page-actions-inline">
-        <button class="btn-secondary" data-action="nyx:hints:disable" type="button">Ocultar dicas do Nyx</button>
-        <button class="btn-primary" data-action="modal:open" data-modal="nyx-guide" data-guide-step="0" type="button">Tour com Nyx</button>
-      </div>
-    `
-    : '';
 
   if (!hasWeeks) {
     return `
       <div class="empty-state">
         <div class="empty-icon">📋</div>
         <h2>Nenhum treino carregado</h2>
-        <p>Importe um treino para começar ou entre para recuperar seu histórico.</p>
+        <p>Importe um treino ou entre para recuperar seu histórico.</p>
         <div class="page-actions page-actions-inline">
           <button class="btn-primary" data-action="modal:open" data-modal="import" data-guide-target="today-import" type="button">Importar treino</button>
           <button class="btn-secondary" data-action="modal:open" data-modal="auth" type="button">${isAuthenticated ? 'Conta' : 'Entrar'}</button>
         </div>
-        ${nyxTeaser}
       </div>
     `;
   }
@@ -38,7 +26,6 @@ export function renderTodayEmptyState(state, { escapeHtml, formatDay }) {
         <button class="btn-primary" data-action="day:auto" type="button">Modo automático</button>
         <button class="btn-secondary" data-action="modal:open" data-modal="import" data-guide-target="today-import" type="button">Trocar planilha</button>
       </div>
-      ${nyxTeaser}
     </div>
   `;
 }
@@ -98,7 +85,7 @@ export function renderTodayPageIntro(state, { renderPageHero, formatDay }) {
         ? (hasWorkout
           ? `Semana ${activeWeek} pronta para ${currentDay || 'hoje'}.`
           : `Semana ${activeWeek} pronta. Escolha o dia.`)
-        : 'Importe um treino em PDF, imagem, vídeo, planilha ou texto.',
+        : 'Importe um treino em PDF, imagem, texto ou arquivo salvo.',
       actions: heroActions,
       footer: hasWeeks ? `<div class="week-chips">${renderWeekChips(state)}</div>` : '',
     })}

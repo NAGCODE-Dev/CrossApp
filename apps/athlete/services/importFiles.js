@@ -40,6 +40,10 @@ export function explainImportFailure(error, file) {
     return 'Esse PDF nao trouxe texto legivel. Tente um PDF mais nítido ou envie imagem/planilha.';
   }
 
+  if (lower.includes('failed to fetch') || lower.includes('falha ao carregar ocr')) {
+    return 'Nao consegui carregar um componente de leitura desse arquivo. Tente novamente; se persistir, atualize o app e tente um arquivo menor.';
+  }
+
   if (lower.includes('não é um') || lower.includes('nao e um')) {
     return fileName
       ? `O arquivo ${fileName} nao parece estar em um formato suportado para esse fluxo.`

@@ -42,6 +42,7 @@ export function createRenderSignatures({ getObjectIdentity }) {
   ].join('|');
   const buildBottomSignature = (state) => [
     String(state?.__ui?.currentPage || 'today'),
+    state?.__ui?.bottomNavCollapsed ? '1' : '0',
     state?.__ui?.platformVariant || 'web',
   ].join('|');
   const buildModalSignature = (state) => [
@@ -62,6 +63,7 @@ export function createRenderSignatures({ getObjectIdentity }) {
   const buildMainSignature = (state) => [
     state?.__ui?.currentPage || 'today',
     state?.__ui?.accountView || 'overview',
+    state?.__ui?.historyView || 'overview',
     state?.__ui?.platformVariant || 'web',
     state?.activeWeekNumber ?? '',
     state?.currentDay ?? '',

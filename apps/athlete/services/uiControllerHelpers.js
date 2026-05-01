@@ -33,6 +33,7 @@ export function createAthleteEventLog(containerEl) {
 export function buildUiSnapshotSignature(value) {
   const currentPage = value?.currentPage || 'today';
   const accountView = value?.accountView || 'overview';
+  const historyView = value?.historyView || 'overview';
   const settings = value?.settings || {};
   const wod = value?.wod || {};
   const coachGymId = value?.coachPortal?.selectedGymId || null;
@@ -40,6 +41,8 @@ export function buildUiSnapshotSignature(value) {
   return [
     currentPage,
     accountView,
+    historyView,
+    value?.bottomNavCollapsed ? 1 : 0,
     coachGymId,
     settings.showLbsConversion ? 1 : 0,
     settings.showEmojis ? 1 : 0,
@@ -71,6 +74,8 @@ export async function restoreUiStateFromAccount() {
     return {
       currentPage: snapshot.ui.currentPage,
       accountView: snapshot.ui.accountView,
+      historyView: snapshot.ui.historyView,
+      bottomNavCollapsed: snapshot.ui.bottomNavCollapsed,
       settings: snapshot.ui.settings,
       wod: snapshot.ui.wod,
       coachPortal: snapshot.ui.coachPortal,

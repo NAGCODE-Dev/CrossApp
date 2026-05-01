@@ -23,6 +23,7 @@ import { migration as authRedirectGrantsMigration } from './023_auth_redirect_gr
 import { migration as explicitBackendOnlyRlsPoliciesMigration } from './024_explicit_backend_only_rls_policies.js';
 import { migration as gymCheckinSessionsMigration } from './025_gym_checkin_sessions.js';
 import { migration as gymCheckinRulesMigration } from './026_gym_checkin_rules.js';
+import { migration as userSocialProfileMigration } from './027_user_social_profile.js';
 
 const MIGRATIONS = [
   baseSchemaMigration,
@@ -49,6 +50,7 @@ const MIGRATIONS = [
   explicitBackendOnlyRlsPoliciesMigration,
   gymCheckinSessionsMigration,
   gymCheckinRulesMigration,
+  userSocialProfileMigration,
 ];
 
 export async function runMigrations() {

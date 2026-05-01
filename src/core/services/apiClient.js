@@ -14,19 +14,38 @@ export async function apiRequest(path, options = {}) {
   const startedAt = performance.now();
 
   const headers = {
-    'Content-Type': 'application/json',
+    Accept: 'application/json',
     ...(options.headers || {}),
   };
+  if (options.body !== undefined) {
+    headers['Content-Type'] = 'application/json';
+  }
 
   if (token) {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const response = await fetch(url, {
-    method: options.method || 'GET',
-    headers,
-    body: options.body ? JSON.stringify(options.body) : undefined,
-  });
+  const controller = new AbortController();
+  const timeoutMs = Math.max(1000, Number(options.timeoutMs) || 15000);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  let response;
+  try {
+    response = await fetch(url, {
+      method: options.method || 'GET',
+      headers,
+      cache: 'no-store',
+      credentials: 'omit',
+      signal: controller.signal,
+      body: options.body ? JSON.stringify(options.body) : undefined,
+    });
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw new Error('O backend demorou demais para responder.');
+    }
+    throw new Error('Falha de rede ao falar com o backend.');
+  } finally {
+    clearTimeout(timer);
+  }
 
   const text = await response.text();
   const durationMs = Number((performance.now() - startedAt).toFixed(1));
@@ -58,11 +77,88 @@ const LEGACY_AUTH_TOKEN_KEY = 'crossapp-auth-token';
 const REQUEST_METRICS_KEY = '__RYXEN_REQUEST_METRICS__';
 const LEGACY_REQUEST_METRICS_KEY = '__CROSSAPP_REQUEST_METRICS__';
 
+function getSessionStorageSafe() {
+  try {
+    if (typeof sessionStorage !== 'undefined') return sessionStorage;
+  } catch {
+    // no-op
+  }
+  return null;
+}
+
+function getLocalStorageSafe() {
+  try {
+    if (typeof localStorage !== 'undefined') return localStorage;
+  } catch {
+    // no-op
+  }
+  return null;
+}
+
+function readAuthStorageValue(keys = []) {
+  const session = getSessionStorageSafe();
+  const local = getLocalStorageSafe();
+  for (const key of keys) {
+    try {
+      const value = session?.getItem(key);
+      if (value) return value;
+    } catch {
+      // no-op
+    }
+    try {
+      const value = local?.getItem(key);
+      if (value) return value;
+    } catch {
+      // no-op
+    }
+  }
+  return '';
+}
+
+function writeAuthStorageValue(keys = [], value) {
+  const session = getSessionStorageSafe();
+  const local = getLocalStorageSafe();
+  for (const key of keys) {
+    try {
+      if (session) {
+        session.setItem(key, value);
+      } else {
+        local?.setItem(key, value);
+      }
+    } catch {
+      // no-op
+    }
+    if (session) {
+      try {
+        local?.removeItem(key);
+      } catch {
+        // no-op
+      }
+    }
+  }
+}
+
+function clearAuthStorageValue(keys = []) {
+  const session = getSessionStorageSafe();
+  const local = getLocalStorageSafe();
+  for (const key of keys) {
+    try {
+      session?.removeItem(key);
+    } catch {
+      // no-op
+    }
+    try {
+      local?.removeItem(key);
+    } catch {
+      // no-op
+    }
+  }
+}
+
 export function setAuthToken(token) {
   try {
     const value = token || '';
-    localStorage.setItem(AUTH_TOKEN_KEY, value);
-    localStorage.setItem(LEGACY_AUTH_TOKEN_KEY, value);
+    writeAuthStorageValue([AUTH_TOKEN_KEY, LEGACY_AUTH_TOKEN_KEY], value);
   } catch {
     // no-op
   }
@@ -70,7 +166,7 @@ export function setAuthToken(token) {
 
 export function getAuthToken() {
   try {
-    return localStorage.getItem(AUTH_TOKEN_KEY) || localStorage.getItem(LEGACY_AUTH_TOKEN_KEY) || '';
+    return readAuthStorageValue([AUTH_TOKEN_KEY, LEGACY_AUTH_TOKEN_KEY]);
   } catch {
     return '';
   }
@@ -78,8 +174,7 @@ export function getAuthToken() {
 
 export function clearAuthToken() {
   try {
-    localStorage.removeItem(AUTH_TOKEN_KEY);
-    localStorage.removeItem(LEGACY_AUTH_TOKEN_KEY);
+    clearAuthStorageValue([AUTH_TOKEN_KEY, LEGACY_AUTH_TOKEN_KEY]);
   } catch {
     // no-op
   }

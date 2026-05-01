@@ -8,5 +8,6 @@ export {
   renderAccountCheckinSection,
   renderAccountCoachPortalSection,
   renderAccountDataSections,
+  renderAccountProfileSection,
   renderAccountPreferencesSections,
 } from './memberSections.js';

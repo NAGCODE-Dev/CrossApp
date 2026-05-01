@@ -78,7 +78,8 @@
   }
 
   .account-viewTabs {
-    @apply grid grid-cols-3 gap-2.5;
+    @apply grid gap-2.5;
+    grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
   }
 
   .account-viewTab {

@@ -78,6 +78,7 @@ export function createAthleteOverviewDomain({
     if (!Array.isArray(next.strengthHistory)) next.strengthHistory = [];
     if (!Array.isArray(next.gymAccess)) next.gymAccess = [];
     if (!next.prCurrent || typeof next.prCurrent !== 'object') next.prCurrent = {};
+    if (!next.profileCard || typeof next.profileCard !== 'object') next.profileCard = null;
     if (!next.athleteBenefits || typeof next.athleteBenefits !== 'object') next.athleteBenefits = null;
 
     return next;
@@ -88,6 +89,7 @@ export function createAthleteOverviewDomain({
     if (!email) {
       return {
         stats: null,
+        profileCard: null,
         athleteBenefits: null,
         personalSubscription: null,
         gymAccess: [],
@@ -102,6 +104,7 @@ export function createAthleteOverviewDomain({
       const result = await measureAsync('account.summary', () => getAthleteSummary());
       const value = result?.data || {
         stats: null,
+        profileCard: null,
         athleteBenefits: null,
         personalSubscription: null,
         gymAccess: [],

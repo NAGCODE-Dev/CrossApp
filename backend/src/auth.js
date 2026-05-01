@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from './config.js';
 import { pool } from './db.js';
+import { buildSafeUserSelect } from './userProfiles.js';
 
 const EXPIRES_IN = '7d';
 
@@ -34,7 +35,7 @@ async function resolveAuthenticatedRequestUser(req) {
   }
 
   const result = await pool.query(
-    `SELECT id, email, name, is_admin, email_verified, email_verified_at, session_version
+    `SELECT ${buildSafeUserSelect()}
      FROM users
      WHERE id = $1
      LIMIT 1`,

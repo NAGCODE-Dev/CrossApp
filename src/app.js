@@ -37,8 +37,6 @@ import {
 import { clearAllStorages, createStorage } from './adapters/storage/storageFactory.js';
 import { isPdfJsAvailable } from './adapters/pdf/pdfReader.js';
 import { isImageFile, extractTextFromImageFile } from './adapters/media/ocrReader.js';
-import { isVideoFile, extractTextFromVideoFile } from './adapters/media/videoTextReader.js';
-import { isSpreadsheetFile, extractTextFromSpreadsheetFile } from './adapters/spreadsheet/spreadsheetReader.js';
 import {
   parseTextIntoWeeks,
   toWorkoutBlocks,
@@ -407,6 +405,7 @@ const {
   handleGetPasswordResetSupportStatus,
   handleConfirmPasswordResetSupport,
   handleGetProfile,
+  handleUpdateMyProfile,
   handleGetAdminOverview,
   handleGetAdminOpsHealth,
   handleActivateCoachSubscription,
@@ -454,6 +453,7 @@ const {
   handleSyncAthleteMeasurementsSnapshot: remoteHandleSyncAthleteMeasurementsSnapshot,
   handleSyncAthletePrSnapshot: remoteHandleSyncAthletePrSnapshot,
   handleGetBenchmarks,
+  handleGetBenchmarkDetail,
 } = remoteHandlers;
 
 const accountSyncDomain = createAccountSyncDomain({
@@ -534,10 +534,6 @@ const importExportDomain = createImportExportDomain({
   saveParsedWeeks,
   isImageFile,
   extractTextFromImageFile,
-  isVideoFile,
-  extractTextFromVideoFile,
-  isSpreadsheetFile,
-  extractTextFromSpreadsheetFile,
   isPdfImportFile,
   isTextLikeImportFile,
   classifyUniversalImportFile,
@@ -706,6 +702,7 @@ function exposeDebugAPIs() {
     confirmPasswordResetSupport: handleConfirmPasswordResetSupport,
     signOut: handleSignOut,
     getProfile: handleGetProfile,
+    updateMyProfile: handleUpdateMyProfile,
     getAdminOverview: handleGetAdminOverview,
     getAdminOpsHealth: handleGetAdminOpsHealth,
     activateCoachSubscription: handleActivateCoachSubscription,
@@ -747,6 +744,7 @@ function exposeDebugAPIs() {
     syncAthleteMeasurementsSnapshot: syncAthleteMeasurementsSnapshotWithQueue,
     syncAthletePrSnapshot: syncAthletePrSnapshotWithQueue,
     getBenchmarks: handleGetBenchmarks,
+    getBenchmarkDetail: handleGetBenchmarkDetail,
     openCheckout: handleOpenCheckout,
     getSubscriptionStatus: handleGetSubscriptionStatus,
     getEntitlements: handleGetEntitlements,

@@ -7,7 +7,6 @@ let express;
 let createAdminOpsRouter;
 let createBillingRouter;
 let createGymRouter;
-let createLeaderboardRouter;
 let createTelemetryRouter;
 let hasBackendRuntime = false;
 
@@ -16,7 +15,6 @@ try {
   ({ createAdminOpsRouter } = await import('../backend/src/routes/adminOpsRoutes.js'));
   ({ createBillingRouter } = await import('../backend/src/routes/billingRoutes.js'));
   ({ createGymRouter } = await import('../backend/src/routes/gymRoutes.js'));
-  ({ createLeaderboardRouter } = await import('../backend/src/routes/leaderboardRoutes.js'));
   ({ createTelemetryRouter } = await import('../backend/src/routes/telemetryRoutes.js'));
   hasBackendRuntime = true;
 } catch (error) {
@@ -239,41 +237,6 @@ routeTest('rota de memberships do gym corta acesso de quem nao gerencia o gym', 
     assert.equal(response.status, 403);
     assert.equal(payload.error, 'Sem acesso ao gym');
   });
-});
-
-routeTest('leaderboard respeita contexto de permissao ao decidir dados privados', async () => {
-  const capturedCalls = [];
-  const router = createLeaderboardRouter({
-    authMiddleware: allowUser({
-      userId: 8,
-      email: 'athlete@example.com',
-    }),
-    getMembershipForUserFn: async (gymId, userId) => ({
-      gym_id: gymId,
-      user_id: userId,
-      role: 'athlete',
-      status: 'active',
-    }),
-    canManageMembershipFn: (membership) => membership?.role === 'coach',
-    getBenchmarkLeaderboardFn: async (args) => {
-      capturedCalls.push(args);
-      return { rows: [] };
-    },
-  });
-
-  await withServer(router, async (baseUrl) => {
-    const response = await fetch(`${baseUrl}/leaderboards/benchmarks/fran?gymId=3&limit=12`);
-    const payload = await response.json();
-
-    assert.equal(response.status, 200);
-    assert.deepEqual(payload, { rows: [] });
-  });
-
-  assert.equal(capturedCalls.length, 1);
-  assert.equal(capturedCalls[0].slug, 'fran');
-  assert.equal(capturedCalls[0].gymId, 3);
-  assert.equal(capturedCalls[0].limit, 12);
-  assert.equal(capturedCalls[0].showPrivateAthleteData, false);
 });
 
 routeTest('telemetry exige sessão autenticada antes de gravar eventos', async () => {

@@ -5,10 +5,12 @@ import { renderAll, renderImportModal } from '../apps/athlete/features/render/sh
 
 test('modal de importação expõe as opções realmente suportadas na apresentação', () => {
   const html = renderImportModal();
-  assert.match(html, /Planilha em PDF/i);
-  assert.match(html, /Imagem, vídeo, planilha ou texto/i);
+  assert.match(html, /Treino em PDF/i);
+  assert.match(html, /Imagem ou texto/i);
   assert.match(html, /Arquivo salvo/i);
-  assert.match(html, /Escolha o tipo de arquivo/i);
+  assert.match(html, /Use PDF, imagem, texto ou um arquivo salvo/i);
+  assert.doesNotMatch(html, /vídeo/i);
+  assert.doesNotMatch(html, /planilha/i);
   assert.doesNotMatch(html, /Exportar treino atual/i);
 });
 

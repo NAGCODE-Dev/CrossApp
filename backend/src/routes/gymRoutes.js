@@ -19,6 +19,28 @@ import {
 } from '../services/gymWriteServices.js';
 import { normalizeSportType } from '../utils/sportType.js';
 
+function serializeMembershipSummary(membership) {
+  if (!membership || typeof membership !== 'object') return null;
+  return {
+    id: membership.id,
+    gymId: membership.gym_id,
+    gymName: membership.gym_name,
+    gymSlug: membership.gym_slug,
+    role: membership.role,
+    status: membership.status,
+    createdAt: membership.created_at || null,
+  };
+}
+
+function serializeGymAccessSummary(access) {
+  if (!access || typeof access !== 'object') return null;
+  return {
+    canCoachManage: !!access.canCoachManage,
+    canAthletesUseApp: !!access.canAthletesUseApp,
+    warning: access.warning || null,
+  };
+}
+
 export function createGymRouter({
   authMiddleware = authRequired,
   requireGymManager,
@@ -38,9 +60,8 @@ export function createGymRouter({
       athleteBenefits: selectEffectiveAthleteBenefits({ gymContexts: gyms, personalSubscription }),
       personalSubscription,
       gyms: gyms.map((ctx) => ({
-        membership: ctx.membership,
-        gymAccess: ctx.access?.gymAccess || null,
-        ownerSubscription: ctx.access?.ownerSubscription || null,
+        membership: serializeMembershipSummary(ctx.membership),
+        gymAccess: serializeGymAccessSummary(ctx.access?.gymAccess || null),
         athleteBenefits: ctx.access?.athleteBenefits || null,
       })),
     });
@@ -119,7 +140,7 @@ export function createGymRouter({
     }
 
     const rows = await pool.query(
-      `SELECT gm.*, u.email, u.name
+      `SELECT gm.*, u.email, u.name, u.display_name, u.handle, u.avatar_url, u.bio, u.profile_visibility, u.attendance_display
        FROM gym_memberships gm
        LEFT JOIN users u ON u.id = gm.user_id
        WHERE gm.gym_id = $1

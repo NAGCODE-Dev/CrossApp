@@ -53,10 +53,7 @@ export async function extractTextFromFile(file, options = {}) {
     const arrayBuffer = await readFileAsArrayBuffer(file);
     
     // Carrega PDF
-    const pdf = await pdfjsLib.getDocument({
-      data: arrayBuffer,
-      verbosity: 0,
-    }).promise;
+    const pdf = await openPdfDocument(pdfjsLib, arrayBuffer);
     
     const totalPages = pdf.numPages;
     let fullText = '';
@@ -254,10 +251,7 @@ export async function extractMetadata(file) {
     const pdfjsLib = await loadPdfJs();
     const arrayBuffer = await readFileAsArrayBuffer(file);
     
-    const pdf = await pdfjsLib.getDocument({
-      data: arrayBuffer,
-      verbosity: 0,
-    }).promise;
+    const pdf = await openPdfDocument(pdfjsLib, arrayBuffer);
     
     const metadata = await pdf.getMetadata();
     
@@ -307,12 +301,17 @@ export function getInfo() {
 
 async function loadPdfJs() {
   if (!pdfjsLibPromise) {
-    pdfjsLibPromise = import('../../libs/pdf.mjs').then((pdfjsLib) => {
-      pdfjsLib.GlobalWorkerOptions.workerSrc =
-        new URL('../../libs/pdf.worker.mjs', import.meta.url).toString();
-      return pdfjsLib;
-    });
+    pdfjsLibPromise = import('../../libs/pdf.mjs');
   }
 
   return pdfjsLibPromise;
+}
+
+async function openPdfDocument(pdfjsLib, arrayBuffer) {
+  return pdfjsLib.getDocument({
+    data: arrayBuffer,
+    verbosity: 0,
+    // Mantém o reader robusto em deploys onde module workers falham ao carregar.
+    disableWorker: true,
+  }).promise;
 }

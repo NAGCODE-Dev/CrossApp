@@ -142,6 +142,7 @@ function renderNavIcon(page) {
 
 export function renderAthleteBottomNav(state, { platformVariant = 'web' } = {}) {
   const currentPage = state?.__ui?.currentPage || 'today';
+  const isCollapsed = state?.__ui?.bottomNavCollapsed === true;
   const isNative = isAthleteNativeVariant(platformVariant);
   const items = [
     { page: 'today', label: 'Hoje' },
@@ -149,10 +150,21 @@ export function renderAthleteBottomNav(state, { platformVariant = 'web' } = {}) 
     { page: 'account', label: 'Conta' },
   ];
 
-  return items.map((item) => `
-    <button class="nav-btn ${isNative ? 'nav-btn-native' : ''} ${currentPage === item.page ? 'nav-btn-active' : ''} ${item.page === 'today' ? 'nav-btn-primary' : ''}" data-action="page:set" data-page="${item.page}" aria-current="${currentPage === item.page ? 'page' : 'false'}" type="button">
-      ${isNative ? `<span class="nav-icon nav-icon-native">${renderNavIcon(item.page)}</span>` : (item.icon ? `<span class="nav-icon">${item.icon}</span>` : '')}
+  return `
+    ${items.map((item) => `
+    <button class="nav-btn ${isNative ? 'nav-btn-native' : ''} ${isCollapsed ? 'nav-btn-collapsed' : ''} ${currentPage === item.page ? 'nav-btn-active' : ''} ${item.page === 'today' ? 'nav-btn-primary' : ''}" data-action="page:set" data-page="${item.page}" aria-current="${currentPage === item.page ? 'page' : 'false'}" type="button">
+      <span class="nav-icon ${isNative ? 'nav-icon-native' : ''}">${renderNavIcon(item.page)}</span>
       <span class="nav-label">${item.label}</span>
     </button>
-  `).join('');
+  `).join('')}
+    <button
+      class="nav-btn nav-btn-toggle ${isNative ? 'nav-btn-native' : ''} ${isCollapsed ? 'nav-btn-collapsed nav-btn-toggle-active' : ''}"
+      data-action="nav:toggle"
+      aria-pressed="${isCollapsed ? 'true' : 'false'}"
+      type="button"
+    >
+      <span class="nav-icon ${isNative ? 'nav-icon-native' : ''}" aria-hidden="true">${isCollapsed ? '⇱' : '⇲'}</span>
+      <span class="nav-label">${isCollapsed ? 'Expandir' : 'Compactar'}</span>
+    </button>
+  `;
 }

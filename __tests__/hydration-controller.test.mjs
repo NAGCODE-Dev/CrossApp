@@ -133,7 +133,7 @@ test('hydratePage em account carrega resumo imediato e dispara blocos lazy uma v
   assert.equal(getUiState().athleteOverview.blocks.workouts.status, 'ready');
 });
 
-test('hydratePage em history carrega summary primeiro e só depois results', async () => {
+test('hydratePage em history carrega summary primeiro e só depois resultados e treinos', async () => {
   const { controller, calls, getUiState, setCurrentPage } = createControllerFixture();
   setCurrentPage('history');
 
@@ -147,8 +147,9 @@ test('hydratePage em history carrega summary primeiro e só depois results', asy
   await flushBackground();
 
   assert.equal(calls.results, 1);
-  assert.equal(calls.workouts, 0);
+  assert.equal(calls.workouts, 1);
   assert.equal(getUiState().athleteOverview.blocks.results.status, 'ready');
+  assert.equal(getUiState().athleteOverview.blocks.workouts.status, 'ready');
 });
 
 test('hydrateAthleteSummary usa cache curto e evita request duplicado', async () => {

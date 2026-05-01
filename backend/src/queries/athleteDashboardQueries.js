@@ -1,6 +1,7 @@
 import { pool } from '../db.js';
 import { getAccessContextForUser, getActiveSubscriptionForUser } from '../access.js';
 import { selectEffectiveAthleteBenefits } from '../accessPolicy.js';
+import { getAttendanceDisplayLabel, getUserDisplayName } from '../userProfiles.js';
 
 function buildHistoryWindowFilter(athleteBenefits) {
   const cutoffTime = athleteBenefits?.historyDays
@@ -24,6 +25,74 @@ function buildGymAccessRows(contexts = []) {
     warning: ctx?.access?.gymAccess?.warning || null,
     athleteBenefits: ctx?.access?.athleteBenefits || null,
   }));
+}
+
+async function loadAthleteProfileCard(userId, access) {
+  const [userRes, coachesRes] = await Promise.all([
+    pool.query(
+      `SELECT id, email, name, display_name, handle, avatar_url, bio, profile_visibility, attendance_display
+       FROM users
+       WHERE id = $1
+       LIMIT 1`,
+      [userId],
+    ),
+    access.gymIds.length
+      ? pool.query(
+          `SELECT
+             gm.gym_id,
+             gm.role,
+             u.id AS user_id,
+             u.email,
+             u.name,
+             u.display_name,
+             u.handle,
+             u.avatar_url
+           FROM gym_memberships gm
+           JOIN users u ON u.id = gm.user_id
+           WHERE gm.gym_id = ANY($1::int[])
+             AND gm.status = 'active'
+             AND gm.role IN ('owner', 'coach')
+           ORDER BY gm.gym_id ASC,
+                    CASE WHEN gm.role = 'owner' THEN 0 ELSE 1 END ASC,
+                    gm.created_at ASC`,
+          [access.gymIds],
+        )
+      : Promise.resolve({ rows: [] }),
+  ]);
+
+  const user = userRes.rows[0] || null;
+  const coachesByGymId = new Map();
+  for (const row of coachesRes.rows || []) {
+    if (!coachesByGymId.has(row.gym_id)) coachesByGymId.set(row.gym_id, []);
+    coachesByGymId.get(row.gym_id).push({
+      userId: row.user_id,
+      role: row.role,
+      displayName: getUserDisplayName(row),
+      handle: row.handle || null,
+      avatarUrl: row.avatar_url || null,
+    });
+  }
+
+  return {
+    displayName: getUserDisplayName(user),
+    accountName: user?.name || null,
+    email: user?.email || '',
+    handle: user?.handle || null,
+    avatarUrl: user?.avatar_url || null,
+    bio: user?.bio || null,
+    profileVisibility: user?.profile_visibility || 'members',
+    attendanceDisplay: user?.attendance_display || 'display_name',
+    attendanceLabelPreview: getAttendanceDisplayLabel(user),
+    gyms: (access.contexts || []).map((ctx) => ({
+      gymId: ctx.membership.gym_id,
+      gymName: ctx.membership.gym_name,
+      gymSlug: ctx.membership.gym_slug,
+      role: ctx.membership.role,
+      status: ctx.membership.status,
+      warning: ctx?.access?.gymAccess?.warning || null,
+      coaches: coachesByGymId.get(ctx.membership.gym_id) || [],
+    })),
+  };
 }
 
 export async function validateAccessibleWorkout(workoutId, userId, sportType) {
@@ -71,7 +140,7 @@ export async function loadAthleteAccessSnapshot(userId, sportType) {
 }
 
 export async function loadAthleteSummaryBlock(userId, access) {
-  const [resultCountRes, workoutCountRes] = await Promise.all([
+  const [resultCountRes, workoutCountRes, profileCard] = await Promise.all([
     pool.query(`SELECT COUNT(*)::int AS total FROM benchmark_results WHERE user_id = $1 AND sport_type = $2`, [userId, access.sportType]),
     access.allowedMembershipIds.length
       ? pool.query(
@@ -86,6 +155,7 @@ export async function loadAthleteSummaryBlock(userId, access) {
           [access.allowedMembershipIds, access.sportType],
         )
       : Promise.resolve({ rows: [{ total: 0 }] }),
+    loadAthleteProfileCard(userId, access),
   ]);
 
   return {
@@ -97,6 +167,7 @@ export async function loadAthleteSummaryBlock(userId, access) {
       sportType: access.sportType,
       athleteTier: access.athleteBenefits?.tier || 'base',
     },
+    profileCard,
     athleteBenefits: access.athleteBenefits,
     personalSubscription: access.personalSubscription,
     gymAccess: buildGymAccessRows(access.contexts),

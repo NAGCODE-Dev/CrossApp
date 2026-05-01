@@ -11,6 +11,84 @@ const AUTH_REDIRECT_PROOF_KEY = 'ryxen-auth-redirect-proof';
 const AUTH_REDIRECT_PROOF_TTL_MS = 10 * 60 * 1000;
 let pendingAuthRedirectProofMemory = null;
 
+function getSessionStorageSafe() {
+  try {
+    if (typeof sessionStorage !== 'undefined') return sessionStorage;
+  } catch {
+    // no-op
+  }
+  return null;
+}
+
+function getLocalStorageSafe() {
+  try {
+    if (typeof localStorage !== 'undefined') return localStorage;
+  } catch {
+    // no-op
+  }
+  return null;
+}
+
+function readSessionScopedValue(keys = []) {
+  const session = getSessionStorageSafe();
+  const local = getLocalStorageSafe();
+  for (const key of keys) {
+    try {
+      const value = session?.getItem(key);
+      if (value) return value;
+    } catch {
+      // no-op
+    }
+    try {
+      const value = local?.getItem(key);
+      if (value) return value;
+    } catch {
+      // no-op
+    }
+  }
+  return '';
+}
+
+function writeSessionScopedValue(keys = [], value) {
+  const session = getSessionStorageSafe();
+  const local = getLocalStorageSafe();
+  for (const key of keys) {
+    try {
+      if (session) {
+        session.setItem(key, value);
+      } else {
+        local?.setItem(key, value);
+      }
+    } catch {
+      // no-op
+    }
+    if (session) {
+      try {
+        local?.removeItem(key);
+      } catch {
+        // no-op
+      }
+    }
+  }
+}
+
+function clearSessionScopedValue(keys = []) {
+  const session = getSessionStorageSafe();
+  const local = getLocalStorageSafe();
+  for (const key of keys) {
+    try {
+      session?.removeItem(key);
+    } catch {
+      // no-op
+    }
+    try {
+      local?.removeItem(key);
+    } catch {
+      // no-op
+    }
+  }
+}
+
 export async function signUp(payload) {
   const res = await apiRequest('/auth/signup', { method: 'POST', body: payload });
   return res;
@@ -79,6 +157,12 @@ export async function refreshSession() {
   return res;
 }
 
+export async function updateMyProfile(payload) {
+  const res = await apiRequest('/auth/me/profile', { method: 'PUT', body: payload });
+  handleAuthResponse(res);
+  return res;
+}
+
 export async function requestPasswordReset(payload) {
   return apiRequest('/auth/request-password-reset', { method: 'POST', body: withTrustedDevicePayload(payload) });
 }
@@ -101,7 +185,7 @@ export function hasTrustedDeviceGrant(email) {
 
 export function getLastAuthEmail() {
   try {
-    const remembered = String(localStorage.getItem(LAST_AUTH_EMAIL_KEY) || '').trim().toLowerCase();
+    const remembered = String(getLocalStorageSafe()?.getItem(LAST_AUTH_EMAIL_KEY) || '').trim().toLowerCase();
     if (remembered) return remembered;
 
     const currentDeviceId = getOrCreateTrustedDeviceId();
@@ -114,7 +198,7 @@ export function getLastAuthEmail() {
     ))?.[0] || '';
 
     if (fallbackEmail) {
-      localStorage.setItem(LAST_AUTH_EMAIL_KEY, fallbackEmail);
+      getLocalStorageSafe()?.setItem(LAST_AUTH_EMAIL_KEY, fallbackEmail);
     }
 
     return fallbackEmail;
@@ -159,20 +243,15 @@ function savePendingAuthRedirectProof(proof) {
 function clearPendingAuthRedirectProof() {
   try {
     getAuthRedirectProofStorage().removeItem(AUTH_REDIRECT_PROOF_KEY);
-    localStorage.removeItem(AUTH_REDIRECT_PROOF_KEY);
+    getLocalStorageSafe()?.removeItem(AUTH_REDIRECT_PROOF_KEY);
   } catch {
     // no-op
   }
 }
 
 function getAuthRedirectProofStorage() {
-  try {
-    if (typeof sessionStorage !== 'undefined') {
-      return sessionStorage;
-    }
-  } catch {
-    // no-op
-  }
+  const session = getSessionStorageSafe();
+  if (session) return session;
 
   return {
     getItem() {
@@ -277,7 +356,7 @@ export async function signOut() {
 
 export function getStoredProfile() {
   try {
-    const raw = localStorage.getItem(PROFILE_KEY) || localStorage.getItem(LEGACY_PROFILE_KEY);
+    const raw = readSessionScopedValue([PROFILE_KEY, LEGACY_PROFILE_KEY]);
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
@@ -393,8 +472,7 @@ function handleAuthResponse(res) {
 function saveStoredProfile(profile) {
   try {
     const serialized = JSON.stringify(profile || null);
-    localStorage.setItem(PROFILE_KEY, serialized);
-    localStorage.setItem(LEGACY_PROFILE_KEY, serialized);
+    writeSessionScopedValue([PROFILE_KEY, LEGACY_PROFILE_KEY], serialized);
   } catch {
     // no-op
   }
@@ -402,8 +480,7 @@ function saveStoredProfile(profile) {
 
 function clearStoredProfile() {
   try {
-    localStorage.removeItem(PROFILE_KEY);
-    localStorage.removeItem(LEGACY_PROFILE_KEY);
+    clearSessionScopedValue([PROFILE_KEY, LEGACY_PROFILE_KEY]);
   } catch {
     // no-op
   }
@@ -413,7 +490,7 @@ function saveLastAuthEmail(email) {
   const normalizedEmail = String(email || '').trim().toLowerCase();
   if (!normalizedEmail) return;
   try {
-    localStorage.setItem(LAST_AUTH_EMAIL_KEY, normalizedEmail);
+    getLocalStorageSafe()?.setItem(LAST_AUTH_EMAIL_KEY, normalizedEmail);
   } catch {
     // no-op
   }
@@ -429,10 +506,10 @@ function withTrustedDevicePayload(payload = {}) {
 
 function getOrCreateTrustedDeviceId() {
   try {
-    const existing = localStorage.getItem(TRUSTED_DEVICE_ID_KEY);
+    const existing = getLocalStorageSafe()?.getItem(TRUSTED_DEVICE_ID_KEY);
     if (existing) return existing;
     const next = (globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`).slice(0, 190);
-    localStorage.setItem(TRUSTED_DEVICE_ID_KEY, next);
+    getLocalStorageSafe()?.setItem(TRUSTED_DEVICE_ID_KEY, next);
     return next;
   } catch {
     return `device-${Date.now()}`;
@@ -451,7 +528,7 @@ function getTrustedDeviceLabel() {
 
 function getTrustedDeviceMap() {
   try {
-    const raw = localStorage.getItem(TRUSTED_DEVICE_MAP_KEY);
+    const raw = getLocalStorageSafe()?.getItem(TRUSTED_DEVICE_MAP_KEY);
     const parsed = raw ? JSON.parse(raw) : {};
     return parsed && typeof parsed === 'object' ? parsed : {};
   } catch {
@@ -470,7 +547,7 @@ function saveTrustedDeviceGrant(email, grant) {
       expiresAt: String(grant.expiresAt || ''),
       label: String(grant.label || ''),
     };
-    localStorage.setItem(TRUSTED_DEVICE_MAP_KEY, JSON.stringify(next));
+    getLocalStorageSafe()?.setItem(TRUSTED_DEVICE_MAP_KEY, JSON.stringify(next));
   } catch {
     // no-op
   }

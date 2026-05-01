@@ -50,12 +50,19 @@ export function normalizeAthleteOverviewState(athleteOverview) {
   if (!Array.isArray(next.recentWorkouts)) next.recentWorkouts = [];
   if (!Array.isArray(next.checkinSessions)) next.checkinSessions = [];
   if (!Array.isArray(next.benchmarkHistory)) next.benchmarkHistory = [];
+  if (!Array.isArray(next.benchmarkLibrary)) next.benchmarkLibrary = [];
+  if (!next.benchmarkLibraryPagination || typeof next.benchmarkLibraryPagination !== 'object') {
+    next.benchmarkLibraryPagination = { total: 0, page: 1, limit: 12, pages: 1 };
+  }
+  if (typeof next.benchmarkLibraryQuery !== 'string') next.benchmarkLibraryQuery = '';
+  if (!next.selectedBenchmark || typeof next.selectedBenchmark !== 'object') next.selectedBenchmark = null;
   if (!Array.isArray(next.prHistory)) next.prHistory = [];
   if (!next.prCurrent || typeof next.prCurrent !== 'object') next.prCurrent = {};
   if (!Array.isArray(next.measurements)) next.measurements = [];
   if (!Array.isArray(next.runningHistory)) next.runningHistory = [];
   if (!Array.isArray(next.strengthHistory)) next.strengthHistory = [];
   if (!Array.isArray(next.gymAccess)) next.gymAccess = [];
+  if (!next.profileCard || typeof next.profileCard !== 'object') next.profileCard = null;
   if (!next.personalSubscription || typeof next.personalSubscription !== 'object') next.personalSubscription = null;
   if (!next.athleteBenefits || typeof next.athleteBenefits !== 'object') next.athleteBenefits = null;
 

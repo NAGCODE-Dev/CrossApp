@@ -202,7 +202,7 @@ Sair de uma base web única com fronteiras implícitas e chegar em uma plataform
 - `in_progress` Reduzir acoplamento entre rotas e regras de acesso
 - `pending` Consolidar contratos de resposta por superfície
 - `in_progress` Reduzir recomputação no frontend com endpoints mais específicos
-- `done` Expor `GET /leaderboards/benchmarks/:slug` consumido pelo coach portal
+- `done` Expor `GET /benchmarks/:slug` consumido pelo coach portal
 - `done` Expor `POST /benchmarks/:slug/results` para registro de resultado autenticado
 
 ## Fase 6. Mobile/PWA/APK

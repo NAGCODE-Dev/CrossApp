@@ -57,8 +57,11 @@ export async function listGymClassSessions({ gymId, sportType = 'cross', limit =
        gc.*,
        gm.role AS membership_role,
        gm.status AS membership_status,
-       COALESCE(u.name, u.email, gm.pending_email, 'Convidado') AS attendee_label,
-       COALESCE(u.email, gm.pending_email, '') AS attendee_email
+       COALESCE(u.display_name, u.name, u.email, gm.pending_email, 'Convidado') AS attendee_label,
+       COALESCE(u.email, gm.pending_email, '') AS attendee_email,
+       u.name AS attendee_name,
+       u.display_name AS attendee_display_name,
+       u.attendance_display AS attendee_attendance_display
      FROM gym_class_checkins gc
      JOIN gym_memberships gm ON gm.id = gc.gym_membership_id
      LEFT JOIN users u ON u.id = gm.user_id
@@ -84,6 +87,9 @@ export async function listGymClassSessions({ gymId, sportType = 'cross', limit =
       updatedAt: row.updated_at,
       attendeeLabel: row.attendee_label,
       attendeeEmail: row.attendee_email,
+      attendeeName: row.attendee_name,
+      attendeeDisplayName: row.attendee_display_name,
+      attendeeAttendanceDisplay: row.attendee_attendance_display,
       membershipRole: row.membership_role,
       membershipStatus: row.membership_status,
     });

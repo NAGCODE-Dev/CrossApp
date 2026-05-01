@@ -32,7 +32,7 @@ export function renderAthleteImportModal(state = {}, helpers = {}) {
         <div class="modal-body modal-body-auth">
           <div class="auth-intro">
             <div class="section-kicker">Importação</div>
-            <p class="account-hint">${importBusy ? 'Estamos processando seu arquivo. Aguarde para importar outro.' : 'Escolha o tipo de arquivo.'}</p>
+            <p class="account-hint">${importBusy ? 'Estamos processando seu arquivo. Aguarde para importar outro.' : 'Use PDF, imagem, texto ou um arquivo salvo.'}</p>
           </div>
           ${(importStatus?.active || importStatus?.message) ? `
             <div class="import-statusCard is-${escapeHtml(importStatus.tone || 'idle')}" id="ui-importStatus">
@@ -124,11 +124,11 @@ export function renderAthleteImportModal(state = {}, helpers = {}) {
             <div class="coach-grid">
               <button class="quick-action quick-action-modal" data-action="pdf:pick" type="button" ${importBusy ? 'disabled aria-disabled="true"' : ''}>
                 <span class="quick-actionIcon">PDF</span>
-                <span class="quick-actionLabel">Planilha em PDF</span>
+                <span class="quick-actionLabel">Treino em PDF</span>
               </button>
               <button class="quick-action quick-action-modal" data-action="media:pick" type="button" ${importBusy ? 'disabled aria-disabled="true"' : ''}>
                 <span class="quick-actionIcon">ARQ</span>
-                <span class="quick-actionLabel">Imagem, vídeo, planilha ou texto</span>
+                <span class="quick-actionLabel">Imagem ou texto</span>
               </button>
               <button class="quick-action quick-action-modal" data-action="workout:import" type="button" ${importBusy ? 'disabled aria-disabled="true"' : ''}>
                 <span class="quick-actionIcon">JSON</span>

@@ -108,8 +108,9 @@
   }
 
   .bottom-nav {
-    top: calc(var(--safe-top) + 44px);
-    padding: 4px 8px 6px;
+    top: auto;
+    inset: auto 0 0;
+    padding: 8px 8px calc(var(--safe-bottom) + 8px);
   }
 
   .bottom-navItems {
@@ -119,7 +120,7 @@
   }
 
   .nav-btn {
-    min-height: 38px;
+    min-height: 48px;
     border-radius: 12px;
   }
 
@@ -130,6 +131,14 @@
   .nav-label {
     font-size: 0.62rem;
     letter-spacing: 0.02em;
+  }
+
+  body[data-bottom-nav="compact"] .bottom-navItems {
+    width: min(100%, 360px);
+  }
+
+  body[data-bottom-nav="compact"] .nav-btn {
+    min-height: 42px;
   }
 
   .summary-strip,
@@ -432,11 +441,14 @@
     line-height: 1.05;
   }
 
-  .account-viewTabs,
   .account-choiceGrid,
   .account-toneGrid,
   .account-dataGrid {
     grid-template-columns: 1fr;
+  }
+
+  .account-viewTabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .pr-actionsRow {
@@ -558,8 +570,9 @@
   }
 
   .bottom-nav {
-    top: calc(var(--safe-top) + 40px);
-    padding: 4px 7px 6px;
+    top: auto;
+    inset: auto 0 0;
+    padding: 8px 7px calc(var(--safe-bottom) + 8px);
   }
 
   .bottom-navItems {
@@ -568,13 +581,21 @@
   }
 
   .nav-btn {
-    min-height: 36px;
+    min-height: 46px;
     border-radius: 10px;
   }
 
   .nav-label {
     font-size: 0.62rem;
     letter-spacing: 0.02em;
+  }
+
+  body[data-bottom-nav="compact"] .bottom-navItems {
+    width: min(100%, 340px);
+  }
+
+  body[data-bottom-nav="compact"] .nav-btn {
+    min-height: 40px;
   }
 
   .summary-strip,
@@ -739,7 +760,7 @@
   }
 
   body[data-native-app="true"] .nav-icon {
-    display: none;
+    display: inline-flex;
   }
 
   body[data-native-app="true"] .nav-label {

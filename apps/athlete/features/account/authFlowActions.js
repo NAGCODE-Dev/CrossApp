@@ -40,6 +40,20 @@ export async function handleAthleteAuthFlowAction(action, context) {
       return true;
     }
 
+    case 'auth:toggle-password': {
+      const form = root.querySelector('#ui-authForm');
+      const passwordInput = root.querySelector('#auth-password');
+      if (form instanceof HTMLElement) {
+        const nextVisible = form.dataset.passwordVisible !== 'true';
+        form.dataset.passwordVisible = nextVisible ? 'true' : 'false';
+      }
+      if (passwordInput instanceof HTMLInputElement) {
+        passwordInput.focus();
+      }
+      await applyUiPatch((state) => state, { ensureGoogle: false });
+      return true;
+    }
+
     case 'auth:signup-request-code': {
       const name = String(root.querySelector('#auth-name')?.value || '').trim();
       const email = String(root.querySelector('#auth-email')?.value || '').trim().toLowerCase();

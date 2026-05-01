@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { fetchWithTimeout } from './http.js';
 import 'dotenv/config';
 
 import { pool } from './db.js';
@@ -449,7 +450,7 @@ function createResendProvider({ name, apiKey, from }) {
     kind: 'resend',
     from: from || SUPPORT_EMAIL,
     async send({ from: emailFrom, to, subject, text }) {
-      const response = await fetch(`${RESEND_API_BASE_URL}/emails`, {
+      const response = await fetchWithTimeout(`${RESEND_API_BASE_URL}/emails`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -461,7 +462,7 @@ function createResendProvider({ name, apiKey, from }) {
           subject,
           text,
         }),
-      });
+      }, 12000);
 
       const data = await response.json().catch(() => null);
       if (!response.ok) {
@@ -476,12 +477,12 @@ function createResendProvider({ name, apiKey, from }) {
       };
     },
     async verify() {
-      const response = await fetch(`${RESEND_API_BASE_URL}/domains`, {
+      const response = await fetchWithTimeout(`${RESEND_API_BASE_URL}/domains`, {
         method: 'GET',
         headers: {
           Authorization: `Bearer ${apiKey}`,
         },
-      });
+      }, 12000);
 
       if (!response.ok) {
         const data = await response.json().catch(() => null);

@@ -214,3 +214,27 @@ export async function createBenchmarkResult({ slug, userId, gymId, sportType, sc
     result: inserted.rows[0] || null,
   };
 }
+
+export async function getViewerBenchmarkResult({ slug, userId, sportType, gymId = null }) {
+  const pool = await getPool();
+  const params = [slug, userId, sportType];
+  let gymClause = '';
+  if (Number.isFinite(gymId)) {
+    params.push(gymId);
+    gymClause = `AND gym_id = $${params.length}`;
+  }
+
+  const result = await pool.query(
+    `SELECT id, score_display, score_value, notes, created_at, gym_id
+     FROM benchmark_results
+     WHERE benchmark_slug = $1
+       AND user_id = $2
+       AND sport_type = $3
+       ${gymClause}
+     ORDER BY created_at DESC, id DESC
+     LIMIT 1`,
+    params,
+  );
+
+  return result.rows[0] || null;
+}

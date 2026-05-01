@@ -1,7 +1,5 @@
 import { previewMultiWeekPdf, saveParsedWeeks } from '../../src/adapters/pdf/pdfRepository.js';
 import { isImageFile, extractTextFromImageFile } from '../../src/adapters/media/ocrReader.js';
-import { isVideoFile, extractTextFromVideoFile } from '../../src/adapters/media/videoTextReader.js';
-import { isSpreadsheetFile, extractTextFromSpreadsheetFile } from '../../src/adapters/spreadsheet/spreadsheetReader.js';
 import { importWorkoutAsWeeks } from '../../src/core/usecases/exportWorkout.js';
 import { classifyUniversalImportFile, isPdfImportFile, isTextLikeImportFile } from '../../src/app/importFileTypes.js';
 import { parseTextIntoWeeks, prepareImportTextForParsing } from '../../src/app/workoutHelpers.js';
@@ -172,24 +170,6 @@ export function createAthleteImportReviewAdapter({
           source,
         });
         rawText = await extractTextFromImageFile(file);
-      } else if (isVideoFile(file)) {
-        source = 'video';
-        rawText = await extractTextFromVideoFile(file, {
-          onProgress: (progress) => onProgress({
-            fileName: file.name,
-            source,
-            ...progress,
-          }),
-        });
-      } else if (isSpreadsheetFile(file)) {
-        source = 'spreadsheet';
-        rawText = await extractTextFromSpreadsheetFile(file, {
-          onProgress: (progress) => onProgress({
-            fileName: file.name,
-            source,
-            ...progress,
-          }),
-        });
       } else if (isTextLikeImportFile(file)) {
         source = 'text';
         rawText = await file.text();

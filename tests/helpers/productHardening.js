@@ -418,7 +418,6 @@ export async function installCoachDashboardRoutes(page, {
     if (
       pathname.startsWith('/competitions/')
       || pathname === '/competitions/calendar'
-      || pathname.startsWith('/leaderboards/benchmarks/')
     ) {
       return fulfillJson(route, { error: 'not_found' }, 404);
     }

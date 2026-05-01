@@ -44,22 +44,19 @@ export function renderGuestAuthView({
           <form class="auth-form" id="ui-authForm">
             <input class="add-input" id="auth-name" type="text" placeholder="Seu nome" autocomplete="name" value="${escapeHtml(signupVerification.name || '')}" ${isSignup ? '' : 'style="display:none"'} />
             <input class="add-input" id="auth-email" type="email" inputmode="email" autocapitalize="off" autocomplete="email username" placeholder="Seu email" value="${escapeHtml(initialEmail)}" />
-            <input class="add-input" id="auth-password" type="password" autocomplete="${isSignup ? 'new-password' : 'current-password'}" placeholder="${escapeHtml(isSignup ? 'Sua senha' : trustedDeviceUi.passwordPlaceholder)}" />
+            <div data-auth-password-shell ${!isSignup && trustedDeviceUi.isTrusted ? 'hidden' : ''}>
+              <input class="add-input" id="auth-password" type="password" autocomplete="${isSignup ? 'new-password' : 'current-password'}" placeholder="${escapeHtml(isSignup ? 'Sua senha' : trustedDeviceUi.passwordPlaceholder)}" />
+            </div>
             ${!isSignup ? renderTrustedDeviceStatus({ email: initialEmail, escapeHtml }) : ''}
             ${isSignup ? renderSignupVerificationBox({ signupVerification, escapeHtml }) : ''}
+            ${!isSignup ? `
+              <button class="btn-secondary" data-action="auth:toggle-password" type="button" ${trustedDeviceUi.isTrusted ? '' : 'hidden'}>
+                Usar senha
+              </button>
+            ` : ''}
             <button class="btn-primary auth-submitButton" data-action="auth:submit" data-mode="${escapeHtml(authMode)}" type="button">
               ${isSignup ? 'Criar conta com código' : escapeHtml(trustedDeviceUi.submitLabel)}
             </button>
-            ${!isSignup ? `
-              <button
-                class="btn-secondary auth-trustedSubmitButton"
-                data-action="auth:trusted-submit"
-                type="button"
-                ${trustedDeviceUi.isTrusted ? '' : 'hidden'}
-              >
-                ${escapeHtml(trustedDeviceUi.trustedSubmitLabel)}
-              </button>
-            ` : ''}
             ${!isSignup && reset?.message && !reset?.open ? `
               <p class="account-hint auth-inlineStatus">${escapeHtml(reset.message)}</p>
             ` : ''}

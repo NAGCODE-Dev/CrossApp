@@ -9,6 +9,7 @@ import {
   markGymClassCheckIn,
   reserveGymClassSessionForMembership,
 } from '../services/gymOperationsServices.js';
+import { getAttendanceDisplayLabel } from '../userProfiles.js';
 import {
   loadAthleteAccessSnapshot,
   loadAthleteResultsBlock,
@@ -22,6 +23,37 @@ import {
 } from '../services/athleteWriteServices.js';
 import { createRunningLog, createStrengthLog } from '../services/athleteLogServices.js';
 import { normalizeSportType } from '../utils/sportType.js';
+
+function serializeAthleteVisibleCheckinEntry(entry, userId) {
+  if (!entry || typeof entry !== 'object') return null;
+  if (!['reserved', 'checked_in'].includes(String(entry.status || '').trim().toLowerCase())) return null;
+  return {
+    displayName: getAttendanceDisplayLabel(entry),
+    status: entry.status,
+    isSelf: Number(entry.userId) === Number(userId),
+  };
+}
+
+export function serializeAthleteVisibleCheckinSession(session, userId) {
+  if (!session || typeof session !== 'object') return session;
+  const rawEntries = Array.isArray(session.entries) ? session.entries : [];
+  const entries = rawEntries
+    .map((entry) => serializeAthleteVisibleCheckinEntry(entry, userId))
+    .filter(Boolean)
+    .sort((left, right) => {
+      if (left.isSelf && !right.isSelf) return -1;
+      if (!left.isSelf && right.isSelf) return 1;
+      return String(left.displayName || '').localeCompare(String(right.displayName || ''), 'pt-BR');
+    });
+
+  const selfEntry = rawEntries.find((entry) => Number(entry?.userId) === Number(userId)) || null;
+
+  return {
+    ...session,
+    viewerStatus: selfEntry?.status || null,
+    entries,
+  };
+}
 
 export function createAthleteRouter({ buildBenchmarkTrendSeries, buildPrTrendSeries }) {
   const router = express.Router();
@@ -129,10 +161,7 @@ export function createAthleteRouter({ buildBenchmarkTrendSeries, buildPrTrendSer
 
     const payload = await listGymClassSessions({ gymId, sportType, limit, from });
     return res.json({
-      sessions: (payload.sessions || []).map((session) => ({
-        ...session,
-        entries: [],
-      })),
+      sessions: (payload.sessions || []).map((session) => serializeAthleteVisibleCheckinSession(session, req.user.userId)),
     });
   });
 

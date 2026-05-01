@@ -28,8 +28,6 @@
     "android:assemble:debug": "cd android && ./gradlew assembleDebug",
     "android:assemble:release": "cd android && ./gradlew assembleRelease",
     "android:bundle:release": "cd android && ./gradlew bundleRelease",
-    "generate:import-fixtures": "node scripts/generate-import-fixtures.mjs",
-    "report:import-support": "node scripts/report-import-format-support.mjs",
     "test": "npm run test:node && npm run test:athlete-react",
     "test:node": "node --test __tests__/*.test.mjs",
     "test:athlete-react": "vitest run --config apps/athlete-react/vite.config.mjs",
@@ -50,12 +48,12 @@
     "@capacitor/app": "^6.0.3",
     "@capacitor/cli": "^6.2.1",
     "@capacitor/core": "^6.2.1",
-    "@lokalise/xlsx": "^0.20.3",
     "@sentry/browser": "^8.33.1",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "tesseract.js": "^5.1.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.24.0",

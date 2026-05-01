@@ -3,9 +3,11 @@ import {
   KIWIFY_CLIENT_ID,
   KIWIFY_CLIENT_SECRET,
 } from './config.js';
+import { fetchWithTimeout, safeReadJsonResponse } from './http.js';
 
 const TOKEN_URL = 'https://public-api.kiwify.com/v1/oauth/token';
 const SALES_URL = 'https://public-api.kiwify.com/v1/sales';
+const KIWIFY_TIMEOUT_MS = 12000;
 
 let tokenCache = {
   accessToken: '',
@@ -26,16 +28,16 @@ export async function getKiwifySaleById(saleId) {
   }
 
   const accessToken = await getKiwifyAccessToken();
-  const response = await fetch(`${SALES_URL}/${encodeURIComponent(normalizedSaleId)}`, {
+  const response = await fetchWithTimeout(`${SALES_URL}/${encodeURIComponent(normalizedSaleId)}`, {
     method: 'GET',
     headers: {
       Accept: 'application/json',
       Authorization: `Bearer ${accessToken}`,
       'x-kiwify-account-id': KIWIFY_ACCOUNT_ID,
     },
-  });
+  }, KIWIFY_TIMEOUT_MS);
 
-  const data = await safeReadJson(response);
+  const data = await safeReadJsonResponse(response);
   if (!response.ok) {
     throw new Error(data?.message || data?.error || `Falha ao consultar venda na Kiwify (${response.status})`);
   }
@@ -55,16 +57,16 @@ async function getKiwifyAccessToken() {
   });
   body.set('grant_type', 'client_credentials');
 
-  const response = await fetch(TOKEN_URL, {
+  const response = await fetchWithTimeout(TOKEN_URL, {
     method: 'POST',
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/x-www-form-urlencoded',
     },
     body,
-  });
+  }, KIWIFY_TIMEOUT_MS);
 
-  const data = await safeReadJson(response);
+  const data = await safeReadJsonResponse(response);
   if (!response.ok || !data?.access_token) {
     throw new Error(data?.message || data?.error || `Falha ao autenticar na Kiwify (${response.status})`);
   }
@@ -76,12 +78,4 @@ async function getKiwifyAccessToken() {
   };
 
   return tokenCache.accessToken;
-}
-
-async function safeReadJson(response) {
-  try {
-    return await response.json();
-  } catch {
-    return null;
-  }
 }

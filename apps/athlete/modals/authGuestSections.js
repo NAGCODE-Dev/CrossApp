@@ -1,10 +1,10 @@
 export function renderGuestIntroSection({ isSignup }) {
   return `
     <div class="auth-intro auth-intro-auth">
-      <div class="section-kicker">${isSignup ? 'Nova conta' : 'Acesso rápido'}</div>
+      <div class="section-kicker">${isSignup ? 'Nova conta' : 'Acesso'}</div>
       <p class="account-hint">${isSignup
-        ? 'Crie sua conta para salvar treino e progresso neste aparelho.'
-        : 'Entre para retomar treino e progresso de onde parou.'}</p>
+        ? 'Crie sua conta para salvar treino e progresso.'
+        : 'Entre para continuar de onde parou.'}</p>
     </div>
   `;
 }
@@ -23,7 +23,7 @@ export function renderSignupVerificationBox({ signupVerification, escapeHtml }) 
     <div class="auth-signupVerify">
       <div class="auth-inlineSectionHead">
         <strong>Confirmar email</strong>
-        <span class="account-hint">Use o código enviado para liberar a conta.</span>
+        <span class="account-hint">Use o código enviado.</span>
       </div>
       <button class="btn-secondary" data-action="auth:signup-request-code" type="button">Enviar código</button>
       <input class="add-input" id="auth-signup-code" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="Código de verificação" value="${escapeHtml(signupVerification.code || signupVerification.previewCode || '')}" />
@@ -37,7 +37,7 @@ export function renderSignupVerificationBox({ signupVerification, escapeHtml }) 
           Abrir preview do email
         </a>
       ` : ''}
-      <p class="account-hint">Digite o código enviado ao seu email.</p>
+      <p class="account-hint">Digite o código.</p>
     </div>
   `;
 }
@@ -59,7 +59,7 @@ export function renderPasswordResetBox({ reset, escapeHtml }) {
         <div class="auth-resetBody">
           <div class="auth-inlineSectionHead">
             <strong>Recuperar acesso</strong>
-            <span class="account-hint">Código por email ou liberação assistida dentro do app.</span>
+            <span class="account-hint">Receba um código por email.</span>
           </div>
           <div class="auth-resetRow">
             <input class="add-input" id="reset-email" type="email" inputmode="email" autocapitalize="off" autocomplete="email username" placeholder="Email da conta" value="${escapeHtml(reset.email || '')}" />

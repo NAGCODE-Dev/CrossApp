@@ -4,6 +4,7 @@ import {
   renderAccountCheckinSection,
   renderAccountCoachPortalSection,
   renderAccountDataSections,
+  renderAccountProfileSection,
   renderAccountPreferencesSections,
   renderGuestBenefitsSection,
   renderGuestCoachPortalSection,
@@ -52,6 +53,11 @@ export function renderAthleteAccountPage(state, helpers) {
     athleteResults,
     athleteWorkouts,
     checkinSessions,
+    measurements,
+    runningHistory,
+    strengthHistory,
+    profileCard,
+    personalSubscription,
     preferences,
     accountView,
     isSummaryLoading,
@@ -71,7 +77,11 @@ export function renderAthleteAccountPage(state, helpers) {
         ${renderPageHero({
           eyebrow: 'Conta',
           title: 'Sua conta',
-          subtitle: accountView === 'preferences'
+          subtitle: accountView === 'profile'
+            ? 'Identidade pública, gyms e coaches.'
+            : accountView === 'checkins'
+              ? 'Aulas, presença e reservas do gym.'
+            : accountView === 'preferences'
             ? 'Visual e treino deste aparelho.'
             : accountView === 'data'
               ? 'Backup e dados locais.'
@@ -82,6 +92,8 @@ export function renderAthleteAccountPage(state, helpers) {
           footer: `
             <div class="account-viewTabs" role="tablist" aria-label="Seções da conta">
               ${renderAccountViewButton('overview', accountView, 'Visão geral', 'entrada e benefícios')}
+              ${renderAccountViewButton('profile', accountView, 'Perfil', 'nome, foto e gym')}
+              ${renderAccountViewButton('checkins', accountView, 'Aulas', 'check-ins e presença')}
               ${renderAccountViewButton('preferences', accountView, 'Preferências', 'visual e treino')}
               ${renderAccountViewButton('data', accountView, 'Dados', 'backup e documentos')}
             </div>
@@ -93,6 +105,10 @@ export function renderAthleteAccountPage(state, helpers) {
             preferences,
             escapeHtml,
           })
+          : accountView === 'profile'
+            ? renderGuestBenefitsSection(renderPageFold)
+            : accountView === 'checkins'
+              ? renderGuestCoachPortalSection(renderPageFold)
           : accountView === 'data'
             ? renderAccountDataSections(renderPageFold, {
               profileEmail: '',
@@ -114,12 +130,16 @@ export function renderAthleteAccountPage(state, helpers) {
     <div class="${containerClass}">
       ${renderPageHero({
         eyebrow: 'Conta',
-        title: profile.name || 'Sua conta',
-          subtitle: accountView === 'preferences'
+        title: profile.display_name || profile.name || 'Sua conta',
+          subtitle: accountView === 'profile'
+            ? 'Seu perfil social, gyms e coaches visíveis.'
+          : accountView === 'checkins'
+            ? 'Agenda do gym, presença e vagas.'
+          : accountView === 'preferences'
             ? 'Aparência e treino.'
           : accountView === 'data'
             ? 'Backup, privacidade e dados locais.'
-            : 'Conta, acesso e backup local.',
+            : 'Conta, acesso, atividade e visão geral.',
         actions: `
           <button class="btn-secondary" data-action="auth:refresh" type="button">Atualizar</button>
           <button class="btn-primary" data-action="auth:signout" type="button">Sair</button>
@@ -127,6 +147,8 @@ export function renderAthleteAccountPage(state, helpers) {
         footer: `
           <div class="account-viewTabs" role="tablist" aria-label="Seções da conta">
             ${renderAccountViewButton('overview', accountView, 'Visão geral', 'status e atividade')}
+            ${renderAccountViewButton('profile', accountView, 'Perfil', 'nome, gym e coach')}
+            ${renderAccountViewButton('checkins', accountView, 'Aulas', 'check-ins e lista')}
             ${renderAccountViewButton('preferences', accountView, 'Preferências', 'aparência e treino')}
             ${renderAccountViewButton('data', accountView, 'Dados', 'backup e documentos')}
           </div>
@@ -140,6 +162,22 @@ export function renderAthleteAccountPage(state, helpers) {
           preferences,
           escapeHtml,
         })
+        : accountView === 'profile'
+          ? renderAccountProfileSection(renderPageFold, {
+            profile,
+            profileCard,
+            planName,
+            planStatus,
+            escapeHtml,
+          })
+        : accountView === 'checkins'
+          ? renderAccountCheckinSection(renderPageFold, {
+            selectedGym,
+            selectedGymId,
+            checkinSessions,
+            isCheckinsLoading,
+            escapeHtml,
+          })
         : accountView === 'data'
           ? renderAccountDataSections(renderPageFold, {
             profileEmail: profile.email,
@@ -154,7 +192,7 @@ export function renderAthleteAccountPage(state, helpers) {
               isBusy,
               coachPortalStatus: coachPortal?.status,
               isSummaryLoading,
-              profileName: profile.name,
+              profileName: profile.display_name || profile.name,
               profileEmail: profile.email,
               planName,
               planStatus,
@@ -162,6 +200,8 @@ export function renderAthleteAccountPage(state, helpers) {
               athleteBenefitSource,
               resultsLogged: athleteStats?.resultsLogged,
               importUsage,
+              gymAccess,
+              personalSubscription,
               escapeHtml,
             })}
 
@@ -178,16 +218,34 @@ export function renderAthleteAccountPage(state, helpers) {
             ${renderAccountActivitySection(renderPageFold, {
               isResultsLoading,
               isWorkoutsLoading,
-              athleteResultsCount: athleteResults.length,
-              athleteWorkoutsCount: athleteWorkouts.length,
+              athleteResults,
+              athleteWorkouts,
+              escapeHtml,
             })}
 
-            ${renderAccountCheckinSection(renderPageFold, {
-              selectedGym,
-              selectedGymId,
-              checkinSessions,
-              isCheckinsLoading,
-              escapeHtml,
+            ${renderPageFold({
+              title: 'Evolução rápida',
+              subtitle: 'Atalhos para o que já existe na sua conta.',
+              content: `
+                <div class="coach-list coach-listCompact">
+                  <div class="coach-listItem static">
+                    <strong>Medidas corporais</strong>
+                    <span>${measurements.length ? `${measurements.length} registro(s) sincronizado(s)` : 'Nenhuma medida sincronizada ainda.'}</span>
+                  </div>
+                  <div class="coach-listItem static">
+                    <strong>Corrida</strong>
+                    <span>${runningHistory.length ? `${runningHistory.length} sessão(ões) recente(s)` : 'Sem sessões recentes.'}</span>
+                  </div>
+                  <div class="coach-listItem static">
+                    <strong>Força</strong>
+                    <span>${strengthHistory.length ? `${strengthHistory.length} sessão(ões) recente(s)` : 'Sem sessões recentes.'}</span>
+                  </div>
+                </div>
+                <div class="page-actions">
+                  <button class="btn-secondary" data-action="page:set" data-page="history" data-history-view="body" type="button">Abrir corpo</button>
+                  <button class="btn-secondary" data-action="page:set" data-page="history" data-history-view="sessions" type="button">Abrir sessões</button>
+                </div>
+              `,
             })}
           `}
     </div>

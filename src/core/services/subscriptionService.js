@@ -5,6 +5,28 @@ import { getRuntimeConfig } from '../../config/runtime.js';
 const CHECKOUT_INTENT_KEY = 'ryxen-pending-checkout-v1';
 const LEGACY_CHECKOUT_INTENT_KEY = 'crossapp-pending-checkout-v1';
 
+function getSessionStorageSafe() {
+  try {
+    if (typeof sessionStorage !== 'undefined') return sessionStorage;
+  } catch {
+    // no-op
+  }
+  return null;
+}
+
+function getLocalStorageSafe() {
+  try {
+    if (typeof localStorage !== 'undefined') return localStorage;
+  } catch {
+    // no-op
+  }
+  return null;
+}
+
+function getCheckoutIntentStorage() {
+  return getSessionStorageSafe() || getLocalStorageSafe();
+}
+
 /**
  * Billing orchestration for Kiwify link checkout and local mock activation.
  */
@@ -56,8 +78,14 @@ export function queueCheckoutIntent(planId, options = {}) {
 
   try {
     const serialized = JSON.stringify(next);
-    localStorage.setItem(CHECKOUT_INTENT_KEY, serialized);
-    localStorage.setItem(LEGACY_CHECKOUT_INTENT_KEY, serialized);
+    const storage = getCheckoutIntentStorage();
+    const local = getLocalStorageSafe();
+    storage?.setItem(CHECKOUT_INTENT_KEY, serialized);
+    storage?.setItem(LEGACY_CHECKOUT_INTENT_KEY, serialized);
+    if (storage !== local) {
+      local?.removeItem(CHECKOUT_INTENT_KEY);
+      local?.removeItem(LEGACY_CHECKOUT_INTENT_KEY);
+    }
   } catch {
     // no-op
   }
@@ -66,8 +94,13 @@ export function queueCheckoutIntent(planId, options = {}) {
 }
 
 export function peekCheckoutIntent() {
+  const storage = getCheckoutIntentStorage();
+  const local = getLocalStorageSafe();
   try {
-    const raw = localStorage.getItem(CHECKOUT_INTENT_KEY) || localStorage.getItem(LEGACY_CHECKOUT_INTENT_KEY);
+    const raw = storage?.getItem(CHECKOUT_INTENT_KEY)
+      || storage?.getItem(LEGACY_CHECKOUT_INTENT_KEY)
+      || local?.getItem(CHECKOUT_INTENT_KEY)
+      || local?.getItem(LEGACY_CHECKOUT_INTENT_KEY);
     const parsed = raw ? JSON.parse(raw) : null;
     if (!parsed?.planId) return null;
     return parsed;
@@ -77,9 +110,13 @@ export function peekCheckoutIntent() {
 }
 
 export function clearCheckoutIntent() {
+  const session = getSessionStorageSafe();
+  const local = getLocalStorageSafe();
   try {
-    localStorage.removeItem(CHECKOUT_INTENT_KEY);
-    localStorage.removeItem(LEGACY_CHECKOUT_INTENT_KEY);
+    session?.removeItem(CHECKOUT_INTENT_KEY);
+    session?.removeItem(LEGACY_CHECKOUT_INTENT_KEY);
+    local?.removeItem(CHECKOUT_INTENT_KEY);
+    local?.removeItem(LEGACY_CHECKOUT_INTENT_KEY);
   } catch {
     // no-op
   }

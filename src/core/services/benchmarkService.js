@@ -11,3 +11,12 @@ export async function getBenchmarks(params = {}) {
   const suffix = search.toString() ? `?${search.toString()}` : '';
   return apiRequest(`/benchmarks${suffix}`, { method: 'GET' });
 }
+
+export async function getBenchmarkDetail(slug, params = {}) {
+  const search = new URLSearchParams();
+  if (params.sportType) search.set('sportType', params.sportType);
+  if (params.gymId) search.set('gymId', String(params.gymId));
+  if (params.limit) search.set('limit', String(params.limit));
+  const suffix = search.toString() ? `?${search.toString()}` : '';
+  return apiRequest(`/benchmarks/${encodeURIComponent(String(slug || '').trim().toLowerCase())}${suffix}`, { method: 'GET' });
+}

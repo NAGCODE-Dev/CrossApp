@@ -18,10 +18,6 @@ export function createImportExportDomain({
   saveParsedWeeks,
   isImageFile,
   extractTextFromImageFile,
-  isVideoFile,
-  extractTextFromVideoFile,
-  isSpreadsheetFile,
-  extractTextFromSpreadsheetFile,
   isPdfImportFile,
   isTextLikeImportFile,
   classifyUniversalImportFile,
@@ -397,34 +393,6 @@ export function createImportExportDomain({
           message: 'Lendo texto da imagem...',
         });
         rawText = await extractTextFromImageFile(file);
-      } else if (isVideoFile(file)) {
-        source = 'video';
-        emit('media:progress', {
-          fileName: file.name,
-          type: source,
-          message: 'Preparando vídeo para OCR...',
-        });
-        rawText = await extractTextFromVideoFile(file, {
-          onProgress: (progress) => emit('media:progress', {
-            fileName: file.name,
-            type: source,
-            ...progress,
-          }),
-        });
-      } else if (isSpreadsheetFile(file)) {
-        source = 'spreadsheet';
-        emit('media:progress', {
-          fileName: file.name,
-          type: source,
-          message: 'Lendo planilha...',
-        });
-        rawText = await extractTextFromSpreadsheetFile(file, {
-          onProgress: (progress) => emit('media:progress', {
-            fileName: file.name,
-            type: source,
-            ...progress,
-          }),
-        });
       } else if (isTextLikeImportFile(file)) {
         source = 'text';
         emit('media:progress', {

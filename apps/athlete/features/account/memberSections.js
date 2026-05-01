@@ -11,6 +11,8 @@ export function renderAccountAccessSection(renderPageFold, view) {
     athleteBenefitSource = '',
     resultsLogged = 0,
     importUsage,
+    gymAccess = [],
+    personalSubscription = null,
     escapeHtml,
   } = view;
 
@@ -36,11 +38,127 @@ export function renderAccountAccessSection(renderPageFold, view) {
         <strong>Uso do app</strong>
         <span>${isSummaryLoading ? 'Buscando indicadores...' : `${Number(resultsLogged || 0)} resultado(s) • ${importUsage.unlimited ? 'imports livres' : `${importUsage.remaining} restante(s)`}`}</span>
       </div>
+      <div class="coach-listItem static">
+        <strong>Assinatura pessoal</strong>
+        <span>${personalSubscription?.plan ? `${escapeHtml(String(personalSubscription.plan))} • ${escapeHtml(String(personalSubscription.status || 'active'))}` : 'Sem assinatura pessoal ativa'}</span>
+      </div>
     </div>
+    ${gymAccess.length ? `
+      <div class="coach-list coach-listCompact">
+        ${gymAccess.map((gym) => `
+          <div class="coach-listItem static">
+            <strong>${escapeHtml(gym?.gymName || 'Gym')}</strong>
+            <span>${escapeHtml(String(gym?.role || 'athlete'))} • ${gym?.canAthletesUseApp ? 'app liberado' : 'acesso limitado'}</span>
+            ${gym?.warning ? `<span>${escapeHtml(gym.warning)}</span>` : ''}
+          </div>
+        `).join('')}
+      </div>
+    ` : ''}
     <div class="page-actions">
-      <button class="btn-secondary" data-action="account:view:set" data-account-view="preferences" type="button">Preferências</button>
+      <button class="btn-secondary" data-action="account:view:set" data-account-view="profile" type="button">Perfil</button>
       <button class="btn-secondary" data-action="account:view:set" data-account-view="data" type="button">Dados</button>
     </div>
+    `,
+  });
+}
+
+function renderProfileAvatar(profileCard, escapeHtml) {
+  const avatarUrl = String(profileCard?.avatarUrl || '').trim();
+  if (avatarUrl) {
+    return `<img class="account-profileAvatar" src="${escapeHtml(avatarUrl)}" alt="Foto do atleta" loading="lazy" referrerpolicy="no-referrer" />`;
+  }
+  const fallback = String(profileCard?.displayName || profileCard?.accountName || profileCard?.email || 'Atleta')
+    .trim()
+    .slice(0, 2)
+    .toUpperCase();
+  return `<span class="account-profileAvatar account-profileAvatar-fallback">${escapeHtml(fallback || 'AT')}</span>`;
+}
+
+export function renderAccountProfileSection(renderPageFold, view) {
+  const {
+    profile = null,
+    profileCard = null,
+    planName = '',
+    planStatus = '',
+    escapeHtml,
+  } = view;
+
+  const effectiveProfile = profileCard && typeof profileCard === 'object'
+    ? profileCard
+    : {
+      displayName: profile?.display_name || profile?.name || '',
+      accountName: profile?.name || '',
+      email: profile?.email || '',
+      handle: profile?.handle || '',
+      avatarUrl: profile?.avatar_url || '',
+      bio: profile?.bio || '',
+      profileVisibility: profile?.profile_visibility || 'members',
+      attendanceDisplay: profile?.attendance_display || 'display_name',
+      attendanceLabelPreview: profile?.display_name || profile?.name || '',
+      gyms: [],
+    };
+
+  const gyms = Array.isArray(effectiveProfile?.gyms) ? effectiveProfile.gyms : [];
+
+  return renderPageFold({
+    title: 'Perfil do atleta',
+    subtitle: 'Seu perfil social, vínculo com gyms e como seu nome aparece nas aulas.',
+    guideTarget: 'account-profile',
+    content: `
+      <form class="stack operation-form" data-profile-form="athlete">
+        <div class="coach-list coach-listCompact">
+          <div class="coach-listItem static">
+            ${renderProfileAvatar(effectiveProfile, escapeHtml)}
+            <span>${escapeHtml(effectiveProfile?.displayName || effectiveProfile?.accountName || effectiveProfile?.email || 'Atleta')}</span>
+          </div>
+          <div class="coach-listItem static">
+            <strong>Assinatura atual</strong>
+            <span>${escapeHtml(planName)} • ${escapeHtml(planStatus)}</span>
+          </div>
+          <div class="coach-listItem static">
+            <strong>Prévia nas aulas</strong>
+            <span>${escapeHtml(effectiveProfile?.attendanceLabelPreview || effectiveProfile?.displayName || 'Atleta')}</span>
+          </div>
+        </div>
+
+        <div class="grid dual-grid">
+          <input class="field" name="displayName" placeholder="Nome de exibição" value="${escapeHtml(effectiveProfile?.displayName || '')}" />
+          <input class="field" name="handle" placeholder="@seu-handle" value="${escapeHtml(effectiveProfile?.handle || '')}" />
+        </div>
+        <input class="field" name="name" placeholder="Nome da conta" value="${escapeHtml(effectiveProfile?.accountName || profile?.name || '')}" />
+        <input class="field" name="avatarUrl" placeholder="URL da foto" value="${escapeHtml(effectiveProfile?.avatarUrl || '')}" />
+        <textarea class="field" name="bio" rows="4" placeholder="Bio curta para o seu perfil">${escapeHtml(effectiveProfile?.bio || '')}</textarea>
+        <div class="grid dual-grid">
+          <select class="field" name="profileVisibility">
+            <option value="public" ${effectiveProfile?.profileVisibility === 'public' ? 'selected' : ''}>Perfil público</option>
+            <option value="members" ${effectiveProfile?.profileVisibility !== 'public' && effectiveProfile?.profileVisibility !== 'private' ? 'selected' : ''}>Só membros</option>
+            <option value="private" ${effectiveProfile?.profileVisibility === 'private' ? 'selected' : ''}>Privado</option>
+          </select>
+          <select class="field" name="attendanceDisplay">
+            <option value="display_name" ${effectiveProfile?.attendanceDisplay !== 'first_name' && effectiveProfile?.attendanceDisplay !== 'anonymous' ? 'selected' : ''}>Nome completo do perfil</option>
+            <option value="first_name" ${effectiveProfile?.attendanceDisplay === 'first_name' ? 'selected' : ''}>Só primeiro nome</option>
+            <option value="anonymous" ${effectiveProfile?.attendanceDisplay === 'anonymous' ? 'selected' : ''}>Anônimo nas aulas</option>
+          </select>
+        </div>
+        <div class="page-actions">
+          <button class="btn-primary" data-action="athlete:profile:save" type="button">Salvar perfil</button>
+        </div>
+      </form>
+
+      <div class="coach-list coach-listCompact">
+        ${gyms.length
+          ? gyms.map((gym) => `
+            <div class="coach-listItem static">
+              <strong>${escapeHtml(gym?.gymName || 'Gym')}</strong>
+              <span>${escapeHtml(String(gym?.role || 'athlete'))} • ${escapeHtml(String(gym?.status || 'active'))}</span>
+              ${gym?.warning ? `<span>${escapeHtml(gym.warning)}</span>` : ''}
+              <span>${(gym?.coaches || []).length
+                ? escapeHtml(`Coach(es): ${(gym.coaches || []).map((coach) => coach?.displayName || coach?.handle || 'Coach').join(', ')}`)
+                : 'Sem coach visível ainda'}</span>
+            </div>
+          `).join('')
+          : '<p class="account-hint">Você ainda não está vinculado a um gym com coach listado.</p>'}
+      </div>
     `,
   });
 }
@@ -88,8 +206,9 @@ export function renderAccountActivitySection(renderPageFold, view) {
   const {
     isResultsLoading = false,
     isWorkoutsLoading = false,
-    athleteResultsCount = 0,
-    athleteWorkoutsCount = 0,
+    athleteResults = [],
+    athleteWorkouts = [],
+    escapeHtml,
   } = view;
 
   return renderPageFold({
@@ -99,12 +218,36 @@ export function renderAccountActivitySection(renderPageFold, view) {
     <div class="coach-list coach-listCompact">
       <div class="coach-listItem static">
         <strong>Resultados recentes</strong>
-        <span>${isResultsLoading ? 'Carregando resultados...' : athleteResultsCount ? `${athleteResultsCount} registro(s) recente(s).` : 'Nenhum resultado registrado ainda.'}</span>
+        <span>${isResultsLoading ? 'Carregando resultados...' : athleteResults.length ? `${athleteResults.length} registro(s) recente(s).` : 'Nenhum resultado registrado ainda.'}</span>
       </div>
       <div class="coach-listItem static">
         <strong>Treinos do box</strong>
-        <span>${isWorkoutsLoading ? 'Carregando treinos...' : athleteWorkoutsCount ? `${athleteWorkoutsCount} treino(s) recente(s) liberado(s).` : 'Nenhum treino recente liberado para sua conta.'}</span>
+        <span>${isWorkoutsLoading ? 'Carregando treinos...' : athleteWorkouts.length ? `${athleteWorkouts.length} treino(s) recente(s) liberado(s).` : 'Nenhum treino recente liberado para sua conta.'}</span>
       </div>
+    </div>
+    ${athleteResults.length ? `
+      <div class="coach-list coach-listCompact">
+        ${athleteResults.slice(0, 4).map((result) => `
+          <div class="coach-listItem static">
+            <strong>${escapeHtml(result?.benchmark_name || result?.benchmark_slug || 'Resultado')}</strong>
+            <span>${escapeHtml(result?.score_display || '-')} • ${escapeHtml(result?.gym_name || 'Sem gym')}</span>
+          </div>
+        `).join('')}
+      </div>
+    ` : ''}
+    ${athleteWorkouts.length ? `
+      <div class="coach-list coach-listCompact">
+        ${athleteWorkouts.slice(0, 4).map((workout) => `
+          <div class="coach-listItem static">
+            <strong>${escapeHtml(workout?.title || 'Treino')}</strong>
+            <span>${escapeHtml(workout?.gym_name || 'Sem gym')}</span>
+          </div>
+        `).join('')}
+      </div>
+    ` : ''}
+    <div class="page-actions">
+      <button class="btn-secondary" data-action="page:set" data-page="history" data-history-view="activity" type="button">Abrir resultados</button>
+      <button class="btn-secondary" data-action="page:set" data-page="history" data-history-view="benchmarks" type="button">Abrir benchmarks</button>
     </div>
     `,
   });
@@ -120,6 +263,19 @@ function formatDateTimeShort(value) {
     hour: '2-digit',
     minute: '2-digit',
   });
+}
+
+function getSessionViewerStatusLabel(status) {
+  switch (String(status || '').trim().toLowerCase()) {
+    case 'checked_in':
+      return 'Seu check-in foi confirmado';
+    case 'reserved':
+      return 'Você está confirmado nesta aula';
+    case 'canceled':
+      return 'Seu check-in foi cancelado';
+    default:
+      return '';
+  }
 }
 
 export function renderAccountCheckinSection(renderPageFold, view) {
@@ -140,11 +296,14 @@ export function renderAccountCheckinSection(renderPageFold, view) {
         : `
           <div class="coach-list coach-listCompact">
             ${checkinSessions.map((session) => {
+              const viewerStatus = String(session?.viewerStatus || '').trim().toLowerCase();
+              const visibleEntries = Array.isArray(session?.entries) ? session.entries : [];
               const statusBadges = [
                 session?.rules?.checkInClosed ? 'Janela encerrada' : null,
                 Number.isFinite(Number(session?.capacity)) && Number(session?.summary?.availableSpots) === 0 ? 'Lotada' : null,
                 session?.summary?.canceledCount ? `${Number(session.summary.canceledCount)} cancelado(s)` : null,
               ].filter(Boolean);
+              const viewerStatusLabel = getSessionViewerStatusLabel(viewerStatus);
               return `
                 <div class="coach-listItem static account-sessionItem">
                   <strong>${escapeHtml(session?.title || 'Sessão')}</strong>
@@ -154,6 +313,19 @@ export function renderAccountCheckinSection(renderPageFold, view) {
                     ${Number.isFinite(Number(session?.capacity)) ? ` • ${Number(session?.summary?.totalEntries || 0)}/${Number(session.capacity)}` : ''}
                   </span>
                   ${statusBadges.length ? `<span>${escapeHtml(statusBadges.join(' • '))}</span>` : ''}
+                  ${viewerStatusLabel ? `<span>${escapeHtml(viewerStatusLabel)}</span>` : ''}
+                  ${visibleEntries.length
+                    ? `
+                      <div class="coach-list coach-listCompact">
+                        ${visibleEntries.map((entry) => `
+                          <div class="coach-listItem static">
+                            <strong>${escapeHtml(entry?.displayName || 'Atleta')}</strong>
+                            <span>${escapeHtml(entry?.isSelf ? 'Você' : (entry?.status === 'checked_in' ? 'Check-in feito' : 'Confirmado'))}</span>
+                          </div>
+                        `).join('')}
+                      </div>
+                    `
+                    : '<span>Ninguém confirmado ainda.</span>'}
                   <div class="page-actions">
                     <button
                       class="btn-secondary"
@@ -161,7 +333,7 @@ export function renderAccountCheckinSection(renderPageFold, view) {
                       data-session-id="${Number(session?.id || 0)}"
                       data-gym-id="${Number(selectedGymId || 0)}"
                       type="button"
-                      ${session?.rules?.checkInClosed || Number(session?.summary?.availableSpots) === 0 ? 'disabled' : ''}
+                      ${session?.rules?.checkInClosed || Number(session?.summary?.availableSpots) === 0 || ['reserved', 'checked_in', 'canceled'].includes(viewerStatus) ? 'disabled' : ''}
                     >Reservar</button>
                     <button
                       class="btn-secondary"
@@ -169,7 +341,7 @@ export function renderAccountCheckinSection(renderPageFold, view) {
                       data-session-id="${Number(session?.id || 0)}"
                       data-gym-id="${Number(selectedGymId || 0)}"
                       type="button"
-                      ${session?.rules?.checkInClosed ? 'disabled' : ''}
+                      ${session?.rules?.checkInClosed || ['checked_in', 'canceled'].includes(viewerStatus) ? 'disabled' : ''}
                     >Fazer check-in</button>
                     <button
                       class="btn-secondary"
@@ -177,6 +349,7 @@ export function renderAccountCheckinSection(renderPageFold, view) {
                       data-session-id="${Number(session?.id || 0)}"
                       data-gym-id="${Number(selectedGymId || 0)}"
                       type="button"
+                      ${!viewerStatus || viewerStatus === 'canceled' ? 'disabled' : ''}
                     >Cancelar</button>
                   </div>
                 </div>
@@ -471,36 +644,13 @@ export function renderAccountPreferencesSections(renderPageFold, view) {
                 id: 'setting-showNyxHints',
                 key: 'showNyxHints',
                 checked: showNyxHints,
-                title: 'Mostrar sugestões do Nyx',
-                description: 'Mostra atalhos do guia em estados vazios.',
+                title: 'Mostrar atalhos de ajuda',
+                description: 'Exibe lembretes leves em pontos vazios.',
               })}
             </div>
           </div>
 
           <p class="account-settingsFootnote">Salvo automaticamente.</p>
-        </div>
-      `,
-    })}
-
-    ${renderPageFold({
-      title: 'Nyx',
-      subtitle: 'Tour das áreas principais.',
-      guideTarget: 'account-preferences',
-      content: `
-        <div class="account-settingsCard account-settingsCard-nyx">
-          <div class="account-settingsHead">
-            <strong>${nyxGuideCompleted ? 'Tour concluído' : 'Tour do Nyx'}</strong>
-            <span>${nyxGuideCompleted ? 'Reabra quando precisar.' : 'Hoje, evolução, conta e dados.'}</span>
-          </div>
-          <div class="account-choiceFace account-choiceFace-static">
-            <span class="account-choiceEyebrow">Guia</span>
-            <strong>Abrir tour</strong>
-            <small>Navega pelas áreas principais.</small>
-          </div>
-          <div class="page-actions">
-            <button class="btn-primary" data-action="modal:open" data-modal="nyx-guide" data-guide-step="0" type="button">${nyxGuideCompleted ? 'Ver de novo' : 'Começar tour'}</button>
-            <button class="btn-secondary" data-action="account:view:set" data-account-view="data" type="button">Ir para Dados</button>
-          </div>
         </div>
       `,
     })}

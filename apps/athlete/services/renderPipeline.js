@@ -23,6 +23,7 @@ export function createAthleteRenderPipeline({
     const preferences = state?.preferences || {};
 
     document.body.dataset.page = state.__ui.currentPage || 'today';
+    document.body.dataset.bottomNav = state.__ui.bottomNavCollapsed ? 'compact' : 'expanded';
     document.body.dataset.uiTheme = 'dark';
     document.body.dataset.accentTone = ['blue', 'sage', 'sand', 'rose', 'teal', 'plum', 'ember'].includes(preferences.accentTone)
       ? preferences.accentTone

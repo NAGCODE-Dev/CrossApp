@@ -15,6 +15,21 @@ export function createLocalSessionDomain({
     return keys.flatMap((key) => (Array.isArray(key) ? key : [key])).filter(Boolean);
   }
 
+  function getStorages() {
+    const storages = [];
+    try {
+      if (windowObject?.sessionStorage) storages.push(windowObject.sessionStorage);
+    } catch {
+      // no-op
+    }
+    try {
+      if (windowObject?.localStorage) storages.push(windowObject.localStorage);
+    } catch {
+      // no-op
+    }
+    return storages;
+  }
+
   async function clearLocalUserData(options = {}) {
     const preserveAuth = options?.preserveAuth === true;
     const preserved = captureLocalValues([
@@ -41,11 +56,16 @@ export function createLocalSessionDomain({
   function captureLocalValues(keys = []) {
     const snapshot = new Map();
     normalizeKeys(keys).forEach((key) => {
-      try {
-        const value = windowObject.localStorage.getItem(key);
-        if (value !== null) snapshot.set(key, value);
-      } catch {
-        // no-op
+      for (const storage of getStorages()) {
+        try {
+          const value = storage.getItem(key);
+          if (value !== null) {
+            snapshot.set(key, value);
+            break;
+          }
+        } catch {
+          // no-op
+        }
       }
     });
     return snapshot;
@@ -53,20 +73,24 @@ export function createLocalSessionDomain({
 
   function restoreLocalValues(values) {
     values.forEach((value, key) => {
-      try {
-        windowObject.localStorage.setItem(key, value);
-      } catch {
-        // no-op
+      for (const storage of getStorages()) {
+        try {
+          storage.setItem(key, value);
+        } catch {
+          // no-op
+        }
       }
     });
   }
 
   function removeLocalValue(key) {
     normalizeKeys([key]).forEach((entry) => {
-      try {
-        windowObject.localStorage.removeItem(entry);
-      } catch {
-        // no-op
+      for (const storage of getStorages()) {
+        try {
+          storage.removeItem(entry);
+        } catch {
+          // no-op
+        }
       }
     });
   }

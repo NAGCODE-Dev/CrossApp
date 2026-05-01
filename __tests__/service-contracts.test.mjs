@@ -85,7 +85,6 @@ test('service worker mantém libs pesadas fora do pre-cache principal', async ()
 
   const heavyEntries = [
     './src/adapters/media/ocrReader.js',
-    './src/adapters/media/videoTextReader.js',
     './src/libs/pdf.mjs',
     './src/libs/pdf.worker.mjs',
   ];

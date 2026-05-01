@@ -28,9 +28,14 @@ export function buildAthleteAccountPageState(state, helpers) {
   const athleteResults = state?.__ui?.athleteOverview?.recentResults || [];
   const athleteWorkouts = state?.__ui?.athleteOverview?.recentWorkouts || [];
   const checkinSessions = state?.__ui?.athleteOverview?.checkinSessions || [];
+  const measurements = state?.__ui?.athleteOverview?.measurements || [];
+  const runningHistory = state?.__ui?.athleteOverview?.runningHistory || [];
+  const strengthHistory = state?.__ui?.athleteOverview?.strengthHistory || [];
   const athleteOverview = state?.__ui?.athleteOverview || {};
+  const profileCard = athleteOverview?.profileCard || null;
+  const personalSubscription = athleteOverview?.personalSubscription || null;
   const preferences = state?.preferences || {};
-  const accountView = ['overview', 'preferences', 'data'].includes(state?.__ui?.accountView)
+  const accountView = ['overview', 'profile', 'checkins', 'preferences', 'data'].includes(state?.__ui?.accountView)
     ? state.__ui.accountView
     : 'overview';
   const isSummaryLoading = coachPortal?.status === 'loading' || athleteBlocks?.summary?.status === 'loading';
@@ -68,6 +73,11 @@ export function buildAthleteAccountPageState(state, helpers) {
     athleteResults,
     athleteWorkouts,
     checkinSessions,
+    measurements,
+    runningHistory,
+    strengthHistory,
+    profileCard,
+    personalSubscription,
     preferences,
     accountView,
     isSummaryLoading,

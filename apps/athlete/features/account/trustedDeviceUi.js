@@ -9,15 +9,17 @@ export function getTrustedDeviceUiState(email) {
     return {
       isTrusted: true,
       resolvedEmail: normalizedEmail,
-      submitLabel: 'Entrar com senha',
-      trustedSubmitLabel: 'Entrar sem senha neste aparelho',
-      passwordPlaceholder: 'Senha (opcional neste aparelho)',
+      submitLabel: 'Continuar',
+      trustedSubmitLabel: 'Continuar neste aparelho',
+      passwordPlaceholder: 'Senha (se quiser confirmar manualmente)',
+      passwordToggleLabel: 'Usar senha',
+      showPasswordByDefault: false,
       hintTitle: normalizedEmail === rememberedEmail && !email
         ? 'Continuar neste aparelho'
-        : 'Aparelho reconhecido',
+        : 'Conta reconhecida',
       hintBody: normalizedEmail === rememberedEmail && !email
-        ? `Reconhecemos ${normalizedEmail} neste aparelho. Voce pode entrar sem senha agora.`
-        : 'Voce pode entrar so com o email agora. Se preferir, a senha continua funcionando normalmente.',
+        ? `Reconhecemos ${normalizedEmail} neste aparelho. Toque em continuar.`
+        : 'Este aparelho já foi validado para essa conta.',
     };
   }
 
@@ -26,10 +28,12 @@ export function getTrustedDeviceUiState(email) {
       isTrusted: false,
       resolvedEmail: normalizedEmail,
       submitLabel: 'Entrar',
-      trustedSubmitLabel: 'Entrar sem senha neste aparelho',
+      trustedSubmitLabel: 'Continuar neste aparelho',
       passwordPlaceholder: 'Sua senha',
+      passwordToggleLabel: 'Usar senha',
+      showPasswordByDefault: true,
       hintTitle: 'Primeiro acesso neste aparelho',
-      hintBody: 'Use email e senha para autorizar este aparelho. Depois disso, o proximo login pode ser so com o email.',
+      hintBody: 'Use sua senha para validar este aparelho.',
     };
   }
 
@@ -37,10 +41,12 @@ export function getTrustedDeviceUiState(email) {
     isTrusted: false,
     resolvedEmail: '',
     submitLabel: 'Entrar',
-    trustedSubmitLabel: 'Entrar sem senha neste aparelho',
+    trustedSubmitLabel: 'Continuar neste aparelho',
     passwordPlaceholder: 'Sua senha',
-    hintTitle: 'Login rapido neste aparelho',
-    hintBody: 'Digite seu email. Se este aparelho ja estiver confiavel para essa conta, a senha fica opcional.',
+    passwordToggleLabel: 'Usar senha',
+    showPasswordByDefault: true,
+    hintTitle: 'Acesso mais simples',
+    hintBody: 'Digite seu email para continuar.',
   };
 }
 
@@ -65,10 +71,14 @@ export function syncTrustedDeviceAuthUi(root) {
   const title = status?.querySelector('.auth-trustedTitle');
   const body = status?.querySelector('.auth-inlineStatus');
   const form = root.querySelector('#ui-authForm');
+  const passwordShell = root.querySelector('[data-auth-password-shell]');
+  const passwordToggle = root.querySelector('[data-action="auth:toggle-password"]');
 
   if (!(emailInput instanceof HTMLInputElement) || !(passwordInput instanceof HTMLInputElement)) return;
 
   const ui = getTrustedDeviceUiState(emailInput.value);
+  const passwordVisible = form?.dataset?.passwordVisible === 'true';
+  const shouldShowPassword = !ui.isTrusted || passwordVisible || ui.showPasswordByDefault;
 
   if (!String(emailInput.value || '').trim() && ui.resolvedEmail) {
     emailInput.value = ui.resolvedEmail;
@@ -77,13 +87,20 @@ export function syncTrustedDeviceAuthUi(root) {
   passwordInput.placeholder = ui.passwordPlaceholder;
   form?.classList.toggle('isTrustedDeviceReady', ui.isTrusted);
   status?.classList.toggle('isTrusted', ui.isTrusted);
+  if (passwordShell instanceof HTMLElement) {
+    passwordShell.hidden = !shouldShowPassword;
+  }
+  if (passwordToggle instanceof HTMLElement) {
+    passwordToggle.hidden = !ui.isTrusted;
+    passwordToggle.textContent = shouldShowPassword ? 'Ocultar senha' : ui.passwordToggleLabel;
+  }
 
   if (submitButton) {
     submitButton.textContent = ui.submitLabel;
   }
   if (trustedSubmitButton) {
     trustedSubmitButton.textContent = ui.trustedSubmitLabel;
-    trustedSubmitButton.hidden = !ui.isTrusted;
+    trustedSubmitButton.hidden = true;
   }
   if (title) {
     title.textContent = ui.hintTitle;

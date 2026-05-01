@@ -13,6 +13,7 @@ import {
   getPasswordResetSupportStatus,
   confirmPasswordResetSupport,
   getStoredProfile,
+  updateMyProfile,
 } from '../core/services/authService.js';
 import { activateCoachSubscription, approvePasswordResetSupportRequest, createManualPasswordReset, deleteAccountNow, denyPasswordResetSupportRequest, getAdminOpsHealth, getAdminOverview, reprocessBillingClaim, requestAccountDeletion, retryEmailJob } from '../core/services/adminService.js';
 import { openCheckout, getSubscriptionStatus, getEntitlements, activateMockSubscription } from '../core/services/subscriptionService.js';
@@ -48,7 +49,7 @@ import {
   saveImportedPlanSnapshot,
   deleteImportedPlanSnapshot,
 } from '../core/services/gymService.js';
-import { getBenchmarks } from '../core/services/benchmarkService.js';
+import { getBenchmarkDetail, getBenchmarks } from '../core/services/benchmarkService.js';
 import { getRuntimeConfig, setRuntimeConfig } from '../config/runtime.js';
 
 export function createRemoteHandlers({
@@ -90,6 +91,10 @@ export function createRemoteHandlers({
 
     async handleRefreshSession() {
       return refreshSession();
+    },
+
+    async handleUpdateMyProfile(payload) {
+      return updateMyProfile(payload);
     },
 
     async handleRequestPasswordReset(payload) {
@@ -359,6 +364,11 @@ export function createRemoteHandlers({
 
     async handleGetBenchmarks(params) {
       const data = await getBenchmarks(params);
+      return { success: true, data };
+    },
+
+    async handleGetBenchmarkDetail(slug, params) {
+      const data = await getBenchmarkDetail(slug, params);
       return { success: true, data };
     },
   };

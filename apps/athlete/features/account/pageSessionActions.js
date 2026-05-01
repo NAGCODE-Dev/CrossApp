@@ -15,30 +15,129 @@ export async function handleAthletePageSessionAction(action, context) {
     emptyAdmin,
   } = context;
 
+  async function loadBenchmarkLibrary({
+    query = '',
+    page = 1,
+    autoSelect = false,
+  } = {}) {
+    const bridge = getAppBridge();
+    if (!bridge?.getBenchmarks) {
+      throw new Error('Biblioteca de benchmarks indisponível');
+    }
+
+    const result = await bridge.getBenchmarks({
+      q: query,
+      page,
+      limit: 12,
+      sort: 'year_desc',
+    });
+    const items = result?.data?.benchmarks || [];
+    const pagination = result?.data?.pagination || { total: 0, page: 1, limit: 12, pages: 1 };
+
+    await applyUiPatch((state) => {
+      const currentSelectedSlug = state?.athleteOverview?.selectedBenchmark?.benchmark?.slug || '';
+      const selectionStillExists = items.some((item) => item.slug === currentSelectedSlug);
+      return {
+        ...state,
+        athleteOverview: {
+          ...(state?.athleteOverview || {}),
+          benchmarkLibrary: items,
+          benchmarkLibraryPagination: pagination,
+          benchmarkLibraryQuery: query,
+          selectedBenchmark: selectionStillExists ? state?.athleteOverview?.selectedBenchmark || null : null,
+        },
+      };
+    });
+
+    if (autoSelect && items[0]?.slug) {
+      await openBenchmarkDetail(items[0].slug);
+    }
+  }
+
+  async function openBenchmarkDetail(slug) {
+    const bridge = getAppBridge();
+    if (!bridge?.getBenchmarkDetail) {
+      throw new Error('Detalhe do benchmark indisponível');
+    }
+    const ui = getUiState?.() || {};
+    const gymId = ui?.coachPortal?.selectedGymId || null;
+    const result = await bridge.getBenchmarkDetail(slug, {
+      gymId,
+      limit: 8,
+    });
+
+    await applyUiPatch((state) => ({
+      ...state,
+      athleteOverview: {
+        ...(state?.athleteOverview || {}),
+        selectedBenchmark: result?.data || null,
+      },
+    }));
+  }
+
   switch (action) {
     case 'account:view:set': {
-      const accountView = ['overview', 'preferences', 'data'].includes(element.dataset.accountView)
+      const accountView = ['overview', 'profile', 'checkins', 'preferences', 'data'].includes(element.dataset.accountView)
         ? String(element.dataset.accountView)
         : 'overview';
       await applyUiPatch((state) => ({ ...state, accountView }));
       return true;
     }
 
+    case 'history:view:set': {
+      const historyView = ['overview', 'benchmarks', 'activity', 'body', 'sessions'].includes(element.dataset.historyView)
+        ? String(element.dataset.historyView)
+        : 'overview';
+      await applyUiPatch((state) => ({ ...state, historyView }));
+      return true;
+    }
+
+    case 'nav:toggle': {
+      await applyUiPatch((state) => ({
+        ...state,
+        bottomNavCollapsed: !(state?.bottomNavCollapsed === true),
+      }));
+      return true;
+    }
+
     case 'page:set': {
       const page = String(element.dataset.page || 'today');
-      const nextAccountView = ['overview', 'preferences', 'data'].includes(element.dataset.accountView)
+      const nextAccountView = ['overview', 'profile', 'checkins', 'preferences', 'data'].includes(element.dataset.accountView)
         ? String(element.dataset.accountView)
+        : null;
+      const nextHistoryView = ['overview', 'benchmarks', 'activity', 'body', 'sessions'].includes(element.dataset.historyView)
+        ? String(element.dataset.historyView)
         : null;
       await applyUiPatch((state) => ({
         ...state,
         currentPage: page,
         ...(nextAccountView ? { accountView: nextAccountView } : {}),
+        ...(nextHistoryView ? { historyView: nextHistoryView } : {}),
       }));
       if (page === 'account' || page === 'history') {
         const profile = getAppBridge()?.getProfile?.()?.data || null;
         const ui = getUiState?.() || {};
         hydratePage(profile, page, ui?.coachPortal?.selectedGymId || null);
+        if (page === 'history' && profile?.email) {
+          const currentLibrary = ui?.athleteOverview?.benchmarkLibrary || [];
+          if (!currentLibrary.length) {
+            await loadBenchmarkLibrary({ autoSelect: true });
+          }
+        }
       }
+      return true;
+    }
+
+    case 'history:benchmarks:search': {
+      const query = String(document.querySelector('#history-benchmark-query')?.value || '').trim();
+      await loadBenchmarkLibrary({ query, autoSelect: true });
+      return true;
+    }
+
+    case 'history:benchmark:open': {
+      const slug = String(element?.dataset?.benchmarkSlug || '').trim().toLowerCase();
+      if (!slug) throw new Error('Benchmark inválido');
+      await openBenchmarkDetail(slug);
       return true;
     }
 
@@ -65,6 +164,8 @@ export async function handleAthletePageSessionAction(action, context) {
         {
           currentPage: 'today',
           accountView: 'overview',
+          historyView: 'overview',
+          bottomNavCollapsed: false,
           modal: null,
           authMode: 'signin',
           passwordReset: {},
@@ -87,6 +188,37 @@ export async function handleAthletePageSessionAction(action, context) {
         },
         { toastMessage: 'Sessão encerrada' },
       );
+      return true;
+    }
+
+    case 'athlete:profile:save': {
+      const bridge = getAppBridge();
+      if (!bridge?.updateMyProfile) {
+        throw new Error('Atualização de perfil indisponível');
+      }
+
+      const form = element?.closest?.('form');
+      if (!form) {
+        throw new Error('Formulário de perfil não encontrado');
+      }
+
+      const payload = {
+        name: form.querySelector('[name="name"]')?.value || '',
+        displayName: form.querySelector('[name="displayName"]')?.value || '',
+        handle: form.querySelector('[name="handle"]')?.value || '',
+        avatarUrl: form.querySelector('[name="avatarUrl"]')?.value || '',
+        bio: form.querySelector('[name="bio"]')?.value || '',
+        profileVisibility: form.querySelector('[name="profileVisibility"]')?.value || 'members',
+        attendanceDisplay: form.querySelector('[name="attendanceDisplay"]')?.value || 'display_name',
+      };
+
+      const result = await bridge.updateMyProfile(payload);
+      const profile = result?.user || result?.data?.user || bridge.getProfile?.()?.data || null;
+      invalidateHydrationCache({ coach: false, athlete: true, account: true });
+      await finalizeUiChange({ toastMessage: 'Perfil atualizado' });
+      if (profile?.email) {
+        hydratePage(profile, 'account', getUiState?.()?.coachPortal?.selectedGymId || null, { force: true });
+      }
       return true;
     }
 

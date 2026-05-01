@@ -1,9 +1,8 @@
 /**
  * OCR Reader
- * Extração de texto de imagens usando Tesseract.js carregado dinamicamente.
+ * Extração de texto de imagens usando Tesseract.js do bundle local.
  */
 
-const TESSERACT_CDN = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
 const DEFAULT_OCR_TIMEOUT_MS = 30000;
 const OCR_SCAN_TARGET_WIDTH = 240;
 const OCR_MIN_PANEL_HEIGHT = 96;
@@ -147,46 +146,17 @@ export function normalizeOcrStructuralLine(line = '') {
 }
 
 async function ensureTesseract() {
-  if (typeof window === 'undefined') {
-    throw new Error('OCR disponível apenas no navegador');
-  }
-
-  if (window.Tesseract) {
-    return window.Tesseract;
-  }
-
   if (!tesseractPromise) {
-    tesseractPromise = loadScript(TESSERACT_CDN).then(() => {
-      if (!window.Tesseract) {
+    tesseractPromise = import('tesseract.js').then((module) => {
+      const Tesseract = module?.default || module;
+      if (!Tesseract?.recognize) {
         throw new Error('Tesseract não carregou corretamente');
       }
-      return window.Tesseract;
+      return Tesseract;
     });
   }
 
   return tesseractPromise;
-}
-
-function loadScript(src) {
-  return new Promise((resolve, reject) => {
-    const existing = Array.from(document.scripts).find((s) => s.src === src);
-    if (existing) {
-      if (window.Tesseract) {
-        resolve();
-        return;
-      }
-      existing.addEventListener('load', () => resolve(), { once: true });
-      existing.addEventListener('error', () => reject(new Error('Falha ao carregar OCR')), { once: true });
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.src = src;
-    script.async = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error('Falha ao carregar OCR'));
-    document.head.appendChild(script);
-  });
 }
 
 function withTimeout(task, timeoutMs, message) {

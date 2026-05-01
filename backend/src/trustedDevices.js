@@ -77,7 +77,8 @@ export async function authenticateTrustedDevice({ email, deviceId, trustedToken 
 
   const result = await pool.query(
     `SELECT td.id, td.user_id, td.email, td.device_id, td.label, td.token_hash, td.expires_at,
-            u.id AS user_row_id, u.email AS user_email, u.name AS user_name, u.is_admin, u.email_verified, u.email_verified_at,
+            u.id AS user_row_id, u.email AS user_email, u.name AS user_name, u.display_name, u.handle, u.avatar_url, u.bio,
+            u.profile_visibility, u.attendance_display, u.is_admin, u.email_verified, u.email_verified_at,
             u.session_version
      FROM trusted_devices td
      JOIN users u ON u.id = td.user_id
@@ -108,6 +109,12 @@ export async function authenticateTrustedDevice({ email, deviceId, trustedToken 
       id: row.user_row_id,
       email: row.user_email,
       name: row.user_name,
+      display_name: row.display_name || null,
+      handle: row.handle || null,
+      avatar_url: row.avatar_url || null,
+      bio: row.bio || null,
+      profile_visibility: row.profile_visibility || 'members',
+      attendance_display: row.attendance_display || 'display_name',
       is_admin: row.is_admin,
       email_verified: row.email_verified,
       email_verified_at: row.email_verified_at,

@@ -45,6 +45,8 @@ export async function createAthleteUiStateController({ createStorage }) {
         ui: {
           currentPage: next?.currentPage || 'today',
           accountView: next?.accountView || 'overview',
+          historyView: next?.historyView || 'overview',
+          bottomNavCollapsed: next?.bottomNavCollapsed === true,
           settings: next?.settings || {},
           wod: next?.wod || {},
           coachPortal: {

@@ -1,6 +1,4 @@
 import { isImageFile } from '../adapters/media/ocrReader.js';
-import { isVideoFile } from '../adapters/media/videoTextReader.js';
-import { isSpreadsheetFile } from '../adapters/spreadsheet/spreadsheetReader.js';
 
 const TEXT_EXTENSIONS = /\.(txt|md|csv|json)$/i;
 
@@ -40,22 +38,6 @@ export function classifyUniversalImportFile(file) {
       supported: true,
       source: 'image',
       reader: 'ocr-image',
-    };
-  }
-
-  if (isVideoFile(file)) {
-    return {
-      supported: true,
-      source: 'video',
-      reader: 'ocr-video',
-    };
-  }
-
-  if (isSpreadsheetFile(file)) {
-    return {
-      supported: true,
-      source: 'spreadsheet',
-      reader: 'spreadsheet',
     };
   }
 

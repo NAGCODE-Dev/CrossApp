@@ -37,8 +37,10 @@ import {
   getPasswordResetSupportRequestStatus,
 } from '../passwordResetSupport.js';
 import { buildClientPasswordResetSupportMeta } from '../passwordResetSupportClient.js';
+import { fetchWithTimeout, safeReadJsonResponse } from '../http.js';
 import { authenticateTrustedDevice, issueTrustedDeviceGrant, revokeTrustedDevice, revokeTrustedDevicesForUser } from '../trustedDevices.js';
 import { captureBackendError } from '../sentry.js';
+import { buildSafeUserSelect, normalizeProfileUpdateInput } from '../userProfiles.js';
 import { attachPendingMembershipsToUser } from '../utils/gymUtils.js';
 import { attachPendingBillingClaimsToUser } from '../utils/subscriptionBilling.js';
 
@@ -206,7 +208,7 @@ export function createAuthRouter({ authRateLimit, resetRateLimit }) {
 
       const inserted = await withUserBootstrap(email, async (client, shouldBeAdmin) => {
         const existing = await client.query(
-          `SELECT id, email, name, is_admin, email_verified, email_verified_at, session_version
+          `SELECT ${buildSafeUserSelect()}
            FROM users
            WHERE email = $1
            LIMIT 1`,
@@ -221,7 +223,7 @@ export function createAuthRouter({ authRateLimit, resetRateLimit }) {
         return client.query(
           `INSERT INTO users (email, password_hash, name, is_admin, email_verified, email_verified_at)
            VALUES ($1,$2,$3,$4,TRUE,NOW())
-           RETURNING id, email, name, is_admin, email_verified, email_verified_at, session_version`,
+           RETURNING ${buildSafeUserSelect()}`,
           [email, verification.password_hash, verification.name || null, shouldBeAdmin],
         );
       });
@@ -267,7 +269,7 @@ export function createAuthRouter({ authRateLimit, resetRateLimit }) {
 
     try {
       const found = await pool.query(
-        `SELECT id, email, name, password_hash, is_admin, email_verified, email_verified_at, session_version
+        `SELECT ${buildSafeUserSelect()}, password_hash
          FROM users
          WHERE email = $1`,
         [normalizedEmail],
@@ -289,6 +291,12 @@ export function createAuthRouter({ authRateLimit, resetRateLimit }) {
         id: user.id,
         email: user.email,
         name: user.name || null,
+        display_name: user.display_name || null,
+        handle: user.handle || null,
+        avatar_url: user.avatar_url || null,
+        bio: user.bio || null,
+        profile_visibility: user.profile_visibility || 'members',
+        attendance_display: user.attendance_display || 'display_name',
         is_admin: user.is_admin,
         email_verified: user.email_verified,
         email_verified_at: user.email_verified_at,
@@ -517,7 +525,7 @@ export function createAuthRouter({ authRateLimit, resetRateLimit }) {
       await markAuthRedirectGrantConsumed({ grantId: grant.id, client });
 
       const found = await client.query(
-        `SELECT id, email, name, is_admin, email_verified, email_verified_at, session_version
+        `SELECT ${buildSafeUserSelect()}
          FROM users
          WHERE id = $1
          LIMIT 1`,
@@ -548,7 +556,7 @@ export function createAuthRouter({ authRateLimit, resetRateLimit }) {
 
   router.post('/refresh', authRequired, async (req, res) => {
     const found = await pool.query(
-      `SELECT id, email, name, is_admin, email_verified, email_verified_at, session_version
+      `SELECT ${buildSafeUserSelect()}
        FROM users
        WHERE id = $1`,
       [req.user.userId],
@@ -561,7 +569,7 @@ export function createAuthRouter({ authRateLimit, resetRateLimit }) {
 
   router.get('/me', authRequired, async (req, res) => {
     const found = await pool.query(
-      `SELECT id, email, name, is_admin, email_verified, email_verified_at, session_version
+      `SELECT ${buildSafeUserSelect()}
        FROM users
        WHERE id = $1`,
       [req.user.userId],
@@ -569,6 +577,55 @@ export function createAuthRouter({ authRateLimit, resetRateLimit }) {
     const user = found.rows[0];
     if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
     return res.json({ user });
+  });
+
+  router.put('/me/profile', authRequired, async (req, res) => {
+    let normalized;
+    try {
+      normalized = normalizeProfileUpdateInput(req.body || {});
+    } catch (error) {
+      return res.status(400).json({ error: error?.message || 'Perfil inválido' });
+    }
+
+    try {
+      const updated = await pool.query(
+        `UPDATE users
+         SET name = $2,
+             display_name = $3,
+             handle = $4,
+             avatar_url = $5,
+             bio = $6,
+             profile_visibility = $7,
+             attendance_display = $8
+         WHERE id = $1
+         RETURNING ${buildSafeUserSelect()}`,
+        [
+          req.user.userId,
+          normalized.name,
+          normalized.displayName,
+          normalized.handle,
+          normalized.avatarUrl,
+          normalized.bio,
+          normalized.profileVisibility,
+          normalized.attendanceDisplay,
+        ],
+      );
+
+      const user = updated.rows[0] || null;
+      if (!user) {
+        return res.status(404).json({ error: 'Usuário não encontrado' });
+      }
+      return res.json({ user });
+    } catch (error) {
+      if (error?.constraint === 'idx_users_handle_unique' || String(error?.message || '').includes('idx_users_handle_unique')) {
+        return res.status(409).json({ error: 'Esse handle já está em uso' });
+      }
+      captureBackendError(error, {
+        tags: { feature: 'auth', source: 'update_profile' },
+        userId: req.user.userId,
+      });
+      return res.status(500).json({ error: 'Erro ao atualizar perfil' });
+    }
   });
 
   router.post('/request-password-reset', resetRateLimit, async (req, res) => {
@@ -963,7 +1020,7 @@ async function verifyGoogleIdToken(idToken) {
 }
 
 async function exchangeGoogleCodeForTokens({ code, redirectUri }) {
-  const response = await fetch('https://oauth2.googleapis.com/token', {
+  const response = await fetchWithTimeout('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
@@ -975,9 +1032,9 @@ async function exchangeGoogleCodeForTokens({ code, redirectUri }) {
       redirect_uri: redirectUri,
       grant_type: 'authorization_code',
     }).toString(),
-  });
+  }, 12000);
 
-  const data = await response.json().catch(() => null);
+  const data = await safeReadJsonResponse(response);
   if (!response.ok || !data?.id_token) {
     throw new Error(data?.error_description || data?.error || `Falha Google OAuth (${response.status})`);
   }
@@ -987,7 +1044,7 @@ async function exchangeGoogleCodeForTokens({ code, redirectUri }) {
 
 async function findUserByEmail(email) {
   const found = await pool.query(
-    `SELECT id, email, name, is_admin, email_verified, email_verified_at, session_version
+    `SELECT ${buildSafeUserSelect()}
      FROM users
      WHERE email = $1
      LIMIT 1`,
@@ -1005,7 +1062,7 @@ async function upsertGoogleUser({ email, name, sub }) {
       return client.query(
         `INSERT INTO users (email, password_hash, name, is_admin, email_verified, email_verified_at)
          VALUES ($1,$2,$3,$4,TRUE,NOW())
-         RETURNING id, email, name, is_admin, email_verified, email_verified_at, session_version`,
+         RETURNING ${buildSafeUserSelect()}`,
         [email, fallbackPassword, name, shouldBeAdmin],
       );
     });
@@ -1014,10 +1071,11 @@ async function upsertGoogleUser({ email, name, sub }) {
     const updated = await pool.query(
       `UPDATE users
        SET name = COALESCE(name, $2),
+           display_name = COALESCE(display_name, $2),
            email_verified = TRUE,
            email_verified_at = COALESCE(email_verified_at, NOW())
        WHERE id = $1
-       RETURNING id, email, name, is_admin, email_verified, email_verified_at, session_version`,
+       RETURNING ${buildSafeUserSelect()}`,
       [user.id, name],
     );
     user = updated.rows[0] || user;
@@ -1027,7 +1085,7 @@ async function upsertGoogleUser({ email, name, sub }) {
        SET email_verified = TRUE,
            email_verified_at = COALESCE(email_verified_at, NOW())
        WHERE id = $1
-       RETURNING id, email, name, is_admin, email_verified, email_verified_at, session_version`,
+       RETURNING ${buildSafeUserSelect()}`,
       [user.id],
     );
     user = updated.rows[0] || user;

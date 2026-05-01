@@ -7,6 +7,24 @@
 const STORAGE_KEY = 'ryxen-runtime-config';
 const LEGACY_STORAGE_KEY = 'crossapp-runtime-config';
 
+function getSessionStorageSafe() {
+  try {
+    if (typeof sessionStorage !== 'undefined') return sessionStorage;
+  } catch {
+    // no-op
+  }
+  return null;
+}
+
+function getLocalStorageSafe() {
+  try {
+    if (typeof localStorage !== 'undefined') return localStorage;
+  } catch {
+    // no-op
+  }
+  return null;
+}
+
 const defaults = {
   apiBaseUrl: '/api',
   nativeApiBaseUrl: '',
@@ -93,8 +111,13 @@ function safeAppContext() {
 }
 
 function safeStorageConfig() {
+  const session = getSessionStorageSafe();
+  const local = getLocalStorageSafe();
   try {
-    const raw = localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY);
+    const raw = session?.getItem(STORAGE_KEY)
+      || session?.getItem(LEGACY_STORAGE_KEY)
+      || local?.getItem(STORAGE_KEY)
+      || local?.getItem(LEGACY_STORAGE_KEY);
     return raw ? JSON.parse(raw) : {};
   } catch {
     return {};
@@ -102,11 +125,19 @@ function safeStorageConfig() {
 }
 
 function safeSetStorage(value) {
+  const session = getSessionStorageSafe();
+  const local = getLocalStorageSafe();
   try {
     const serialized = JSON.stringify(value || {});
-    localStorage.setItem(STORAGE_KEY, serialized);
-    // Keep writing the legacy key for already-installed clients during the transition.
-    localStorage.setItem(LEGACY_STORAGE_KEY, serialized);
+    if (session) {
+      session.setItem(STORAGE_KEY, serialized);
+      session.setItem(LEGACY_STORAGE_KEY, serialized);
+      local?.removeItem(STORAGE_KEY);
+      local?.removeItem(LEGACY_STORAGE_KEY);
+      return;
+    }
+    local?.setItem(STORAGE_KEY, serialized);
+    local?.setItem(LEGACY_STORAGE_KEY, serialized);
   } catch {
     // no-op
   }

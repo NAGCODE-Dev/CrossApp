@@ -10,14 +10,31 @@ export function createCoachApiRequest({ readToken }) {
 
     const url = `${base.replace(/\/$/, '')}/${String(path).replace(/^\//, '')}`;
     const token = options.token !== undefined ? options.token : readToken();
-    const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+    const headers = { Accept: 'application/json', ...(options.headers || {}) };
+    if (options.body !== undefined) headers['Content-Type'] = 'application/json';
     if (token) headers.Authorization = `Bearer ${token}`;
+    const controller = new AbortController();
+    const timeoutMs = Math.max(1000, Number(options.timeoutMs) || 15000);
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-    const response = await fetch(url, {
-      method: options.method || 'GET',
-      headers,
-      body: options.body ? JSON.stringify(options.body) : undefined,
-    });
+    let response;
+    try {
+      response = await fetch(url, {
+        method: options.method || 'GET',
+        headers,
+        cache: 'no-store',
+        credentials: 'omit',
+        signal: controller.signal,
+        body: options.body ? JSON.stringify(options.body) : undefined,
+      });
+    } catch (error) {
+      if (error?.name === 'AbortError') {
+        throw new Error('O backend demorou demais para responder.');
+      }
+      throw new Error('Falha de rede ao falar com o backend.');
+    } finally {
+      clearTimeout(timer);
+    }
 
     const text = await response.text();
     if (looksLikeHtml(text)) {

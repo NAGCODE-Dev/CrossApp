@@ -289,7 +289,7 @@ Tudo via `window.__APP__` e APIs do backend.
 
 Rankings disponíveis:
 
-- `GET /leaderboards/benchmarks/:slug`
+- `GET /benchmarks/:slug`
 
 Portal separado em framework:
 

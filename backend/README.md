@@ -117,7 +117,7 @@ Endpoints principais:
 - `GET /workouts/feed`
 - `GET /access/context`
 - `GET /benchmarks`
-- `GET /leaderboards/benchmarks/:slug`
+- `GET /benchmarks/:slug`
 
 Parâmetros úteis em `GET /benchmarks`:
 

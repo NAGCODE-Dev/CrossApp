@@ -392,9 +392,10 @@ export function createHydrationController({
   function hydrateHistoryLazyBlocks(profile, { force = false } = {}) {
     if (!profile?.email) return;
     const taskKey = createTaskKey('history-lazy', profile, force ? 'force' : 'cache');
-    runBackgroundTask(taskKey, () => deferBackgroundTask(
-      () => hydrateAthleteResultsBlock(profile, { force, page: 'history' }),
-    ))
+    runBackgroundTask(taskKey, () => deferBackgroundTask(() => Promise.allSettled([
+      hydrateAthleteResultsBlock(profile, { force, page: 'history' }),
+      hydrateAthleteWorkoutsBlock(profile, { force, page: 'history' }),
+    ])))
       .catch(() => {});
   }
 
@@ -419,7 +420,7 @@ export function createHydrationController({
       }
       if (page === 'history') {
         await hydrateAthleteSummary(profile, { force, page: 'history' });
-        if (force || !isAthleteResultsFresh(getProfileEmail(profile))) {
+        if (force || !isAthleteResultsFresh(getProfileEmail(profile)) || !isAthleteWorkoutsFresh(getProfileEmail(profile))) {
           hydrateHistoryLazyBlocks(profile, { force: true });
         } else {
           hydrateHistoryLazyBlocks(profile, { force: false });

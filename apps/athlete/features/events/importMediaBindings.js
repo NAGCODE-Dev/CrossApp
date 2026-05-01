@@ -8,12 +8,12 @@ export function createAthleteMediaImportBindings({
 }) {
   return [
     ['media:uploading', (data) => {
-      busy(true, data?.type === 'video' ? 'Preparando vídeo...' : 'Processando arquivo...');
+      busy(true, 'Processando arquivo...');
       updateImportStatus({
         active: true,
         tone: 'working',
-        title: data?.type === 'video' ? 'Importando vídeo' : 'Importando arquivo',
-        message: data?.type === 'video' ? 'Preparando vídeo para OCR...' : 'Preparando arquivo para leitura...',
+        title: 'Importando arquivo',
+        message: 'Preparando arquivo para leitura...',
         fileName: data?.fileName || '',
         step: 'selected',
       });
@@ -26,8 +26,6 @@ export function createAthleteMediaImportBindings({
         active: true,
         tone: 'working',
         title:
-          data?.type === 'video' ? 'Importando vídeo' :
-          data?.type === 'spreadsheet' ? 'Importando planilha' :
           data?.type === 'image' ? 'Importando imagem' :
           data?.type === 'structured-json' ? 'Importando JSON' :
           'Importando arquivo',
@@ -35,11 +33,6 @@ export function createAthleteMediaImportBindings({
         fileName: data?.fileName || '',
         step: stepForImportProgress(data),
       });
-      if (data?.stage === 'ocr' && data?.processedFrames && data?.totalFrames) {
-        pushEventLine?.(`OCR do vídeo ${data.processedFrames}/${data.totalFrames}`);
-      } else if (data?.stage === 'sheet-parse' && data?.currentSheet && data?.totalSheets) {
-        pushEventLine?.(`Planilha ${data.currentSheet}/${data.totalSheets}`);
-      }
     }],
 
     ['media:uploaded', (data) => {

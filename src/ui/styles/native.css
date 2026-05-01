@@ -209,6 +209,23 @@
     padding: 16px 14px calc(var(--safe-bottom) + 108px);
   }
 
+  body[data-bottom-nav="compact"] .bottom-navItems-native {
+    width: min(100%, 420px);
+  }
+
+  body[data-bottom-nav="compact"] .nav-btn-native {
+    min-height: 48px;
+    gap: 0;
+  }
+
+  body[data-bottom-nav="compact"] .nav-btn-native .nav-label {
+    display: none;
+  }
+
+  body[data-bottom-nav="compact"] .app-main-native {
+    padding-bottom: calc(var(--safe-bottom) + 88px);
+  }
+
   .native-screenStack {
     display: grid;
     gap: 14px;

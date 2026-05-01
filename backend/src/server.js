@@ -14,7 +14,6 @@ import { createAuthRouter } from './routes/authRoutes.js';
 import { createBillingRouter } from './routes/billingRoutes.js';
 import { createTelemetryRouter } from './routes/telemetryRoutes.js';
 import { createBenchmarkRouter } from './routes/benchmarkRoutes.js';
-import { createLeaderboardRouter } from './routes/leaderboardRoutes.js';
 import { createGymRouter } from './routes/gymRoutes.js';
 import { createAthleteRouter } from './routes/athleteRoutes.js';
 import { createAdminOpsRouter } from './routes/adminOpsRoutes.js';
@@ -36,7 +35,6 @@ const BILLING_WRITE_RATE_LIMIT = createRateLimiter({ windowMs: 60_000, maxReques
 const BILLING_WEBHOOK_RATE_LIMIT = createRateLimiter({ windowMs: 60_000, maxRequests: 120, keyPrefix: 'billing-webhook' });
 const GYM_READ_RATE_LIMIT = createRateLimiter({ windowMs: 60_000, maxRequests: 90, keyPrefix: 'gym-read', keyResolver: buildUserAwareRateLimitKey });
 const GYM_WRITE_RATE_LIMIT = createRateLimiter({ windowMs: 60_000, maxRequests: 30, keyPrefix: 'gym-write', keyResolver: buildUserAwareRateLimitKey });
-const LEADERBOARD_RATE_LIMIT = createRateLimiter({ windowMs: 60_000, maxRequests: 60, keyPrefix: 'leaderboard', keyResolver: buildUserAwareRateLimitKey });
 
 validateConfig();
 app.set('trust proxy', TRUST_PROXY);
@@ -58,7 +56,6 @@ app.use('/billing', createBillingRouter({
 }));
 app.use('/telemetry', createTelemetryRouter({ telemetryRateLimit: TELEMETRY_RATE_LIMIT }));
 app.use('/benchmarks', createBenchmarkRouter({ resolveBenchmarkOrder }));
-app.use(createLeaderboardRouter({ leaderboardRateLimit: LEADERBOARD_RATE_LIMIT }));
 app.use(createGymRouter({
   requireGymManager,
   slugify,

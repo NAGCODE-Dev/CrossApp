@@ -1,6 +1,12 @@
 import {
   renderBenchmarkHistorySection,
+  renderBenchmarkLibrarySection,
+  renderMeasurementsSection,
   renderPrHistorySection,
+  renderRecentResultsSection,
+  renderRecentWorkoutsSection,
+  renderRunningHistorySection,
+  renderStrengthHistorySection,
 } from './sections.js';
 import { buildAthleteHistoryPageState } from './viewState.js';
 
@@ -11,6 +17,22 @@ function renderHeroStat(label, value, detail = '') {
       <strong class="summary-value">${value}</strong>
       ${detail ? `<span class="summary-detail">${detail}</span>` : ''}
     </div>
+  `;
+}
+
+function renderHistoryViewButton(view, currentView, label, detail) {
+  const isActive = currentView === view;
+  return `
+    <button
+      class="account-viewTab ${isActive ? 'isActive' : ''}"
+      data-action="history:view:set"
+      data-history-view="${view}"
+      aria-pressed="${isActive ? 'true' : 'false'}"
+      type="button"
+    >
+      <strong>${label}</strong>
+      <span>${detail}</span>
+    </button>
   `;
 }
 
@@ -27,10 +49,21 @@ export function renderAthleteHistoryPage(state, helpers) {
   } = helpers;
   const {
     benchmarkHistory,
+    benchmarkLibrary,
+    benchmarkLibraryPagination,
+    benchmarkLibraryQuery,
     prHistory,
+    recentResults,
+    recentWorkouts,
+    measurements,
+    runningHistory,
+    strengthHistory,
+    historyView,
+    selectedBenchmark,
     isBusy,
     isSummaryLoading,
     isDetailLoading,
+    isWorkoutsLoading,
     isDetailError,
     resultsLogged,
     progressSummary,
@@ -44,12 +77,27 @@ export function renderAthleteHistoryPage(state, helpers) {
       ${renderPageHero({
         eyebrow: 'Histórico',
         title: 'Evolução',
-        subtitle: progressSummary || 'Benchmarks, PRs e resultados com leitura leve e direta.',
+        subtitle: historyView === 'benchmarks'
+          ? 'Benchmarks, biblioteca e PRs em um lugar só.'
+          : historyView === 'activity'
+            ? 'Resultados e treinos recentes, sem ter que caçar informação.'
+            : historyView === 'body'
+              ? 'Medições e evolução corporal com leitura direta.'
+              : historyView === 'sessions'
+                ? 'Corrida, força e sessões registradas pela sua conta.'
+                : (progressSummary || 'Benchmarks, resultados, medidas e sessões bem separados.'),
         actions: `
           <button class="btn-secondary" data-action="modal:open" data-modal="prs" type="button">PRs</button>
           <button class="btn-secondary" data-action="page:set" data-page="account" type="button">Conta</button>
         `,
         footer: `
+          <div class="account-viewTabs" role="tablist" aria-label="Seções do histórico">
+            ${renderHistoryViewButton('overview', historyView, 'Resumo', 'visão geral')}
+            ${renderHistoryViewButton('benchmarks', historyView, 'Benchmarks', 'library e PRs')}
+            ${renderHistoryViewButton('activity', historyView, 'Resultados', 'treinos e marcas')}
+            ${renderHistoryViewButton('body', historyView, 'Corpo', 'medidas e evolução')}
+            ${renderHistoryViewButton('sessions', historyView, 'Sessões', 'corrida e força')}
+          </div>
           <div class="summary-strip summary-strip-3">
             ${renderHeroStat('Benchmarks', String(benchmarkHistory.length), benchmarkHistory.length ? 'com histórico' : 'sem marcas ainda')}
             ${renderHeroStat('PRs', String(prHistory.length), prHistory.length ? 'em acompanhamento' : 'cadastre cargas')}
@@ -58,9 +106,9 @@ export function renderAthleteHistoryPage(state, helpers) {
         `,
       })}
 
-      ${showSnapshotNotice ? '<p class="account-hint">Mostrando dados salvos anteriormente enquanto a conexão atualiza.</p>' : ''}
+      ${showSnapshotNotice ? '<p class="account-hint">Mostrando dados salvos enquanto a conexão atualiza.</p>' : ''}
 
-      ${renderPageFold({
+      ${historyView === 'overview' ? renderPageFold({
         title: 'Resumo',
         subtitle: 'O essencial para continuar.',
         content: `
@@ -79,9 +127,9 @@ export function renderAthleteHistoryPage(state, helpers) {
           </div>
         </div>
         `,
-      })}
+      }) : ''}
 
-      ${renderPageFold({
+      ${historyView === 'overview' || historyView === 'benchmarks' ? renderPageFold({
         title: 'Benchmarks',
         subtitle: 'Tendência das marcas já registradas.',
         guideTarget: 'history-benchmarks',
@@ -99,9 +147,21 @@ export function renderAthleteHistoryPage(state, helpers) {
           })}
         </div>
         `,
-      })}
+      }) : ''}
 
-      ${renderPageFold({
+      ${historyView === 'overview' || historyView === 'benchmarks' ? renderPageFold({
+        title: 'Biblioteca',
+        subtitle: 'Pesquisar e abrir benchmarks completos.',
+        content: renderBenchmarkLibrarySection({
+          benchmarkLibrary,
+          benchmarkLibraryPagination,
+          benchmarkLibraryQuery,
+          selectedBenchmark,
+          escapeHtml,
+        }),
+      }) : ''}
+
+      ${historyView === 'overview' || historyView === 'benchmarks' ? renderPageFold({
         title: 'PRs',
         subtitle: 'Suas cargas de referência, sem ruído.',
         guideTarget: 'history-prs',
@@ -119,7 +179,62 @@ export function renderAthleteHistoryPage(state, helpers) {
           })}
         </div>
         `,
-      })}
+      }) : ''}
+
+      ${historyView === 'overview' || historyView === 'activity' ? renderPageFold({
+        title: 'Resultados recentes',
+        subtitle: 'Últimas marcas registradas por você.',
+        content: renderRecentResultsSection({
+          recentResults,
+          isBusy,
+          isLoading: isDetailLoading,
+          escapeHtml,
+        }),
+      }) : ''}
+
+      ${historyView === 'overview' || historyView === 'activity' ? renderPageFold({
+        title: 'Treinos recentes',
+        subtitle: 'Treinos publicados para sua conta e seus gyms.',
+        content: renderRecentWorkoutsSection({
+          recentWorkouts,
+          isBusy,
+          isLoading: isWorkoutsLoading,
+          escapeHtml,
+        }),
+      }) : ''}
+
+      ${historyView === 'overview' || historyView === 'body' ? renderPageFold({
+        title: 'Medidas corporais',
+        subtitle: 'Peso, dobras, cintura ou o que você sincronizar.',
+        content: renderMeasurementsSection({
+          measurements,
+          isBusy,
+          isLoading: isDetailLoading,
+          escapeHtml,
+        }),
+      }) : ''}
+
+      ${historyView === 'overview' || historyView === 'sessions' ? renderPageFold({
+        title: 'Corrida',
+        subtitle: 'Sessões e ritmo recente.',
+        content: renderRunningHistorySection({
+          runningHistory,
+          isBusy,
+          isLoading: isDetailLoading,
+          escapeHtml,
+        }),
+      }) : ''}
+
+      ${historyView === 'overview' || historyView === 'sessions' ? renderPageFold({
+        title: 'Força',
+        subtitle: 'Séries, reps e carga registrados.',
+        content: renderStrengthHistorySection({
+          strengthHistory,
+          isBusy,
+          isLoading: isDetailLoading,
+          escapeHtml,
+        }),
+      }) : ''}
     </div>
   `;
 }
