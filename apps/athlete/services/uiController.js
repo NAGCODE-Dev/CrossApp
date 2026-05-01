@@ -3,7 +3,7 @@ import {
   createMeasurementSyncScheduler,
   getMeasurementSyncHash,
 } from '../features/measurements/services.js';
-import { normalizeAthleteUiState } from '../state/uiState.js';
+import { normalizeAthleteUiState } from '../uiState.js';
 import {
   buildUiSnapshotSignature,
   createAthleteEventLog,

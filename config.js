@@ -32,5 +32,3 @@ window.__RYXEN_CONFIG__ = window.__RYXEN_CONFIG__ || {
     },
   },
 };
-
-window.__CROSSAPP_CONFIG__ = window.__CROSSAPP_CONFIG__ || window.__RYXEN_CONFIG__;

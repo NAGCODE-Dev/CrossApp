@@ -9,7 +9,9 @@ export function buildAthleteHistoryPageState(state) {
   const benchmarkLibrary = athleteOverview?.benchmarkLibrary || [];
   const benchmarkLibraryPagination = athleteOverview?.benchmarkLibraryPagination || { total: 0, page: 1, limit: 12, pages: 1 };
   const benchmarkLibraryQuery = athleteOverview?.benchmarkLibraryQuery || '';
+  const benchmarkLibraryError = athleteOverview?.benchmarkLibraryError || '';
   const selectedBenchmark = athleteOverview?.selectedBenchmark || null;
+  const selectedBenchmarkError = athleteOverview?.selectedBenchmarkError || '';
   const prHistory = athleteOverview?.prHistory || [];
   const recentResults = athleteOverview?.recentResults || [];
   const recentWorkouts = athleteOverview?.recentWorkouts || [];
@@ -42,7 +44,9 @@ export function buildAthleteHistoryPageState(state) {
     benchmarkLibrary,
     benchmarkLibraryPagination,
     benchmarkLibraryQuery,
+    benchmarkLibraryError,
     selectedBenchmark,
+    selectedBenchmarkError,
     prHistory,
     recentResults,
     recentWorkouts,

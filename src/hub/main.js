@@ -3,14 +3,11 @@ import { initAuxiliaryBrowserLayer } from '../app/auxiliaryBrowser.js';
 import { initNativeBackHandling } from '../app/nativeBack.js';
 
 const STORAGE_KEY = 'ryxen-active-sport';
-const LEGACY_STORAGE_KEY = 'crossapp-active-sport';
 const HUB_SEEN_KEY = 'ryxen-hub-seen-v1';
-const LEGACY_HUB_SEEN_KEY = 'crossapp-hub-seen-v1';
 const ENTRY_TARGET_KEY = 'ryxen-entry-target';
-const LEGACY_ENTRY_TARGET_KEY = 'crossapp-entry-target';
 const WORDMARK_SOURCES = [
-  './branding/exports/ryxen-logo-white.png',
-  '/branding/exports/ryxen-logo-white.png',
+  './branding/exports/ryxen-logo-horizontal.png',
+  '/branding/exports/ryxen-logo-horizontal.png',
   './branding/exports/ryxen-logo-horizontal-alt.png',
   '/branding/exports/ryxen-logo-horizontal-alt.png',
 ];
@@ -60,9 +57,8 @@ function boot() {
 }
 
 function setupVercelObservability() {
-  if (window.__RYXEN_VERCEL_OBSERVABILITY__ || window.__CROSSAPP_VERCEL_OBSERVABILITY__) return;
+  if (window.__RYXEN_VERCEL_OBSERVABILITY__ || shouldSkipVercelObservability()) return;
   window.__RYXEN_VERCEL_OBSERVABILITY__ = true;
-  window.__CROSSAPP_VERCEL_OBSERVABILITY__ = true;
   injectVercelScript('/_vercel/insights/script.js');
   injectVercelScript('/_vercel/speed-insights/script.js');
 }
@@ -75,6 +71,15 @@ function injectVercelScript(src) {
   script.defer = true;
   script.dataset.ryxenObservability = 'true';
   document.head.appendChild(script);
+}
+
+function shouldSkipVercelObservability() {
+  try {
+    const hostname = String(window.location?.hostname || '').trim().toLowerCase();
+    return hostname === 'localhost' || hostname === '127.0.0.1';
+  } catch {
+    return false;
+  }
 }
 
 function bindEvents(root, sports) {
@@ -141,7 +146,7 @@ function renderHub({ sports, availableSports, lastSport, lastSportUrl, coachUrl,
         <div class="hub-heroGrid items-start xl:items-center">
           <div class="hub-heroMain max-w-3xl md:pr-6">
             <div class="hub-logoLockup">
-              <img class="hub-wordmark" data-hub-wordmark src="./branding/exports/ryxen-logo-white.png" alt="Ryxen" width="940" height="240" fetchpriority="high">
+              <img class="hub-wordmark" data-hub-wordmark src="./branding/exports/ryxen-logo-horizontal.png" alt="Ryxen" width="940" height="240" fetchpriority="high">
               <span class="hub-logoFallback" aria-hidden="true">
                 <img class="hub-brandMark" src="./branding/exports/ryxen-icon-64.png" alt="" width="64" height="64" fetchpriority="high">
                 <span>Ryxen</span>
@@ -502,7 +507,7 @@ function labelForSport(sport) {
 
 function getLastSport() {
   try {
-    return localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY) || 'cross';
+    return localStorage.getItem(STORAGE_KEY) || 'cross';
   } catch {
     return 'cross';
   }
@@ -511,7 +516,6 @@ function getLastSport() {
 function setLastSport(sport) {
   try {
     localStorage.setItem(STORAGE_KEY, sport);
-    localStorage.setItem(LEGACY_STORAGE_KEY, sport);
   } catch {
     // no-op
   }
@@ -519,7 +523,7 @@ function setLastSport(sport) {
 
 function hasSeenHub() {
   try {
-    return localStorage.getItem(HUB_SEEN_KEY) === '1' || localStorage.getItem(LEGACY_HUB_SEEN_KEY) === '1';
+    return localStorage.getItem(HUB_SEEN_KEY) === '1';
   } catch {
     return false;
   }
@@ -528,7 +532,6 @@ function hasSeenHub() {
 function markHubAsSeen() {
   try {
     localStorage.setItem(HUB_SEEN_KEY, '1');
-    localStorage.setItem(LEGACY_HUB_SEEN_KEY, '1');
   } catch {
     // no-op
   }
@@ -541,7 +544,7 @@ function shouldSkipHub(availableSports) {
 
 function getEntryTarget() {
   try {
-    return localStorage.getItem(ENTRY_TARGET_KEY) || localStorage.getItem(LEGACY_ENTRY_TARGET_KEY) || 'athlete';
+    return localStorage.getItem(ENTRY_TARGET_KEY) || 'athlete';
   } catch {
     return 'athlete';
   }
@@ -551,7 +554,6 @@ function setEntryTarget(entryTarget) {
   const normalized = entryTarget === 'coach' ? 'coach' : 'athlete';
   try {
     localStorage.setItem(ENTRY_TARGET_KEY, normalized);
-    localStorage.setItem(LEGACY_ENTRY_TARGET_KEY, normalized);
   } catch {
     // no-op
   }

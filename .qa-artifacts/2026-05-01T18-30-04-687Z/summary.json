@@ -1,0 +1,39 @@
+{
+  "ok": true,
+  "verbose": true,
+  "artifactDir": "/home/nikolas/Downloads/Ryxen/.qa-artifacts/2026-05-01T18-30-04-687Z",
+  "backendOrigin": "http://127.0.0.1:8790",
+  "repoStaticOrigin": "http://127.0.0.1:4100",
+  "distStaticOrigin": "http://127.0.0.1:4173",
+  "athlete": {
+    "log": [
+      "ok: goto",
+      "ok: go account",
+      "ok: account tabs",
+      "ok: history benchmark search",
+      "ok: today"
+    ],
+    "errors": [],
+    "warnings": [],
+    "badResponses": [],
+    "artifacts": {
+      "screenshot": null,
+      "report": "/home/nikolas/Downloads/Ryxen/.qa-artifacts/2026-05-01T18-30-04-687Z/athlete.json"
+    }
+  },
+  "coach": {
+    "log": [
+      "ok: goto",
+      "ok: login",
+      "headings: Coach Portal | Seu painel operacional do box | Estrutura do box | Insights do gym | Publicar treino • Cross | Benchmarks | Feed do app • Cross",
+      "ok: collect headings"
+    ],
+    "errors": [],
+    "warnings": [],
+    "badResponses": [],
+    "artifacts": {
+      "screenshot": null,
+      "report": "/home/nikolas/Downloads/Ryxen/.qa-artifacts/2026-05-01T18-30-04-687Z/coach.json"
+    }
+  }
+}

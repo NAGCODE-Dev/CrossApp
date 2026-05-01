@@ -5,7 +5,7 @@ import { createHydrationController } from '../src/app/hydration.js';
 import {
   createEmptyAthleteOverviewState as emptyAthleteOverview,
   createEmptyCoachPortalState as emptyCoachPortal,
-} from '../apps/athlete/state/uiState.js';
+} from '../apps/athlete/uiState.js';
 
 function createControllerFixture() {
   let uiState = {

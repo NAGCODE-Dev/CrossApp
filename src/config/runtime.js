@@ -1,11 +1,9 @@
 /**
  * Runtime configuration for integrations.
- * Uses localStorage override + optional window.__RYXEN_CONFIG__ with
- * legacy fallback to CrossApp globals/keys during the migration window.
+ * Prefers session-scoped overrides plus the static window config injected at build time.
  */
 
 const STORAGE_KEY = 'ryxen-runtime-config';
-const LEGACY_STORAGE_KEY = 'crossapp-runtime-config';
 
 function getSessionStorageSafe() {
   try {
@@ -94,7 +92,7 @@ export function setRuntimeConfig(nextConfig) {
 
 function safeWindowConfig() {
   try {
-    return window.__RYXEN_CONFIG__ || window.__CROSSAPP_CONFIG__ || {};
+    return window.__RYXEN_CONFIG__ || {};
   } catch {
     return {};
   }
@@ -102,7 +100,7 @@ function safeWindowConfig() {
 
 function safeAppContext() {
   try {
-    const context = window.__RYXEN_APP_CONTEXT__ || window.__CROSSAPP_APP_CONTEXT__ || {};
+    const context = window.__RYXEN_APP_CONTEXT__ || {};
     if (!context || typeof context !== 'object') return {};
     return { app: context };
   } catch {
@@ -115,9 +113,7 @@ function safeStorageConfig() {
   const local = getLocalStorageSafe();
   try {
     const raw = session?.getItem(STORAGE_KEY)
-      || session?.getItem(LEGACY_STORAGE_KEY)
-      || local?.getItem(STORAGE_KEY)
-      || local?.getItem(LEGACY_STORAGE_KEY);
+      || local?.getItem(STORAGE_KEY);
     return raw ? JSON.parse(raw) : {};
   } catch {
     return {};
@@ -131,13 +127,10 @@ function safeSetStorage(value) {
     const serialized = JSON.stringify(value || {});
     if (session) {
       session.setItem(STORAGE_KEY, serialized);
-      session.setItem(LEGACY_STORAGE_KEY, serialized);
       local?.removeItem(STORAGE_KEY);
-      local?.removeItem(LEGACY_STORAGE_KEY);
       return;
     }
     local?.setItem(STORAGE_KEY, serialized);
-    local?.setItem(LEGACY_STORAGE_KEY, serialized);
   } catch {
     // no-op
   }

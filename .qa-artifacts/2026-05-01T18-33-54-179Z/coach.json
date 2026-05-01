@@ -1,0 +1,17 @@
+{
+  "name": "coach",
+  "url": "http://127.0.0.1:4173/coach/index.html",
+  "currentUrl": "http://127.0.0.1:4173/coach/index.html",
+  "ok": true,
+  "screenshot": null,
+  "html": null,
+  "log": [
+    "ok: goto",
+    "ok: login",
+    "headings: Coach Portal | Seu painel operacional do box | Estrutura do box | Insights do gym | Publicar treino • Cross | Benchmarks | Feed do app • Cross",
+    "ok: collect headings"
+  ],
+  "errors": [],
+  "warnings": [],
+  "badResponses": []
+}

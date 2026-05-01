@@ -7,7 +7,7 @@ export function getAthletePlatformVariant() {
   }
 
   try {
-    const context = window.__RYXEN_APP_CONTEXT__ || window.__CROSSAPP_APP_CONTEXT__ || {};
+    const context = window.__RYXEN_APP_CONTEXT__ || {};
     if (context?.platformVariant === 'native') return 'native';
     if (context?.platformVariant === 'web') return 'web';
   } catch {

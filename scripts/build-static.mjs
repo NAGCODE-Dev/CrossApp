@@ -88,7 +88,6 @@ for (const dir of dirsToCopy) {
 
 const frontendConfig = [
   `window.__RYXEN_CONFIG__ = ${JSON.stringify(runtimeConfig, null, 2)};`,
-  'window.__CROSSAPP_CONFIG__ = window.__CROSSAPP_CONFIG__ || window.__RYXEN_CONFIG__;',
   '',
 ].join('\n');
 await writeFile(path.join(distDir, 'config.js'), frontendConfig, 'utf8');
@@ -115,7 +114,7 @@ async function loadFileConfig() {
     const sandbox = { window: {} };
     vm.createContext(sandbox);
     vm.runInContext(raw, sandbox, { timeout: 1000 });
-    return sandbox.window.__RYXEN_CONFIG__ || sandbox.window.__CROSSAPP_CONFIG__ || {};
+    return sandbox.window.__RYXEN_CONFIG__ || {};
   } catch {
     return {};
   }

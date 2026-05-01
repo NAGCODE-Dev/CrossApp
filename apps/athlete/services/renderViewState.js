@@ -1,4 +1,4 @@
-import { buildAthleteUiForRender } from '../state/uiState.js';
+import { buildAthleteUiForRender } from '../uiState.js';
 import {
   safeGetAthleteAppState,
   safeGetAthleteProfile,

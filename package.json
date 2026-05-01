@@ -35,6 +35,8 @@
     "smoke:auth": "node scripts/smoke-auth.mjs",
     "seed:coach-trial": "node scripts/seed-coach-trial.mjs",
     "smoke:coach-trial": "node scripts/smoke-coach-trial.mjs",
+    "qa:local": "node scripts/qa-local.mjs",
+    "qa:local:verbose": "node scripts/qa-local.mjs --verbose",
     "validate:stack": "bash scripts/validate-stack.sh",
     "seed:admin-playground": "node backend/scripts/seed-admin-playground.mjs",
     "docker:up": "bash scripts/docker-up.sh",

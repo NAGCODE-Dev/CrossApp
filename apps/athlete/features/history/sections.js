@@ -64,7 +64,9 @@ export function renderBenchmarkLibrarySection({
   benchmarkLibrary = [],
   benchmarkLibraryPagination = {},
   benchmarkLibraryQuery = '',
+  benchmarkLibraryError = '',
   selectedBenchmark = null,
+  selectedBenchmarkError = '',
   escapeHtml,
 }) {
   const selected = selectedBenchmark?.benchmark || null;
@@ -82,6 +84,7 @@ export function renderBenchmarkLibrarySection({
         <input class="add-input" id="history-benchmark-query" type="search" placeholder="Buscar benchmark" value="${escapeHtml(benchmarkLibraryQuery || '')}" />
         <button class="btn-primary" data-action="history:benchmarks:search" type="button">Buscar</button>
       </div>
+      ${benchmarkLibraryError ? `<p class="account-hint">${escapeHtml(benchmarkLibraryError)}</p>` : ''}
       <div class="coach-list coach-listCompact">
         ${benchmarkLibrary.length ? benchmarkLibrary.map((item) => `
           <button
@@ -101,6 +104,7 @@ export function renderBenchmarkLibrarySection({
         <strong>${escapeHtml(selected?.name || 'Detalhe do benchmark')}</strong>
         <span>${selected ? escapeHtml(formatBenchmarkScoreType(selected.score_type)) : 'Toque em um benchmark'}</span>
       </div>
+      ${selectedBenchmarkError ? `<p class="account-hint">${escapeHtml(selectedBenchmarkError)}</p>` : ''}
       ${selected ? `
         <div class="coach-list coach-listCompact">
           <div class="coach-listItem static">

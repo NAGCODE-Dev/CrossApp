@@ -2,9 +2,7 @@ import { getRuntimeConfig } from '../../config/runtime.js';
 import { getAuthToken } from './apiClient.js';
 
 const CONSENT_KEY = 'ryxen-consent';
-const LEGACY_CONSENT_KEY = 'crossapp-consent';
 const QUEUE_KEY = 'ryxen-telemetry-queue';
-const LEGACY_QUEUE_KEY = 'crossapp-telemetry-queue';
 const MAX_QUEUE = 200;
 const MAX_STRING_LENGTH = 1000;
 
@@ -120,7 +118,6 @@ export function setTelemetryConsent(consented) {
   try {
     const serialized = JSON.stringify({ telemetry: !!consented });
     localStorage.setItem(CONSENT_KEY, serialized);
-    localStorage.setItem(LEGACY_CONSENT_KEY, serialized);
   } catch {
     // no-op
   }
@@ -128,7 +125,7 @@ export function setTelemetryConsent(consented) {
 
 export function hasTelemetryConsent() {
   try {
-    const raw = localStorage.getItem(CONSENT_KEY) || localStorage.getItem(LEGACY_CONSENT_KEY);
+    const raw = localStorage.getItem(CONSENT_KEY);
     if (!raw) return false;
     const parsed = JSON.parse(raw);
     return parsed?.telemetry === true;
@@ -149,9 +146,7 @@ function readQueue() {
   const local = getLocalStorageSafe();
   try {
     const raw = queueStorage?.getItem(QUEUE_KEY)
-      || queueStorage?.getItem(LEGACY_QUEUE_KEY)
-      || local?.getItem(QUEUE_KEY)
-      || local?.getItem(LEGACY_QUEUE_KEY);
+      || local?.getItem(QUEUE_KEY);
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
@@ -164,10 +159,8 @@ function writeQueue(queue) {
   try {
     const serialized = JSON.stringify(queue || []);
     queueStorage?.setItem(QUEUE_KEY, serialized);
-    queueStorage?.setItem(LEGACY_QUEUE_KEY, serialized);
     if (queueStorage !== local) {
       local?.removeItem(QUEUE_KEY);
-      local?.removeItem(LEGACY_QUEUE_KEY);
     }
   } catch {
     // no-op

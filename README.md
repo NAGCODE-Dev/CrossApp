@@ -26,19 +26,20 @@ copy, ativos visuais, contexto do produto e autoria do código continuam
 vinculados ao projeto original.
 
 Nota de compatibilidade:
-- variáveis `CROSSAPP_*`, chaves `crossapp-*`, nomes de banco/containers e alguns assets públicos continuam com prefixo legado para preservar installs já publicados, cache da PWA e integrações existentes durante a transição para `Ryxen`.
+- o app web e o portal já usam chaves `ryxen-*` no runtime ativo.
+- o prefixo `CROSSAPP_*` continua só em partes de infra, scripts e integrações antigas que ainda precisam de transição controlada.
 
 ## Stack
 
 - Frontend: HTML, CSS, JavaScript modular
 - PWA: `manifest.json` + `sw.js`
-- Parsing: PDF.js + OCR para imagem/vídeo
+- Parsing: PDF.js + OCR para imagem
 - Persistência local: `localStorage` e `IndexedDB`
 - Backend: Node.js + Express + Postgres
 
 ## Funcionalidades
 
-- Importação de `PDF`, `txt`, `csv`, `json`, imagem e vídeo
+- Importação de `PDF`, `texto`, `imagem` e treino salvo
 - Imagens grandes são reduzidas no navegador antes da importação; arquivos acima de `50 MB` são bloqueados
 - Cálculo automático de cargas a partir de PRs
 - Backup e restauração completos
@@ -197,6 +198,20 @@ Smoke test automático:
 ```bash
 npm run smoke:coach-trial
 ```
+
+QA local completo com backend, atleta e coach:
+
+```bash
+npm run qa:local
+```
+
+Modo verboso com screenshot, HTML dump em falha e relatório JSON:
+
+```bash
+npm run qa:local:verbose
+```
+
+Artefatos são gravados em `.qa-artifacts/<timestamp>/`.
 
 Documentos operacionais:
 

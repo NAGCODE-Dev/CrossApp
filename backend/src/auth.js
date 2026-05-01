@@ -80,6 +80,28 @@ export async function authRequired(req, res, next) {
   }
 }
 
+export async function authOptional(req, _res, next) {
+  try {
+    const header = req.headers.authorization || '';
+    if (!header.startsWith('Bearer ')) {
+      req.user = null;
+      return next();
+    }
+
+    const auth = await resolveAuthenticatedRequestUser(req);
+    if (!auth.ok) {
+      req.user = null;
+      return next();
+    }
+
+    req.user = auth.user;
+    return next();
+  } catch (error) {
+    req.user = null;
+    return next(error);
+  }
+}
+
 export async function adminRequired(req, res, next) {
   try {
     const auth = await resolveAuthenticatedRequestUser(req);

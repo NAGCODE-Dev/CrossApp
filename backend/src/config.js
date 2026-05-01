@@ -12,6 +12,10 @@ function parseList(value) {
 }
 
 const DEFAULT_FRONTEND_ORIGIN_ALIASES = [
+  'http://localhost:4173',
+  'http://127.0.0.1:4173',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
   'https://ryxen-app.vercel.app',
   'https://cross-app-six.vercel.app',
   'https://ryxen-nagcode-devs-projects.vercel.app',

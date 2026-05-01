@@ -25,32 +25,51 @@ export async function handleAthletePageSessionAction(action, context) {
       throw new Error('Biblioteca de benchmarks indisponível');
     }
 
-    const result = await bridge.getBenchmarks({
-      q: query,
-      page,
-      limit: 12,
-      sort: 'year_desc',
-    });
-    const items = result?.data?.benchmarks || [];
-    const pagination = result?.data?.pagination || { total: 0, page: 1, limit: 12, pages: 1 };
+    try {
+      const result = await bridge.getBenchmarks({
+        q: query,
+        page,
+        limit: 12,
+        sort: 'year_desc',
+      });
+      const items = result?.data?.benchmarks || [];
+      const pagination = result?.data?.pagination || { total: 0, page: 1, limit: 12, pages: 1 };
 
-    await applyUiPatch((state) => {
-      const currentSelectedSlug = state?.athleteOverview?.selectedBenchmark?.benchmark?.slug || '';
-      const selectionStillExists = items.some((item) => item.slug === currentSelectedSlug);
-      return {
+      await applyUiPatch((state) => {
+        const currentSelectedSlug = state?.athleteOverview?.selectedBenchmark?.benchmark?.slug || '';
+        const selectionStillExists = items.some((item) => item.slug === currentSelectedSlug);
+        return {
+          ...state,
+          athleteOverview: {
+            ...(state?.athleteOverview || {}),
+            benchmarkLibrary: items,
+            benchmarkLibraryPagination: pagination,
+            benchmarkLibraryQuery: query,
+            benchmarkLibraryError: '',
+            selectedBenchmark: selectionStillExists ? state?.athleteOverview?.selectedBenchmark || null : null,
+            selectedBenchmarkError: '',
+          },
+        };
+      });
+
+      if (autoSelect && items[0]?.slug) {
+        await openBenchmarkDetail(items[0].slug);
+      }
+      return true;
+    } catch (error) {
+      await applyUiPatch((state) => ({
         ...state,
         athleteOverview: {
           ...(state?.athleteOverview || {}),
-          benchmarkLibrary: items,
-          benchmarkLibraryPagination: pagination,
+          benchmarkLibrary: [],
+          benchmarkLibraryPagination: { total: 0, page: 1, limit: 12, pages: 1 },
           benchmarkLibraryQuery: query,
-          selectedBenchmark: selectionStillExists ? state?.athleteOverview?.selectedBenchmark || null : null,
+          benchmarkLibraryError: 'Biblioteca indisponível agora. Tente novamente em instantes.',
+          selectedBenchmark: null,
+          selectedBenchmarkError: '',
         },
-      };
-    });
-
-    if (autoSelect && items[0]?.slug) {
-      await openBenchmarkDetail(items[0].slug);
+      }));
+      return false;
     }
   }
 
@@ -61,18 +80,32 @@ export async function handleAthletePageSessionAction(action, context) {
     }
     const ui = getUiState?.() || {};
     const gymId = ui?.coachPortal?.selectedGymId || null;
-    const result = await bridge.getBenchmarkDetail(slug, {
-      gymId,
-      limit: 8,
-    });
+    try {
+      const result = await bridge.getBenchmarkDetail(slug, {
+        gymId,
+        limit: 8,
+      });
 
-    await applyUiPatch((state) => ({
-      ...state,
-      athleteOverview: {
-        ...(state?.athleteOverview || {}),
-        selectedBenchmark: result?.data || null,
-      },
-    }));
+      await applyUiPatch((state) => ({
+        ...state,
+        athleteOverview: {
+          ...(state?.athleteOverview || {}),
+          selectedBenchmark: result?.data || null,
+          selectedBenchmarkError: '',
+        },
+      }));
+      return true;
+    } catch (error) {
+      await applyUiPatch((state) => ({
+        ...state,
+        athleteOverview: {
+          ...(state?.athleteOverview || {}),
+          selectedBenchmark: null,
+          selectedBenchmarkError: 'Não foi possível abrir este benchmark agora.',
+        },
+      }));
+      return false;
+    }
   }
 
   switch (action) {

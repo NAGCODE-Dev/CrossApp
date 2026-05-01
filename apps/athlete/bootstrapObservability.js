@@ -53,9 +53,8 @@ export function setupErrorMonitoring() {
 }
 
 export function setupVercelObservability() {
-  if (window.__CROSSAPP_VERCEL_OBSERVABILITY__ || !navigator.onLine) return;
+  if (window.__RYXEN_VERCEL_OBSERVABILITY__ || !navigator.onLine || shouldSkipVercelObservability()) return;
   window.__RYXEN_VERCEL_OBSERVABILITY__ = true;
-  window.__CROSSAPP_VERCEL_OBSERVABILITY__ = true;
   injectVercelScript('/_vercel/insights/script.js');
   injectVercelScript('/_vercel/speed-insights/script.js');
 }
@@ -68,6 +67,15 @@ function injectVercelScript(src) {
   script.defer = true;
   script.dataset.ryxenObservability = 'true';
   document.head.appendChild(script);
+}
+
+function shouldSkipVercelObservability() {
+  try {
+    const hostname = String(window.location?.hostname || '').trim().toLowerCase();
+    return hostname === 'localhost' || hostname === '127.0.0.1';
+  } catch {
+    return false;
+  }
 }
 
 export function setupGlobalTelemetryHandlers() {

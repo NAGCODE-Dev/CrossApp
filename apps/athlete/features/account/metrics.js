@@ -1,6 +1,6 @@
 export function recordUiPerfMetric(name, durationMs, meta = {}) {
   try {
-    const current = window.__RYXEN_UI_METRICS__ || window.__CROSSAPP_UI_METRICS__ || { recent: [], summary: {} };
+    const current = window.__RYXEN_UI_METRICS__ || { recent: [], summary: {} };
     const recent = [...(current.recent || []), { name, durationMs, at: new Date().toISOString(), ...meta }].slice(-30);
     const previous = current.summary?.[name] || { count: 0, maxMs: 0, avgMs: 0, lastMs: 0 };
     const count = previous.count + 1;
@@ -16,8 +16,7 @@ export function recordUiPerfMetric(name, durationMs, meta = {}) {
     };
     const nextMetrics = { recent, summary };
     window.__RYXEN_UI_METRICS__ = nextMetrics;
-    window.__CROSSAPP_UI_METRICS__ = nextMetrics;
-    if (durationMs >= 1500) {
+    if (durationMs >= 1500 && shouldLogSlowUiMetric()) {
       console.warn('[ui:slow]', name, `${durationMs}ms`, meta);
     }
   } catch {
@@ -31,5 +30,13 @@ export async function measureUiAsync(name, fn, meta = {}) {
     return await fn();
   } finally {
     recordUiPerfMetric(name, Number((performance.now() - startedAt).toFixed(1)), meta);
+  }
+}
+
+function shouldLogSlowUiMetric() {
+  try {
+    return window.__RYXEN_DEBUG_UI__ === true;
+  } catch {
+    return false;
   }
 }

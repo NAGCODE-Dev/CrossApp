@@ -1,12 +1,8 @@
 export const STORAGE_KEYS = {
   token: 'ryxen-auth-token',
-  legacyToken: 'crossapp-auth-token',
   profile: 'ryxen-user-profile',
-  legacyProfile: 'crossapp-user-profile',
   runtime: 'ryxen-runtime-config',
-  legacyRuntime: 'crossapp-runtime-config',
   workoutDraft: 'ryxen-coach-workout-draft',
-  legacyWorkoutDraft: 'crossapp-coach-workout-draft',
 };
 
 export const DEFAULT_WORKOUT_DRAFT = {

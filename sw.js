@@ -36,7 +36,6 @@ const STATIC_RUNTIME_ASSETS = [
   './src/ui/tailwind.generated.css',
   './sports/running/main.js',
   './sports/strength/main.js',
-  './src/main.js',
 ];
 
 const OPTIONAL_LAZY_ASSETS = [

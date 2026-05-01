@@ -291,6 +291,7 @@ export async function loadAthleteWorkoutsBlock(access) {
       w.title,
       w.scheduled_date,
       w.published_at,
+      w.created_at,
       g.name AS gym_name
      FROM workouts w
      JOIN gyms g ON g.id = w.gym_id

@@ -1,7 +1,7 @@
 import {
   createEmptyAthleteOverviewState,
   createEmptyCoachPortalState,
-} from '../../state/uiState.js';
+} from '../../uiState.js';
 import { createAthleteSetupClickBindings } from './setupClickBindings.js';
 import { createAthleteSetupFlowBindings } from './setupFlowBindings.js';
 import { createAthleteGoogleBindings } from './setupGoogleBindings.js';

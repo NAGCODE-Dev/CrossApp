@@ -217,11 +217,19 @@ function clearBillingParams(params) {
 }
 
 function setupVercelObservability() {
-  if (window.__RYXEN_VERCEL_OBSERVABILITY__ || window.__CROSSAPP_VERCEL_OBSERVABILITY__) return;
+  if (window.__RYXEN_VERCEL_OBSERVABILITY__ || shouldSkipVercelObservability()) return;
   window.__RYXEN_VERCEL_OBSERVABILITY__ = true;
-  window.__CROSSAPP_VERCEL_OBSERVABILITY__ = true;
   inject();
   injectSpeedInsights();
+}
+
+function shouldSkipVercelObservability() {
+  try {
+    const hostname = String(window.location?.hostname || '').trim().toLowerCase();
+    return hostname === 'localhost' || hostname === '127.0.0.1';
+  } catch {
+    return false;
+  }
 }
 
 createRoot(document.getElementById('coach-root')).render(React.createElement(App));

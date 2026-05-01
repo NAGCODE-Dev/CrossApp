@@ -73,9 +73,7 @@ export async function apiRequest(path, options = {}) {
 }
 
 const AUTH_TOKEN_KEY = 'ryxen-auth-token';
-const LEGACY_AUTH_TOKEN_KEY = 'crossapp-auth-token';
 const REQUEST_METRICS_KEY = '__RYXEN_REQUEST_METRICS__';
-const LEGACY_REQUEST_METRICS_KEY = '__CROSSAPP_REQUEST_METRICS__';
 
 function getSessionStorageSafe() {
   try {
@@ -158,7 +156,7 @@ function clearAuthStorageValue(keys = []) {
 export function setAuthToken(token) {
   try {
     const value = token || '';
-    writeAuthStorageValue([AUTH_TOKEN_KEY, LEGACY_AUTH_TOKEN_KEY], value);
+    writeAuthStorageValue([AUTH_TOKEN_KEY], value);
   } catch {
     // no-op
   }
@@ -166,7 +164,7 @@ export function setAuthToken(token) {
 
 export function getAuthToken() {
   try {
-    return readAuthStorageValue([AUTH_TOKEN_KEY, LEGACY_AUTH_TOKEN_KEY]);
+    return readAuthStorageValue([AUTH_TOKEN_KEY]);
   } catch {
     return '';
   }
@@ -174,7 +172,7 @@ export function getAuthToken() {
 
 export function clearAuthToken() {
   try {
-    clearAuthStorageValue([AUTH_TOKEN_KEY, LEGACY_AUTH_TOKEN_KEY]);
+    clearAuthStorageValue([AUTH_TOKEN_KEY]);
   } catch {
     // no-op
   }
@@ -199,7 +197,7 @@ function safeByteLength(text) {
 
 function trackRequestMetric(entry) {
   try {
-    const current = window[REQUEST_METRICS_KEY] || window[LEGACY_REQUEST_METRICS_KEY] || { recent: [], slow: [], summary: {} };
+    const current = window[REQUEST_METRICS_KEY] || { recent: [], slow: [], summary: {} };
     const recent = [...(current.recent || []), { ...entry, at: new Date().toISOString() }].slice(-40);
     const slow = entry.durationMs >= 600
       ? [...(current.slow || []), { ...entry, at: new Date().toISOString() }].slice(-20)
@@ -218,11 +216,18 @@ function trackRequestMetric(entry) {
     };
     const nextMetrics = { recent, slow, summary };
     window[REQUEST_METRICS_KEY] = nextMetrics;
-    window[LEGACY_REQUEST_METRICS_KEY] = nextMetrics;
-    if (entry.durationMs >= 1200) {
+    if (entry.durationMs >= 1200 && shouldLogSlowRequestWarning()) {
       console.warn('[api:slow]', entry.method, entry.path, `${entry.durationMs}ms`, `${entry.responseBytes}B`, `status=${entry.status}`);
     }
   } catch {
     // no-op
+  }
+}
+
+function shouldLogSlowRequestWarning() {
+  try {
+    return window.__RYXEN_DEBUG_API__ === true;
+  } catch {
+    return false;
   }
 }

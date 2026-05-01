@@ -155,7 +155,6 @@ test('applyAuthRedirectFromUrl troca authCode do callback nativo sem expor JWT n
   assert.equal(result.success, true);
   assert.equal(result.returnTo, '/sports/cross/index.html');
   assert.equal(storage.getItem('ryxen-auth-token'), 'abc123');
-  assert.equal(storage.getItem('crossapp-auth-token'), 'abc123');
   assert.deepEqual(JSON.parse(storage.getItem('ryxen-user-profile')), { email: 'athlete@test.local' });
   assert.deepEqual(getStoredProfile(), { email: 'athlete@test.local' });
 });

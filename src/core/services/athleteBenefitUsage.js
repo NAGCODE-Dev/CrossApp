@@ -1,5 +1,4 @@
 const STORAGE_KEY = 'ryxen-athlete-usage-v1';
-const LEGACY_STORAGE_KEY = 'crossapp-athlete-usage-v1';
 
 const DEFAULT_BENEFITS = {
   tier: 'base',
@@ -19,7 +18,7 @@ function getMonthKey() {
 
 function readUsage() {
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY) || window.localStorage.getItem(LEGACY_STORAGE_KEY);
+    const raw = window.localStorage.getItem(STORAGE_KEY);
     const parsed = raw ? JSON.parse(raw) : {};
     return parsed && typeof parsed === 'object' ? parsed : {};
   } catch {
@@ -31,7 +30,6 @@ function writeUsage(data) {
   try {
     const serialized = JSON.stringify(data || {});
     window.localStorage.setItem(STORAGE_KEY, serialized);
-    window.localStorage.setItem(LEGACY_STORAGE_KEY, serialized);
   } catch {}
 }
 

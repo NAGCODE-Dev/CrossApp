@@ -55,7 +55,9 @@ export function normalizeAthleteOverviewState(athleteOverview) {
     next.benchmarkLibraryPagination = { total: 0, page: 1, limit: 12, pages: 1 };
   }
   if (typeof next.benchmarkLibraryQuery !== 'string') next.benchmarkLibraryQuery = '';
+  if (typeof next.benchmarkLibraryError !== 'string') next.benchmarkLibraryError = '';
   if (!next.selectedBenchmark || typeof next.selectedBenchmark !== 'object') next.selectedBenchmark = null;
+  if (typeof next.selectedBenchmarkError !== 'string') next.selectedBenchmarkError = '';
   if (!Array.isArray(next.prHistory)) next.prHistory = [];
   if (!next.prCurrent || typeof next.prCurrent !== 'object') next.prCurrent = {};
   if (!Array.isArray(next.measurements)) next.measurements = [];

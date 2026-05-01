@@ -75,18 +75,18 @@ function removeStoredValue(keys = [], preferred = null) {
 }
 
 export function readToken() {
-  return readStoredValue([STORAGE_KEYS.token, STORAGE_KEYS.legacyToken], 'session');
+  return readStoredValue([STORAGE_KEYS.token], 'session');
 }
 
 export function writeToken(token) {
   const value = String(token || '');
-  writeStoredValue([STORAGE_KEYS.token, STORAGE_KEYS.legacyToken], value, 'session');
-  removeStoredValue([STORAGE_KEYS.token, STORAGE_KEYS.legacyToken], 'local');
+  writeStoredValue([STORAGE_KEYS.token], value, 'session');
+  removeStoredValue([STORAGE_KEYS.token], 'local');
 }
 
 export function readProfile() {
   try {
-    const raw = readStoredValue([STORAGE_KEYS.profile, STORAGE_KEYS.legacyProfile], 'session');
+    const raw = readStoredValue([STORAGE_KEYS.profile], 'session');
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
@@ -95,16 +95,14 @@ export function readProfile() {
 
 export function writeProfile(profile) {
   const serialized = JSON.stringify(profile || null);
-  writeStoredValue([STORAGE_KEYS.profile, STORAGE_KEYS.legacyProfile], serialized, 'session');
-  removeStoredValue([STORAGE_KEYS.profile, STORAGE_KEYS.legacyProfile], 'local');
+  writeStoredValue([STORAGE_KEYS.profile], serialized, 'session');
+  removeStoredValue([STORAGE_KEYS.profile], 'local');
 }
 
 export function clearAuthSession() {
   removeStoredValue([
     STORAGE_KEYS.token,
-    STORAGE_KEYS.legacyToken,
     STORAGE_KEYS.profile,
-    STORAGE_KEYS.legacyProfile,
   ]);
 }
 
@@ -174,7 +172,7 @@ export function hasWorkoutDraftContent(forms = {}) {
 
 export function readWorkoutDraft() {
   try {
-    const raw = readStoredValue([STORAGE_KEYS.workoutDraft, STORAGE_KEYS.legacyWorkoutDraft], 'local');
+    const raw = readStoredValue([STORAGE_KEYS.workoutDraft], 'local');
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     return getWorkoutDraftPayload(parsed);
@@ -186,16 +184,16 @@ export function readWorkoutDraft() {
 export function writeWorkoutDraft(forms = {}) {
   try {
     if (!hasWorkoutDraftContent(forms)) {
-      removeStoredValue([STORAGE_KEYS.workoutDraft, STORAGE_KEYS.legacyWorkoutDraft], 'local');
+      removeStoredValue([STORAGE_KEYS.workoutDraft], 'local');
       return;
     }
     const serialized = JSON.stringify(getWorkoutDraftPayload(forms));
-    writeStoredValue([STORAGE_KEYS.workoutDraft, STORAGE_KEYS.legacyWorkoutDraft], serialized, 'local');
+    writeStoredValue([STORAGE_KEYS.workoutDraft], serialized, 'local');
   } catch {
     // no-op
   }
 }
 
 export function clearWorkoutDraft() {
-  removeStoredValue([STORAGE_KEYS.workoutDraft, STORAGE_KEYS.legacyWorkoutDraft], 'local');
+  removeStoredValue([STORAGE_KEYS.workoutDraft], 'local');
 }

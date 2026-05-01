@@ -105,7 +105,7 @@ export async function syncAthleteMeasurementsSnapshot({ userId, measurements }) 
     const unit = String(entry?.unit || '').trim();
     const value = Number(entry?.value);
     const notes = String(entry?.notes || '').trim();
-    const recordedAt = String(entry?.recordedAt || '').trim();
+    const recordedAt = String(entry?.recordedAt || entry?.recorded_at || '').trim();
 
     if (!id || !label || !Number.isFinite(value) || !recordedAt) {
       return { error: 'Cada medida precisa de id, label, value e recordedAt válidos', code: 400 };

@@ -3,7 +3,6 @@ import { setErrorMonitorUser } from './errorMonitor.js';
 import { getRuntimeConfig } from '../../config/runtime.js';
 
 const PROFILE_KEY = 'ryxen-user-profile';
-const LEGACY_PROFILE_KEY = 'crossapp-user-profile';
 const TRUSTED_DEVICE_ID_KEY = 'ryxen-trusted-device-id';
 const TRUSTED_DEVICE_MAP_KEY = 'ryxen-trusted-device-map';
 const LAST_AUTH_EMAIL_KEY = 'ryxen-last-auth-email';
@@ -356,7 +355,7 @@ export async function signOut() {
 
 export function getStoredProfile() {
   try {
-    const raw = readSessionScopedValue([PROFILE_KEY, LEGACY_PROFILE_KEY]);
+    const raw = readSessionScopedValue([PROFILE_KEY]);
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
@@ -472,7 +471,7 @@ function handleAuthResponse(res) {
 function saveStoredProfile(profile) {
   try {
     const serialized = JSON.stringify(profile || null);
-    writeSessionScopedValue([PROFILE_KEY, LEGACY_PROFILE_KEY], serialized);
+    writeSessionScopedValue([PROFILE_KEY], serialized);
   } catch {
     // no-op
   }
@@ -480,7 +479,7 @@ function saveStoredProfile(profile) {
 
 function clearStoredProfile() {
   try {
-    clearSessionScopedValue([PROFILE_KEY, LEGACY_PROFILE_KEY]);
+    clearSessionScopedValue([PROFILE_KEY]);
   } catch {
     // no-op
   }

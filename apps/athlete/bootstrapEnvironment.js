@@ -25,7 +25,7 @@ export function applyAppContext() {
   document.body.dataset.platformVariant = platformVariant;
 
   try {
-    const current = window.__RYXEN_APP_CONTEXT__ || window.__CROSSAPP_APP_CONTEXT__ || {};
+    const current = window.__RYXEN_APP_CONTEXT__ || {};
     const next = {
       ...current,
       appLabel,
@@ -33,7 +33,6 @@ export function applyAppContext() {
       platformVariant,
     };
     window.__RYXEN_APP_CONTEXT__ = next;
-    window.__CROSSAPP_APP_CONTEXT__ = next;
   } catch {
     // no-op
   }

@@ -1,0 +1,16 @@
+{
+  "name": "athlete",
+  "url": "http://127.0.0.1:4100/sports/cross/index.html",
+  "ok": true,
+  "screenshot": null,
+  "log": [
+    "ok: goto",
+    "ok: go account",
+    "ok: account tabs",
+    "ok: history benchmark search",
+    "ok: today"
+  ],
+  "errors": [],
+  "warnings": [],
+  "badResponses": []
+}

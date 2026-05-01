@@ -1,6 +1,6 @@
 import express from 'express';
 
-import { authRequired } from '../auth.js';
+import { authOptional, authRequired } from '../auth.js';
 import { canManageMembership, getMembershipForUser } from '../access.js';
 import {
   createBenchmarkResult,
@@ -14,7 +14,7 @@ import { normalizeSportType } from '../utils/sportType.js';
 export function createBenchmarkRouter({ resolveBenchmarkOrder }) {
   const router = express.Router();
 
-  router.get('/', authRequired, async (req, res) => {
+  router.get('/', authOptional, async (req, res) => {
     const limit = Math.min(Math.max(Number(req.query.limit) || 50, 1), 200);
     const page = Math.max(Number(req.query.page) || 1, 1);
     const q = String(req.query.q || '').trim().toLowerCase();
@@ -33,10 +33,10 @@ export function createBenchmarkRouter({ resolveBenchmarkOrder }) {
     return res.json(payload);
   });
 
-  router.get('/:slug', authRequired, async (req, res) => {
+  router.get('/:slug', authOptional, async (req, res) => {
     const slug = String(req.params.slug || '').trim().toLowerCase();
     const sportType = normalizeSportType(req.query?.sportType);
-    const gymId = req.query?.gymId !== undefined && req.query?.gymId !== '' ? Number(req.query.gymId) : null;
+    const requestedGymId = req.query?.gymId !== undefined && req.query?.gymId !== '' ? Number(req.query.gymId) : null;
     const limit = Math.min(Math.max(Number(req.query.limit) || 8, 1), 30);
 
     if (!slug) {
@@ -44,11 +44,14 @@ export function createBenchmarkRouter({ resolveBenchmarkOrder }) {
     }
 
     let viewerMembership = null;
-    if (Number.isFinite(gymId)) {
-      viewerMembership = await getMembershipForUser(gymId, req.user.userId);
+    let effectiveGymId = Number.isFinite(requestedGymId) ? requestedGymId : null;
+    if (Number.isFinite(effectiveGymId) && req.user?.userId) {
+      viewerMembership = await getMembershipForUser(effectiveGymId, req.user.userId);
       if (!viewerMembership) {
         return res.status(404).json({ error: 'Gym não encontrado para este usuário' });
       }
+    } else if (Number.isFinite(effectiveGymId) && !req.user?.userId) {
+      effectiveGymId = null;
     }
 
     const benchmark = await getBenchmarkBySlug(slug);
@@ -59,25 +62,28 @@ export function createBenchmarkRouter({ resolveBenchmarkOrder }) {
     const leaderboardPayload = await getBenchmarkLeaderboard({
       slug,
       sportType,
-      gymId,
+      gymId: effectiveGymId,
       limit,
       showPrivateAthleteData: canManageMembership(viewerMembership),
     });
-    const latestResult = await getViewerBenchmarkResult({
-      slug,
-      userId: req.user.userId,
-      sportType,
-      gymId,
-    });
+    const latestResult = req.user?.userId
+      ? await getViewerBenchmarkResult({
+        slug,
+        userId: req.user.userId,
+        sportType,
+        gymId: effectiveGymId,
+      })
+      : null;
 
     return res.json({
       benchmark,
       leaderboard: leaderboardPayload?.results || [],
       viewerLatestResult: latestResult,
       viewerContext: {
-        gymId: Number.isFinite(gymId) ? gymId : null,
-        scopedToGym: Number.isFinite(gymId),
+        gymId: Number.isFinite(effectiveGymId) ? effectiveGymId : null,
+        scopedToGym: Number.isFinite(effectiveGymId),
         canManageGym: canManageMembership(viewerMembership),
+        authenticated: !!req.user?.userId,
       },
     });
   });

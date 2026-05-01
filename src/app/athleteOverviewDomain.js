@@ -72,6 +72,14 @@ export function createAthleteOverviewDomain({
     if (!Array.isArray(next.recentWorkouts)) next.recentWorkouts = [];
     if (!Array.isArray(next.checkinSessions)) next.checkinSessions = [];
     if (!Array.isArray(next.benchmarkHistory)) next.benchmarkHistory = [];
+    if (!Array.isArray(next.benchmarkLibrary)) next.benchmarkLibrary = [];
+    if (typeof next.benchmarkLibraryQuery !== 'string') next.benchmarkLibraryQuery = '';
+    if (typeof next.benchmarkLibraryError !== 'string') next.benchmarkLibraryError = '';
+    if (!next.benchmarkLibraryPagination || typeof next.benchmarkLibraryPagination !== 'object') {
+      next.benchmarkLibraryPagination = { total: 0, page: 1, limit: 12, pages: 1 };
+    }
+    if (!next.selectedBenchmark || typeof next.selectedBenchmark !== 'object') next.selectedBenchmark = null;
+    if (typeof next.selectedBenchmarkError !== 'string') next.selectedBenchmarkError = '';
     if (!Array.isArray(next.prHistory)) next.prHistory = [];
     if (!Array.isArray(next.measurements)) next.measurements = [];
     if (!Array.isArray(next.runningHistory)) next.runningHistory = [];

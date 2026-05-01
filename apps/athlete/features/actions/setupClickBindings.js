@@ -36,7 +36,7 @@ import {
   createEmptyAdminState,
   createEmptyAthleteOverviewState,
   createEmptyCoachPortalState,
-} from '../../state/uiState.js';
+} from '../../uiState.js';
 import { handleExerciseHelpAction } from './router.js';
 import { createAthleteClickContext } from './setupClickContext.js';
 import { routeAthleteClickAction } from './setupHelpers.js';
