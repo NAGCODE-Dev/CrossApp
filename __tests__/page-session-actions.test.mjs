@@ -158,3 +158,250 @@ test('history:benchmark:open abre detalhe do benchmark selecionado', async () =>
   assert.equal(uiState.athleteOverview.selectedBenchmark.benchmark.slug, 'murph');
   assert.equal(uiState.athleteOverview.selectedBenchmark.leaderboard.length, 1);
 });
+
+test('sync:retry atualiza o status visual e conclui o retry manual', async () => {
+  const patches = [];
+  const toasts = [];
+  const uiState = {
+    syncStatus: {
+      online: true,
+      isAuthenticated: true,
+      pendingAppState: true,
+      pendingOutboxCount: 1,
+      pendingTotal: 2,
+      pendingKinds: ['pr_snapshot'],
+      lastSyncAt: '',
+      lastError: '',
+      flushing: false,
+    },
+  };
+
+  const handled = await handleAthletePageSessionAction('sync:retry', {
+    element: { dataset: {} },
+    toast: (message) => toasts.push(message),
+    getUiState: () => uiState,
+    applyUiState: async () => {},
+    applyUiPatch: async (updater, options = {}) => {
+      Object.assign(uiState, updater(uiState));
+      patches.push({ state: structuredClone(uiState), options });
+    },
+    finalizeUiChange: async () => {},
+    hydratePage: () => {},
+    shouldHydratePage: () => false,
+    invalidateHydrationCache: () => {},
+    getAppBridge: () => ({
+      async retryPendingSync() {
+        return { success: true };
+      },
+      async getPendingSyncStatus() {
+        return {
+          online: true,
+          isAuthenticated: true,
+          pendingAppState: false,
+          pendingOutboxCount: 0,
+          pendingTotal: 0,
+          pendingKinds: [],
+          lastSyncAt: '2026-05-02T09:00:00.000Z',
+          lastError: '',
+          flushing: false,
+        };
+      },
+    }),
+    maybeResumePendingCheckout: async () => false,
+    emptyCoachPortal: () => ({}),
+    emptyAthleteOverview: () => ({}),
+    emptyAdmin: () => ({}),
+  });
+
+  assert.equal(handled, true);
+  assert.equal(patches.length, 2);
+  assert.equal(patches[0].state.syncStatus.flushing, true);
+  assert.equal(patches[1].state.syncStatus.pendingTotal, 0);
+  assert.equal(patches[1].options.toastMessage, 'Sincronização concluída');
+  assert.deepEqual(toasts, []);
+});
+
+test('sync:item:dismiss remove uma pendência específica da fila local', async () => {
+  const patches = [];
+  const toasts = [];
+  const uiState = {
+    syncStatus: {
+      online: false,
+      isAuthenticated: true,
+      pendingAppState: true,
+      pendingOutboxCount: 2,
+      pendingTotal: 3,
+      pendingKinds: ['measurement_snapshot', 'pr_snapshot'],
+      pendingItems: [],
+      oldestPendingAt: '2026-05-02T08:45:00.000Z',
+      lastSyncAt: '',
+      lastError: '',
+      flushing: false,
+      activeItemKind: '',
+      activeItemAction: '',
+    },
+  };
+  const originalConfirm = globalThis.confirm;
+  globalThis.confirm = () => true;
+
+  try {
+    const handled = await handleAthletePageSessionAction('sync:item:dismiss', {
+      element: { dataset: { syncKind: 'pr_snapshot' } },
+      toast: (message) => toasts.push(message),
+      getUiState: () => uiState,
+      applyUiState: async () => {},
+      applyUiPatch: async (updater, options = {}) => {
+        Object.assign(uiState, updater(uiState));
+        patches.push({ state: structuredClone(uiState), options });
+      },
+      finalizeUiChange: async () => {},
+      hydratePage: () => {},
+      shouldHydratePage: () => false,
+      invalidateHydrationCache: () => {},
+      getAppBridge: () => ({
+        dismissPendingSyncItem(kind) {
+          assert.equal(kind, 'pr_snapshot');
+          return { success: true, removed: 'pr_snapshot' };
+        },
+        async getPendingSyncStatus() {
+          return {
+            online: false,
+            isAuthenticated: true,
+            pendingAppState: true,
+            pendingOutboxCount: 1,
+            pendingTotal: 2,
+            pendingKinds: ['measurement_snapshot'],
+            pendingItems: [],
+            oldestPendingAt: '2026-05-02T08:45:00.000Z',
+            lastSyncAt: '',
+            lastError: '',
+            flushing: false,
+          };
+        },
+      }),
+      maybeResumePendingCheckout: async () => false,
+      emptyCoachPortal: () => ({}),
+      emptyAthleteOverview: () => ({}),
+      emptyAdmin: () => ({}),
+    });
+
+    assert.equal(handled, true);
+    assert.equal(patches.length, 2);
+    assert.equal(patches[0].state.syncStatus.activeItemKind, 'pr_snapshot');
+    assert.equal(patches[0].state.syncStatus.activeItemAction, 'dismiss');
+    assert.equal(patches[1].state.syncStatus.pendingOutboxCount, 1);
+    assert.equal(patches[1].state.syncStatus.activeItemKind, '');
+    assert.equal(patches[1].options.toastMessage, 'Pendência removida da fila local');
+    assert.deepEqual(toasts, []);
+  } finally {
+    globalThis.confirm = originalConfirm;
+  }
+});
+
+test('sync:item:dismiss respeita cancelamento da confirmação', async () => {
+  const originalConfirm = globalThis.confirm;
+  globalThis.confirm = () => false;
+  let called = false;
+
+  try {
+    const handled = await handleAthletePageSessionAction('sync:item:dismiss', {
+      element: { dataset: { syncKind: 'pr_snapshot' } },
+      toast: () => {},
+      getUiState: () => ({ syncStatus: {} }),
+      applyUiState: async () => {},
+      applyUiPatch: async () => {
+        throw new Error('não deveria aplicar patch');
+      },
+      finalizeUiChange: async () => {},
+      hydratePage: () => {},
+      shouldHydratePage: () => false,
+      invalidateHydrationCache: () => {},
+      getAppBridge: () => ({
+        dismissPendingSyncItem() {
+          called = true;
+          return { success: true };
+        },
+      }),
+      maybeResumePendingCheckout: async () => false,
+      emptyCoachPortal: () => ({}),
+      emptyAthleteOverview: () => ({}),
+      emptyAdmin: () => ({}),
+    });
+
+    assert.equal(handled, true);
+    assert.equal(called, false);
+  } finally {
+    globalThis.confirm = originalConfirm;
+  }
+});
+
+test('sync:item:retry sincroniza uma pendência específica da fila local', async () => {
+  const patches = [];
+  const toasts = [];
+  const uiState = {
+    syncStatus: {
+      online: true,
+      isAuthenticated: true,
+      pendingAppState: true,
+      pendingOutboxCount: 2,
+      pendingTotal: 3,
+      pendingKinds: ['measurement_snapshot', 'pr_snapshot'],
+      pendingItems: [],
+      oldestPendingAt: '2026-05-02T08:45:00.000Z',
+      lastSyncAt: '',
+      lastError: '',
+      flushing: false,
+      activeItemKind: '',
+      activeItemAction: '',
+    },
+  };
+
+  const handled = await handleAthletePageSessionAction('sync:item:retry', {
+    element: { dataset: { syncKind: 'pr_snapshot' } },
+    toast: (message) => toasts.push(message),
+    getUiState: () => uiState,
+    applyUiState: async () => {},
+    applyUiPatch: async (updater, options = {}) => {
+      Object.assign(uiState, updater(uiState));
+      patches.push({ state: structuredClone(uiState), options });
+    },
+    finalizeUiChange: async () => {},
+    hydratePage: () => {},
+    shouldHydratePage: () => false,
+    invalidateHydrationCache: () => {},
+    getAppBridge: () => ({
+      async retryPendingSyncItem(kind) {
+        assert.equal(kind, 'pr_snapshot');
+        return { success: true, synced: 'pr_snapshot' };
+      },
+      async getPendingSyncStatus() {
+        return {
+          online: true,
+          isAuthenticated: true,
+          pendingAppState: true,
+          pendingOutboxCount: 1,
+          pendingTotal: 2,
+          pendingKinds: ['measurement_snapshot'],
+          pendingItems: [],
+          oldestPendingAt: '2026-05-02T09:10:00.000Z',
+          lastSyncAt: '2026-05-02T09:12:00.000Z',
+          lastError: '',
+          flushing: false,
+        };
+      },
+    }),
+    maybeResumePendingCheckout: async () => false,
+    emptyCoachPortal: () => ({}),
+    emptyAthleteOverview: () => ({}),
+    emptyAdmin: () => ({}),
+  });
+
+  assert.equal(handled, true);
+  assert.equal(patches.length, 2);
+  assert.equal(patches[0].state.syncStatus.activeItemKind, 'pr_snapshot');
+  assert.equal(patches[0].state.syncStatus.activeItemAction, 'retry');
+  assert.equal(patches[1].state.syncStatus.pendingOutboxCount, 1);
+  assert.equal(patches[1].state.syncStatus.activeItemKind, '');
+  assert.equal(patches[1].options.toastMessage, 'Item sincronizado');
+  assert.deepEqual(toasts, []);
+});

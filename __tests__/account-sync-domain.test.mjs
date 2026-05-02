@@ -33,6 +33,13 @@ function createMemoryStorage() {
   };
 }
 
+class MockCustomEvent {
+  constructor(type, init = {}) {
+    this.type = type;
+    this.detail = init.detail;
+  }
+}
+
 test('saveRemoteAppStateSnapshot persiste envelope local e sincroniza snapshot remoto mesclado', async () => {
   const APP_STATE_SYNC_KEY = 'app-state-sync';
   const state = {
@@ -110,6 +117,7 @@ test('saveRemoteAppStateSnapshot persiste envelope local e sincroniza snapshot r
 
   const persisted = JSON.parse(localStorage.getItem(APP_STATE_SYNC_KEY));
   assert.equal(persisted.updatedAt, '2026-04-06T12:00:00.000Z');
+  assert.equal(persisted.pendingSync, false);
   assert.equal(persisted.snapshot.core.activeWeekNumber, 3);
   assert.equal(persisted.snapshot.core.preferences.theme, 'light');
   assert.equal(persisted.snapshot.core.preferences.accentTone, 'sage');
@@ -118,6 +126,89 @@ test('saveRemoteAppStateSnapshot persiste envelope local e sincroniza snapshot r
   assert.equal(persisted.snapshot.core.preferences.showNyxHints, false);
   assert.equal(persisted.snapshot.core.preferences.nyxGuideCompleted, true);
   assert.equal(persisted.snapshot.core.preferences.serverFlag, true);
+});
+
+test('getPendingSyncStatus expõe fila pendente enquanto estiver offline', async () => {
+  const APP_STATE_SYNC_KEY = 'app-state-sync';
+  const SYNC_OUTBOX_KEY = 'sync-outbox';
+  const localStorage = createLocalStorageMock({
+    [APP_STATE_SYNC_KEY]: JSON.stringify({
+      snapshot: { core: { activeWeekNumber: 2 } },
+      updatedAt: '2026-04-06T11:00:00.000Z',
+      pendingSync: true,
+    }),
+    [SYNC_OUTBOX_KEY]: JSON.stringify([
+      { kind: 'measurement_snapshot', payload: [{ type: 'weight', value: 82, unit: 'kg' }], updatedAt: '2026-04-06T10:30:00.000Z', attempts: 2, lastFailedAt: '2026-04-06T10:50:00.000Z', lastFailureMessage: 'timeout' },
+      { kind: 'pr_snapshot', payload: { squat: 140 }, updatedAt: '2026-04-06T11:30:00.000Z' },
+    ]),
+  });
+
+  const domain = createAccountSyncDomain({
+    getState: () => ({ preferences: {} }),
+    setState: () => {},
+    windowObject: { localStorage, addEventListener: () => {}, dispatchEvent: () => {}, CustomEvent: MockCustomEvent },
+    navigatorObject: { onLine: false },
+    prefsStorage: createMemoryStorage(),
+    activeWeekStorage: createMemoryStorage(),
+    pdfStorage: createMemoryStorage(),
+    pdfMetaStorage: createMemoryStorage(),
+    dayOverrideStorage: createMemoryStorage(),
+    PDF_KEY: 'pdf',
+    METADATA_KEY: 'meta',
+    APP_STATE_SYNC_KEY,
+    SYNC_OUTBOX_KEY,
+    handleGetProfile: () => ({ data: { id: 'athlete-1' } }),
+    handleGetAppStateSnapshot: async () => ({}),
+    handleSaveAppStateSnapshot: async () => ({}),
+    handleGetImportedPlanSnapshot: async () => ({}),
+    handleSaveImportedPlanSnapshot: async () => ({}),
+    remoteHandleSyncAthleteMeasurementsSnapshot: async () => ({}),
+    remoteHandleSyncAthletePrSnapshot: async () => ({}),
+    loadParsedWeeks: async () => ({ success: false }),
+    selectActiveWeek: async () => ({}),
+    setCustomDay: async () => ({}),
+    resetToAutoDay: async () => ({}),
+    logDebug: () => {},
+  });
+
+  assert.deepEqual(domain.getPendingSyncStatus(), {
+    online: false,
+    isAuthenticated: true,
+    pendingAppState: true,
+    pendingOutboxCount: 2,
+    pendingTotal: 3,
+    pendingKinds: ['measurement_snapshot', 'pr_snapshot'],
+    pendingItems: [
+      {
+        kind: 'measurement_snapshot',
+        label: 'Medidas',
+        count: 1,
+        preview: 'weight 82kg',
+        detail: '1 medida(s) aguardando sync: weight 82kg',
+        updatedAt: '2026-04-06T10:30:00.000Z',
+        attempts: 2,
+        lastFailedAt: '2026-04-06T10:50:00.000Z',
+        lastFailureMessage: 'timeout',
+        isOldest: true,
+      },
+      {
+        kind: 'pr_snapshot',
+        label: 'PRs',
+        count: 1,
+        preview: 'squat',
+        detail: '1 movimento(s) aguardando sync: squat',
+        updatedAt: '2026-04-06T11:30:00.000Z',
+        attempts: 0,
+        lastFailedAt: '',
+        lastFailureMessage: '',
+        isOldest: false,
+      },
+    ],
+    oldestPendingAt: '2026-04-06T10:30:00.000Z',
+    lastSyncAt: '2026-04-06T11:00:00.000Z',
+    lastError: '',
+    flushing: false,
+  });
 });
 
 test('syncAthletePrSnapshotWithQueue guarda snapshot na outbox quando estiver offline', async () => {
@@ -159,6 +250,209 @@ test('syncAthletePrSnapshotWithQueue guarda snapshot na outbox quando estiver of
   assert.equal(outbox.length, 1);
   assert.equal(outbox[0].kind, 'pr_snapshot');
   assert.deepEqual(outbox[0].payload, { squat: 140 });
+});
+
+test('dismissPendingSyncItem remove apenas a pendência solicitada da outbox', async () => {
+  const SYNC_OUTBOX_KEY = 'sync-outbox';
+  const localStorage = createLocalStorageMock({
+    [SYNC_OUTBOX_KEY]: JSON.stringify([
+      { kind: 'measurement_snapshot', payload: [{ type: 'weight', value: 82 }] },
+      { kind: 'pr_snapshot', payload: { squat: 140 } },
+    ]),
+  });
+
+  const domain = createAccountSyncDomain({
+    getState: () => ({ preferences: {} }),
+    setState: () => {},
+    windowObject: { localStorage, addEventListener: () => {}, dispatchEvent: () => {}, CustomEvent: MockCustomEvent },
+    navigatorObject: { onLine: false },
+    prefsStorage: createMemoryStorage(),
+    activeWeekStorage: createMemoryStorage(),
+    pdfStorage: createMemoryStorage(),
+    pdfMetaStorage: createMemoryStorage(),
+    dayOverrideStorage: createMemoryStorage(),
+    PDF_KEY: 'pdf',
+    METADATA_KEY: 'meta',
+    APP_STATE_SYNC_KEY: 'app-state-sync',
+    SYNC_OUTBOX_KEY,
+    handleGetProfile: () => ({ data: { id: 'athlete-1' } }),
+    handleGetAppStateSnapshot: async () => ({}),
+    handleSaveAppStateSnapshot: async () => ({}),
+    handleGetImportedPlanSnapshot: async () => ({}),
+    handleSaveImportedPlanSnapshot: async () => ({}),
+    remoteHandleSyncAthleteMeasurementsSnapshot: async () => ({}),
+    remoteHandleSyncAthletePrSnapshot: async () => ({ success: true }),
+    loadParsedWeeks: async () => ({ success: false }),
+    selectActiveWeek: async () => ({}),
+    setCustomDay: async () => ({}),
+    resetToAutoDay: async () => ({}),
+    logDebug: () => {},
+  });
+
+  assert.deepEqual(domain.dismissPendingSyncItem('pr_snapshot'), {
+    success: true,
+    removed: 'pr_snapshot',
+  });
+
+  const outbox = JSON.parse(localStorage.getItem(SYNC_OUTBOX_KEY));
+  assert.equal(outbox.length, 1);
+  assert.equal(outbox[0].kind, 'measurement_snapshot');
+});
+
+test('retryPendingSyncItem sincroniza apenas o item solicitado e preserva o restante da fila', async () => {
+  const SYNC_OUTBOX_KEY = 'sync-outbox';
+  const localStorage = createLocalStorageMock({
+    [SYNC_OUTBOX_KEY]: JSON.stringify([
+      { kind: 'measurement_snapshot', payload: [{ type: 'weight', value: 82 }] },
+      { kind: 'pr_snapshot', payload: { squat: 140 } },
+    ]),
+  });
+  const calls = [];
+
+  const domain = createAccountSyncDomain({
+    getState: () => ({ preferences: {} }),
+    setState: () => {},
+    windowObject: { localStorage, addEventListener: () => {}, dispatchEvent: () => {}, CustomEvent: MockCustomEvent },
+    navigatorObject: { onLine: true },
+    prefsStorage: createMemoryStorage(),
+    activeWeekStorage: createMemoryStorage(),
+    pdfStorage: createMemoryStorage(),
+    pdfMetaStorage: createMemoryStorage(),
+    dayOverrideStorage: createMemoryStorage(),
+    PDF_KEY: 'pdf',
+    METADATA_KEY: 'meta',
+    APP_STATE_SYNC_KEY: 'app-state-sync',
+    SYNC_OUTBOX_KEY,
+    handleGetProfile: () => ({ data: { id: 'athlete-1' } }),
+    handleGetAppStateSnapshot: async () => ({}),
+    handleSaveAppStateSnapshot: async () => ({}),
+    handleGetImportedPlanSnapshot: async () => ({}),
+    handleSaveImportedPlanSnapshot: async () => ({}),
+    remoteHandleSyncAthleteMeasurementsSnapshot: async () => {
+      throw new Error('não deveria chamar medidas');
+    },
+    remoteHandleSyncAthletePrSnapshot: async (payload) => {
+      calls.push(payload);
+      return { success: true };
+    },
+    loadParsedWeeks: async () => ({ success: false }),
+    selectActiveWeek: async () => ({}),
+    setCustomDay: async () => ({}),
+    resetToAutoDay: async () => ({}),
+    logDebug: () => {},
+  });
+
+  assert.deepEqual(await domain.retryPendingSyncItem('pr_snapshot'), {
+    success: true,
+    synced: 'pr_snapshot',
+  });
+
+  assert.deepEqual(calls, [{ squat: 140 }]);
+  const outbox = JSON.parse(localStorage.getItem(SYNC_OUTBOX_KEY));
+  assert.equal(outbox.length, 1);
+  assert.equal(outbox[0].kind, 'measurement_snapshot');
+});
+
+test('retryPendingSyncItem incrementa tentativas quando o item continua falhando', async () => {
+  const SYNC_OUTBOX_KEY = 'sync-outbox';
+  const localStorage = createLocalStorageMock({
+    [SYNC_OUTBOX_KEY]: JSON.stringify([
+      { kind: 'pr_snapshot', payload: { squat: 140 }, updatedAt: '2026-05-02T08:45:00.000Z', attempts: 1, lastFailedAt: '2026-05-02T08:50:00.000Z', lastFailureMessage: 'timeout' },
+    ]),
+  });
+
+  const domain = createAccountSyncDomain({
+    getState: () => ({ preferences: {} }),
+    setState: () => {},
+    windowObject: { localStorage, addEventListener: () => {}, dispatchEvent: () => {}, CustomEvent: MockCustomEvent },
+    navigatorObject: { onLine: true },
+    prefsStorage: createMemoryStorage(),
+    activeWeekStorage: createMemoryStorage(),
+    pdfStorage: createMemoryStorage(),
+    pdfMetaStorage: createMemoryStorage(),
+    dayOverrideStorage: createMemoryStorage(),
+    PDF_KEY: 'pdf',
+    METADATA_KEY: 'meta',
+    APP_STATE_SYNC_KEY: 'app-state-sync',
+    SYNC_OUTBOX_KEY,
+    handleGetProfile: () => ({ data: { id: 'athlete-1' } }),
+    handleGetAppStateSnapshot: async () => ({}),
+    handleSaveAppStateSnapshot: async () => ({}),
+    handleGetImportedPlanSnapshot: async () => ({}),
+    handleSaveImportedPlanSnapshot: async () => ({}),
+    remoteHandleSyncAthleteMeasurementsSnapshot: async () => ({}),
+    remoteHandleSyncAthletePrSnapshot: async () => {
+      throw new Error('backend down');
+    },
+    loadParsedWeeks: async () => ({ success: false }),
+    selectActiveWeek: async () => ({}),
+    setCustomDay: async () => ({}),
+    resetToAutoDay: async () => ({}),
+    logDebug: () => {},
+  });
+
+  const result = await domain.retryPendingSyncItem('pr_snapshot');
+  assert.equal(result.success, false);
+
+  const outbox = JSON.parse(localStorage.getItem(SYNC_OUTBOX_KEY));
+  assert.equal(outbox.length, 1);
+  assert.equal(outbox[0].attempts, 2);
+  assert.equal(outbox[0].lastFailureMessage, 'backend down');
+});
+
+test('fila local zera histórico de falhas quando o payload pendente muda', async () => {
+  const SYNC_OUTBOX_KEY = 'sync-outbox';
+  const localStorage = createLocalStorageMock({
+    [SYNC_OUTBOX_KEY]: JSON.stringify([
+      {
+        kind: 'pr_snapshot',
+        payload: { squat: 140 },
+        updatedAt: '2026-05-02T08:45:00.000Z',
+        attempts: 3,
+        lastFailedAt: '2026-05-02T09:10:00.000Z',
+        lastFailureMessage: 'timeout',
+      },
+    ]),
+  });
+
+  const domain = createAccountSyncDomain({
+    getState: () => ({ preferences: {} }),
+    setState: () => {},
+    windowObject: { localStorage, addEventListener: () => {}, dispatchEvent: () => {}, CustomEvent: MockCustomEvent },
+    navigatorObject: { onLine: false },
+    prefsStorage: createMemoryStorage(),
+    activeWeekStorage: createMemoryStorage(),
+    pdfStorage: createMemoryStorage(),
+    pdfMetaStorage: createMemoryStorage(),
+    dayOverrideStorage: createMemoryStorage(),
+    PDF_KEY: 'pdf',
+    METADATA_KEY: 'meta',
+    APP_STATE_SYNC_KEY: 'app-state-sync',
+    SYNC_OUTBOX_KEY,
+    handleGetProfile: () => ({ data: { id: 'athlete-1' } }),
+    handleGetAppStateSnapshot: async () => ({}),
+    handleSaveAppStateSnapshot: async () => ({}),
+    handleGetImportedPlanSnapshot: async () => ({}),
+    handleSaveImportedPlanSnapshot: async () => ({}),
+    remoteHandleSyncAthleteMeasurementsSnapshot: async () => ({}),
+    remoteHandleSyncAthletePrSnapshot: async () => ({ success: true }),
+    loadParsedWeeks: async () => ({ success: false }),
+    selectActiveWeek: async () => ({}),
+    setCustomDay: async () => ({}),
+    resetToAutoDay: async () => ({}),
+    logDebug: () => {},
+  });
+
+  const result = await domain.syncAthletePrSnapshotWithQueue({ squat: 145 });
+  assert.deepEqual(result, { success: false, queued: true });
+
+  const outbox = JSON.parse(localStorage.getItem(SYNC_OUTBOX_KEY));
+  assert.equal(outbox.length, 1);
+  assert.deepEqual(outbox[0].payload, { squat: 145 });
+  assert.equal(outbox[0].attempts, 0);
+  assert.equal(outbox[0].lastFailedAt, '');
+  assert.equal(outbox[0].lastFailureMessage, '');
+  assert.notEqual(outbox[0].updatedAt, '2026-05-02T08:45:00.000Z');
 });
 
 test('restoreImportedPlanFromAccount restaura plano remoto mais novo e seleciona semana ativa', async () => {

@@ -11,7 +11,7 @@ function parseList(value) {
     .filter(Boolean);
 }
 
-const DEFAULT_FRONTEND_ORIGIN_ALIASES = [
+const LEGACY_FRONTEND_ORIGIN_ALIASES = [
   'http://localhost:4173',
   'http://127.0.0.1:4173',
   'http://localhost:5173',
@@ -20,6 +20,13 @@ const DEFAULT_FRONTEND_ORIGIN_ALIASES = [
   'https://cross-app-six.vercel.app',
   'https://ryxen-nagcode-devs-projects.vercel.app',
   'https://ryxen-git-main-nagcode-devs-projects.vercel.app',
+];
+
+const DEFAULT_NATIVE_APP_ORIGINS = [
+  'capacitor://localhost',
+  'https://localhost',
+  'http://localhost',
+  'ionic://localhost',
 ];
 
 function parseTrustProxy(value, isProduction) {
@@ -39,19 +46,27 @@ export const PORT = Number(process.env.PORT || 8787);
 export const DATABASE_URL = String(process.env.DATABASE_URL || '').trim();
 export const JWT_SECRET = String(process.env.JWT_SECRET || '').trim();
 export const FRONTEND_ORIGIN = String(process.env.FRONTEND_ORIGIN || (IS_PRODUCTION ? '' : '*')).trim();
+export const ALLOW_LEGACY_ORIGIN_ALIASES = String(process.env.ALLOW_LEGACY_ORIGIN_ALIASES || (IS_PRODUCTION ? 'false' : 'true')).trim().toLowerCase() === 'true';
+const frontendOriginList = parseList(FRONTEND_ORIGIN);
+const derivedProductionAppLinkOrigins = IS_PRODUCTION && FRONTEND_ORIGIN !== '*'
+  ? frontendOriginList.filter((origin) => origin.startsWith('https://'))
+  : [];
 export const FRONTEND_ORIGIN_ALIASES = Array.from(new Set([
-  ...DEFAULT_FRONTEND_ORIGIN_ALIASES,
+  ...(ALLOW_LEGACY_ORIGIN_ALIASES ? LEGACY_FRONTEND_ORIGIN_ALIASES : []),
   ...parseList(process.env.FRONTEND_ORIGIN_ALIASES || ''),
 ]));
 export const NATIVE_APP_LINK_ORIGINS = Array.from(new Set(parseList(
   process.env.NATIVE_APP_LINK_ORIGINS
-  || 'https://ryxen-app.vercel.app,https://cross-app-six.vercel.app',
+  || derivedProductionAppLinkOrigins.join(','),
 )));
-export const NATIVE_APP_ORIGINS = parseList(process.env.NATIVE_APP_ORIGINS || 'capacitor://localhost,https://localhost,http://localhost,ionic://localhost');
+export const NATIVE_APP_ORIGINS = Array.from(new Set(parseList(
+  process.env.NATIVE_APP_ORIGINS
+  || (IS_PRODUCTION ? '' : DEFAULT_NATIVE_APP_ORIGINS.join(',')),
+)));
 export const ALLOWED_ORIGINS = FRONTEND_ORIGIN === '*'
   ? '*'
   : Array.from(new Set([
-      ...parseList(FRONTEND_ORIGIN),
+      ...frontendOriginList,
       ...FRONTEND_ORIGIN_ALIASES,
       ...NATIVE_APP_LINK_ORIGINS,
       ...NATIVE_APP_ORIGINS,

@@ -1,6 +1,8 @@
-import { isImageFile } from '../adapters/media/ocrReader.js';
-
 const TEXT_EXTENSIONS = /\.(txt|md|csv|json)$/i;
+
+function isImageImportFile(file) {
+  return !!file?.type?.startsWith('image/');
+}
 
 export function isPdfImportFile(file) {
   if (!file) return false;
@@ -33,7 +35,7 @@ export function classifyUniversalImportFile(file) {
     };
   }
 
-  if (isImageFile(file)) {
+  if (isImageImportFile(file)) {
     return {
       supported: true,
       source: 'image',

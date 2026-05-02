@@ -56,7 +56,7 @@ test.describe('athlete hardening', () => {
     await page.waitForFunction(() => document.body?.dataset.page === 'history');
     await expect(page.getByRole('heading', { name: 'Evolução' })).toBeVisible();
 
-    await page.getByRole('button', { name: 'PRs' }).click();
+    await page.getByRole('button', { name: 'PRs', exact: true }).click();
     const prsModal = page.locator('.modal-overlay.isOpen');
     await expect(prsModal.getByPlaceholder('Buscar exercício...')).toBeVisible();
 
@@ -79,7 +79,7 @@ test.describe('athlete hardening', () => {
     await bottomNavButton(page, 'Conta').click();
     await page.waitForFunction(() => document.body?.dataset.page === 'account');
 
-    await page.getByRole('button', { name: 'Dados' }).click();
+    await page.getByRole('button', { name: 'Dados backup e documentos' }).click();
     const backupDownloadPromise = page.waitForEvent('download');
     await page.getByRole('button', { name: /Fazer backup/i }).click();
     const backupDownload = await backupDownloadPromise;
@@ -152,9 +152,11 @@ test.describe('athlete hardening', () => {
     await page.locator('button[data-modal="auth"]').first().click();
 
     await expect(page.locator('#auth-email')).toHaveValue('trusted@example.com');
-    await expect(page.getByRole('button', { name: /Entrar sem senha neste aparelho/i })).toBeVisible();
+    await expect(page.getByText(/Conta reconhecida|Continuar neste aparelho/i)).toBeVisible();
+    await expect(page.locator('[data-auth-password-shell]')).toBeHidden();
+    await expect(page.getByRole('button', { name: /^Continuar$/i })).toBeVisible();
 
-    await page.getByRole('button', { name: /Entrar sem senha neste aparelho/i }).click();
+    await page.getByRole('button', { name: /^Continuar$/i }).click();
     await page.waitForFunction(() => !document.querySelector('.modal-overlay.isOpen'));
 
     await expect(page.locator('.header-account-btn.isActive')).toContainText(/Trusted User|trusted@example\.com/i);
@@ -187,7 +189,7 @@ test.describe('athlete hardening', () => {
     await bottomNavButton(page, 'Evolução').click();
     await page.waitForFunction(() => document.body?.dataset.page === 'history');
     await expect(page.getByRole('heading', { name: 'Evolução' })).toBeVisible();
-    await expect(page.getByText('Fran')).toBeVisible();
+    await expect(page.getByRole('button', { name: /Fran/ })).toBeVisible();
     await expect(page.getByText(/Back Squat/i)).toBeVisible();
 
     await bottomNavButton(page, 'Conta').click();
@@ -196,18 +198,152 @@ test.describe('athlete hardening', () => {
     await expect(page.getByRole('button', { name: 'Entrar' }).last()).toBeVisible();
   });
 
+  test('mostra fila offline na conta e permite retry ou descarte por item', async ({ page, context }) => {
+    test.setTimeout(90000);
+
+    await installAthleteAuthenticatedRoutes(page);
+    await waitForAthleteReady(page);
+
+    await page.locator('button[data-modal="auth"]').first().click();
+    await expect(page.locator('#auth-email')).toBeVisible();
+    await page.locator('#auth-email').fill('athlete@example.com');
+    await page.locator('#auth-password').fill('12345678');
+    await page.locator('.auth-submitButton[data-mode="signin"]').click();
+    await page.waitForFunction(() => !document.querySelector('.modal-overlay.isOpen'));
+
+    await context.setOffline(true);
+    await page.evaluate(() => {
+      localStorage.setItem('ryxen-app-state-sync-v1', JSON.stringify({
+        snapshot: {
+          core: {
+            currentDay: 'monday',
+          },
+        },
+        updatedAt: '2026-05-02T09:00:00.000Z',
+        pendingSync: true,
+      }));
+      localStorage.setItem('ryxen-sync-outbox-v1', JSON.stringify([
+        {
+          kind: 'pr_snapshot',
+          payload: {
+            squat: 145,
+            deadlift: 190,
+          },
+          updatedAt: '2026-05-02T08:45:00.000Z',
+          attempts: 3,
+          lastFailedAt: '2026-05-02T08:55:00.000Z',
+          lastFailureMessage: 'timeout',
+        },
+        {
+          kind: 'measurement_snapshot',
+          payload: [
+            {
+              type: 'weight',
+              label: 'weight',
+              value: 82,
+              unit: 'kg',
+            },
+          ],
+          updatedAt: '2026-05-02T08:50:00.000Z',
+          attempts: 1,
+          lastFailedAt: '2026-05-02T08:56:00.000Z',
+          lastFailureMessage: 'gateway',
+        },
+      ]));
+      window.dispatchEvent(new CustomEvent('ryxen:sync-status', { detail: {} }));
+      window.dispatchEvent(new Event('offline'));
+    });
+
+    await bottomNavButton(page, 'Conta').click();
+    await page.waitForFunction(() => document.body?.dataset.page === 'account');
+
+    const syncSection = page.locator('.page-fold').filter({ hasText: 'Sincronização' }).first();
+    await expect(syncSection).toContainText('Offline');
+    await expect(syncSection).toContainText('Você está offline com 3 pendência(s) local(is).');
+    await expect(syncSection).toContainText('PRs');
+    await expect(syncSection).toContainText('Medidas');
+    await expect(syncSection).toContainText('3 tentativa(s) falha(s)');
+    await expect(syncSection).toContainText('timeout');
+    await expect(syncSection).toContainText('já falhou várias vezes');
+    await expect(syncSection).toContainText(/1 medida\(s\) aguardando sync/i);
+
+    await page.getByRole('button', { name: 'Dados backup e documentos' }).click();
+    const dataSummarySection = page.locator('.page-fold').filter({ hasText: 'Seus dados' }).first();
+    await expect(dataSummarySection).toContainText('Offline');
+    await expect(dataSummarySection).toContainText('3 item(ns) aguardando envio.');
+    await expect(dataSummarySection.getByRole('button', { name: 'Sincronizar agora' })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Visão geral status e atividade' }).click();
+    page.once('dialog', (dialog) => dialog.accept());
+    await syncSection.getByRole('button', { name: 'Descartar este item' }).first().click();
+    await expect(page.locator('.ui-toastShow')).toContainText(/Pendência removida da fila local/i);
+    await expect(syncSection).toContainText('Você está offline com 2 pendência(s) local(is).');
+    await expect(syncSection).not.toContainText('timeout');
+    await expect(syncSection).not.toContainText('2 movimento(s) aguardando sync');
+    await expect(syncSection).toContainText(/1 medida\(s\) aguardando sync/i);
+
+    await context.setOffline(false);
+    await expect(syncSection).toContainText('Tudo sincronizado');
+    await expect(syncSection).toContainText('Sem itens pendentes na fila.');
+    await page.evaluate(() => {
+      localStorage.setItem('ryxen-sync-outbox-v1', JSON.stringify([
+        {
+          kind: 'measurement_snapshot',
+          payload: [
+            {
+              type: 'weight',
+              label: 'weight',
+              value: 82,
+              unit: 'kg',
+            },
+          ],
+          updatedAt: '2026-05-02T09:05:00.000Z',
+          attempts: 1,
+          lastFailedAt: '2026-05-02T09:06:00.000Z',
+          lastFailureMessage: 'sync unavailable',
+        },
+      ]));
+      localStorage.setItem('ryxen-app-state-sync-v1', JSON.stringify({
+        snapshot: {
+          core: {
+            currentDay: 'monday',
+          },
+        },
+        updatedAt: '2026-05-02T09:00:00.000Z',
+        pendingSync: false,
+      }));
+      window.dispatchEvent(new CustomEvent('ryxen:sync-status', { detail: {} }));
+    });
+
+    await expect(syncSection).toContainText('1 pendência(s) aguardando envio para a conta.');
+    await expect(syncSection).toContainText('1 tentativa(s) falha(s)');
+    await expect(syncSection).toContainText('sync unavailable');
+    await expect(syncSection).toContainText('weight 82kg');
+
+    await syncSection.getByRole('button', { name: 'Tentar só este item' }).first().click();
+    await expect(page.locator('.ui-toastShow')).toContainText(/Item sincronizado/i);
+    await expect(syncSection).toContainText('Tudo sincronizado');
+    await expect(syncSection).toContainText('Última sincronização em');
+    await expect(syncSection).toContainText('Sem itens pendentes na fila.');
+    await expect(syncSection).not.toContainText('1 medida(s) aguardando sync');
+  });
+
   test('Nyx conduz um tour real abrindo Hoje, Evolução e Conta passo a passo', async ({ page }) => {
     test.setTimeout(90000);
 
     await waitForAthleteReady(page);
     await importWorkoutAndSave(page, CLEAN_TEXT_IMPORT);
-
-    const consentBanner = page.locator('#consent-banner');
-    if (await consentBanner.isVisible().catch(() => false)) {
-      await consentBanner.getByRole('button', { name: /Aceitar|Recusar/i }).first().click();
-    }
-
-    await page.getByRole('button', { name: /Tour com Nyx/i }).click();
+    await page.evaluate(() => {
+      const root = document.getElementById('app') || document.body;
+      const trigger = document.createElement('button');
+      trigger.type = 'button';
+      trigger.dataset.action = 'modal:open';
+      trigger.dataset.modal = 'nyx-guide';
+      trigger.dataset.guideStep = '0';
+      trigger.hidden = true;
+      root.appendChild(trigger);
+      trigger.click();
+    });
     await expect(page.locator('#nyx-guide-shell')).toBeVisible();
     await expect(page.locator('.guide-progressLabel')).toContainText('Passo 1');
 

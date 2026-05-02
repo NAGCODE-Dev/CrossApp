@@ -60,6 +60,49 @@ function renderSessionStatusChip(sessionRestore, platformVariant) {
   return `<span class="session-statusChip ${toneClass} ${isNative ? 'session-statusChip-native' : ''}">${label}</span>`;
 }
 
+function renderSyncStatus(state, platformVariant) {
+  const syncStatus = state?.__ui?.syncStatus || {};
+  const isNative = isAthleteNativeVariant(platformVariant);
+  const pendingTotal = Number(syncStatus.pendingTotal || 0);
+  const pendingLabel = pendingTotal === 1 ? '1 pendência' : `${pendingTotal} pendências`;
+
+  if (syncStatus.flushing) {
+    return `
+      <div class="header-syncGroup ${isNative ? 'header-syncGroup-native' : ''}">
+        <span class="session-statusChip isInfo ${isNative ? 'session-statusChip-native' : ''}">Sincronizando</span>
+      </div>
+    `;
+  }
+
+  if (syncStatus.online === false) {
+    return `
+      <div class="header-syncGroup ${isNative ? 'header-syncGroup-native' : ''}">
+        <span class="session-statusChip isWarn ${isNative ? 'session-statusChip-native' : ''}">${pendingTotal > 0 ? `Offline · ${pendingLabel}` : 'Offline'}</span>
+      </div>
+    `;
+  }
+
+  if (pendingTotal > 0 && syncStatus.isAuthenticated) {
+    return `
+      <div class="header-syncGroup ${isNative ? 'header-syncGroup-native' : ''}">
+        <span class="session-statusChip isInfo ${isNative ? 'session-statusChip-native' : ''}">${pendingLabel}</span>
+        <button class="header-syncRetry" data-action="sync:retry" type="button">Tentar de novo</button>
+      </div>
+    `;
+  }
+
+  if (syncStatus.lastError) {
+    return `
+      <div class="header-syncGroup ${isNative ? 'header-syncGroup-native' : ''}">
+        <span class="session-statusChip isWarn ${isNative ? 'session-statusChip-native' : ''}">Falha no sync</span>
+        <button class="header-syncRetry" data-action="sync:retry" type="button">Tentar de novo</button>
+      </div>
+    `;
+  }
+
+  return '';
+}
+
 function renderAccountButton({ escapeHtml, displayName, notificationCount, isNative }) {
   if (!isNative) {
     return `
@@ -94,10 +137,12 @@ export function renderAthleteHeaderAccount(state, { escapeHtml, platformVariant 
   const sessionRestore = state?.__ui?.sessionRestore || 'idle';
   const isNative = isAthleteNativeVariant(platformVariant);
   const sessionChip = renderSessionStatusChip(sessionRestore, platformVariant);
+  const syncStatusHtml = renderSyncStatus(state, platformVariant);
 
   if (!profile?.email) {
     return `
       <div class="header-accountGroup ${isNative ? 'header-accountGroup-native' : ''}">
+        ${syncStatusHtml}
         ${sessionChip}
         <button class="${isNative ? 'native-accountBtn' : 'header-account-btn'}" data-action="modal:open" data-modal="auth" type="button">
           ${isNative
@@ -111,6 +156,7 @@ export function renderAthleteHeaderAccount(state, { escapeHtml, platformVariant 
   const displayName = profile.name || profile.email;
   return `
     <div class="header-accountGroup ${isNative ? 'header-accountGroup-native' : ''}">
+      ${syncStatusHtml}
       ${sessionChip}
       ${renderAccountButton({ escapeHtml, displayName, notificationCount, isNative })}
     </div>

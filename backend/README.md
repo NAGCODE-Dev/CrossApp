@@ -37,7 +37,7 @@ Com Docker, nenhuma configuração manual é necessária. O frontend usa `/api` 
 
 Se você quiser apontar para outro backend, ajuste o `config.js` ou as variáveis de build do frontend (`RYXEN_API_BASE_URL`).
 O prefixo `RYXEN_` é o principal; `CROSSAPP_` segue aceito temporariamente por compatibilidade com builds e automações antigas.
-Para CORS em produção, mantenha `FRONTEND_ORIGIN` e, se necessário, complemente com `FRONTEND_ORIGIN_ALIASES` para domínios adicionais de Vercel.
+Para CORS em produção, mantenha `FRONTEND_ORIGIN` explícito e complemente apenas com aliases realmente necessários via `FRONTEND_ORIGIN_ALIASES`, `NATIVE_APP_LINK_ORIGINS` e `NATIVE_APP_ORIGINS`.
 
 ## Teste rápido de assinatura (modo mock)
 
@@ -92,6 +92,7 @@ RETENTION_ACCOUNT_DELETION_DAYS=90
 Notas:
 
 - Em Docker local, o `docker-compose.yml` sobe Mailpit em `http://127.0.0.1:8025` e aponta o backend para `SMTP_HOST=mailpit`.
+- O Compose local sobe com `EXPOSE_RESET_CODE=false` por padrão; ative manualmente só para smoke/auth local.
 - Em produção inicial, use `RESEND_FROM=onboarding@resend.dev` até validar domínio próprio no Resend.
 - `SENTRY_DSN` é opcional. Se não tiver um DSN real, deixe vazio; não use `...`.
 - O worker de retenção remove dados operacionais antigos automaticamente e mantém apenas os snapshots mais recentes por usuário.

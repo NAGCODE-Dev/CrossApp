@@ -253,6 +253,131 @@ export function renderAccountActivitySection(renderPageFold, view) {
   });
 }
 
+function describeSyncKind(kind) {
+  switch (String(kind || '')) {
+    case 'pr_snapshot':
+      return 'PRs pendentes';
+    case 'measurement_snapshot':
+      return 'Medidas pendentes';
+    default:
+      return 'Pendência local';
+  }
+}
+
+function renderSyncItemActions(item, { escapeHtml, activeItemKind, activeItemAction }) {
+  const isActiveItem = activeItemKind && activeItemKind === String(item?.kind || '');
+  const isRetrying = isActiveItem && activeItemAction === 'retry';
+  const isDismissing = isActiveItem && activeItemAction === 'dismiss';
+  return `
+    <div class="page-actions">
+      <button class="btn-secondary" data-action="sync:item:retry" data-sync-kind="${escapeHtml(item?.kind || '')}" type="button" ${isActiveItem ? 'disabled aria-disabled="true"' : ''}>${isRetrying ? 'Sincronizando item...' : 'Tentar só este item'}</button>
+      <button class="btn-secondary btn-dangerSoft" data-action="sync:item:dismiss" data-sync-kind="${escapeHtml(item?.kind || '')}" type="button" ${isActiveItem ? 'disabled aria-disabled="true"' : ''}>${isDismissing ? 'Descartando item...' : 'Descartar este item'}</button>
+    </div>
+  `;
+}
+
+function getSyncItemSeverityClass(item) {
+  const attempts = Number(item?.attempts || 0);
+  if (attempts >= 3) return 'account-notificationCard is-danger';
+  if (attempts >= 1) return 'account-notificationCard is-warn';
+  return '';
+}
+
+export function renderAccountSyncSection(renderPageFold, view) {
+  const {
+    syncStatus = {},
+    escapeHtml,
+  } = view;
+
+  const pendingKinds = Array.isArray(syncStatus.pendingKinds) ? syncStatus.pendingKinds : [];
+  const pendingItems = Array.isArray(syncStatus.pendingItems) ? syncStatus.pendingItems : [];
+  const pendingTotal = Number(syncStatus.pendingTotal || 0);
+  const pendingAppState = syncStatus.pendingAppState === true;
+  const lastSyncAt = formatDateTimeShort(syncStatus.lastSyncAt);
+  const oldestPendingAt = formatDateTimeShort(syncStatus.oldestPendingAt);
+  const activeItemKind = String(syncStatus.activeItemKind || '');
+  const activeItemAction = String(syncStatus.activeItemAction || '');
+  const summary = syncStatus.flushing
+    ? 'Sincronizando pendências agora.'
+    : syncStatus.online === false
+      ? (pendingTotal > 0 ? `Você está offline com ${pendingTotal} pendência(s) local(is).` : 'Você está offline. Novos dados ficam salvos no aparelho até a reconexão.')
+      : pendingTotal > 0
+        ? `${pendingTotal} pendência(s) aguardando envio para a conta.`
+        : lastSyncAt
+          ? `Última sincronização em ${escapeHtml(lastSyncAt)}.`
+          : 'Tudo sincronizado por enquanto.';
+
+  return renderPageFold({
+    title: 'Sincronização',
+    subtitle: 'Rede, fila local e retry manual.',
+    content: `
+      <div class="coach-list coach-listCompact">
+        <div class="coach-listItem static">
+          <strong>Status</strong>
+          <span>${syncStatus.flushing
+            ? 'Sincronizando agora'
+            : syncStatus.online === false
+              ? 'Offline'
+              : pendingTotal > 0
+                ? 'Pendências aguardando envio'
+                : 'Tudo sincronizado'}</span>
+        </div>
+        <div class="coach-listItem static">
+          <strong>Resumo</strong>
+          <span>${summary}</span>
+        </div>
+        <div class="coach-listItem static">
+          <strong>Estado do app</strong>
+          <span>${pendingAppState ? 'Preferências e navegação aguardando sync.' : 'Sem pendência de estado visual.'}</span>
+        </div>
+        <div class="coach-listItem static">
+          <strong>Fila local</strong>
+          <span>${pendingKinds.length
+            ? escapeHtml(pendingKinds.map(describeSyncKind).join(' • '))
+            : 'Sem itens pendentes na fila.'}</span>
+        </div>
+        ${oldestPendingAt
+          ? `
+            <div class="coach-listItem static">
+              <strong>Mais antiga</strong>
+              <span>Na fila desde ${escapeHtml(oldestPendingAt)}.</span>
+            </div>
+          `
+          : ''}
+        ${pendingItems.length
+          ? `
+            ${pendingItems.map((item) => `
+              <div class="coach-listItem static ${getSyncItemSeverityClass(item)}">
+                <strong>${escapeHtml(item.label || describeSyncKind(item.kind))}${item.isOldest ? ' • Mais antiga' : ''}</strong>
+                <span>${escapeHtml(item.detail || 'Pendência local aguardando sync')}${item.updatedAt ? ` • na fila desde ${escapeHtml(formatDateTimeShort(item.updatedAt))}` : ''}</span>
+                ${Number(item.attempts || 0) > 0
+                  ? `<span>${Number(item.attempts || 0)} tentativa(s) falha(s)${item.lastFailedAt ? ` • última em ${escapeHtml(formatDateTimeShort(item.lastFailedAt))}` : ''}${item.lastFailureMessage ? ` • ${escapeHtml(item.lastFailureMessage)}` : ''}</span>`
+                  : ''}
+                ${Number(item.attempts || 0) >= 3
+                  ? '<p class="account-hint">Esse item já falhou várias vezes. Se ele continuar travado, vale descartar a fila local e gerar um novo sync.</p>'
+                  : ''}
+                ${renderSyncItemActions(item, { escapeHtml, activeItemKind, activeItemAction })}
+              </div>
+            `).join('')}
+          `
+          : ''}
+        ${syncStatus.lastError
+          ? `
+            <div class="coach-listItem static">
+              <strong>Último erro</strong>
+              <span>${escapeHtml(syncStatus.lastError)}</span>
+            </div>
+          `
+          : ''}
+      </div>
+      <div class="page-actions">
+        <button class="btn-secondary" data-action="sync:retry" type="button" ${syncStatus.flushing ? 'disabled aria-disabled="true"' : ''}>Tentar sincronizar agora</button>
+        <button class="btn-secondary" data-action="account:view:set" data-account-view="data" type="button">Abrir dados</button>
+      </div>
+    `,
+  });
+}
+
 function formatDateTimeShort(value) {
   if (!value) return '';
   const date = new Date(value);
@@ -664,6 +789,7 @@ export function renderAccountDataSections(renderPageFold, view) {
     planStatus = '',
     athleteBenefitSource = '',
     importUsage = { unlimited: false, remaining: 0 },
+    syncStatus = {},
     escapeHtml,
   } = view;
 
@@ -684,8 +810,18 @@ export function renderAccountDataSections(renderPageFold, view) {
             <strong>${escapeHtml(athleteBenefitSource || 'Conta local')}</strong>
             <small>${importUsage.unlimited ? 'Imports livres nesta conta.' : `${Number(importUsage.remaining || 0)} import(s) restante(s).`}</small>
           </article>
+          <article class="account-dataCard">
+            <span class="account-dataEyebrow">Sincronização</span>
+            <strong>${syncStatus.online === false ? 'Offline' : Number(syncStatus.pendingTotal || 0) > 0 ? 'Com pendências' : 'Em dia'}</strong>
+            <small>${Number(syncStatus.pendingTotal || 0) > 0
+              ? `${Number(syncStatus.pendingTotal || 0)} item(ns) aguardando envio.`
+              : syncStatus.lastSyncAt
+                ? `Último sync em ${escapeHtml(formatDateTimeShort(syncStatus.lastSyncAt))}.`
+                : 'Sem fila pendente no momento.'}</small>
+          </article>
         </div>
         <div class="settings-actions settings-actions-grid">
+          <button class="btn-secondary" data-action="sync:retry" type="button" ${syncStatus.flushing ? 'disabled aria-disabled="true"' : ''}>Sincronizar agora</button>
           <button class="btn-secondary" data-action="backup:export" type="button">Fazer backup</button>
           <button class="btn-secondary" data-action="backup:import" type="button">Restaurar backup</button>
         </div>

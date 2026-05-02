@@ -113,8 +113,8 @@ docker compose up -d
 
 Notas para desenvolvimento local com Docker:
 
-- O `docker-compose.yml` habilita `EXPOSE_RESET_CODE=true` por padrão para destravar fluxo de auth local com email de desenvolvimento.
-- Para simular produção localmente, rode `EXPOSE_RESET_CODE=false docker compose up -d`.
+- O `docker-compose.yml` sobe com `EXPOSE_RESET_CODE=false` por padrão.
+- Para smoke local de auth, rode `EXPOSE_RESET_CODE=true npm run docker:up`.
 - Nunca publique ambiente compartilhado ou produção com `EXPOSE_RESET_CODE=true`.
 
 Fluxo recomendado no projeto:
@@ -135,6 +135,7 @@ Notas rápidas do fluxo Docker:
 
 - `npm run docker:up` faz um preflight simples e falha cedo se o daemon do Docker não estiver ativo.
 - O Compose já injeta as variáveis principais do backend, então `backend/.env` não é obrigatório para subir o stack.
+- Se `JWT_SECRET` não estiver definido, `npm run docker:up` gera um segredo efêmero só para a sessão atual.
 - O backend no Docker usa o hostname `db`, não `localhost`.
 - Se alguma porta já estiver ocupada na sua máquina, troque via variáveis de ambiente. Exemplo: `CROSSAPP_DB_PORT=5433 npm run docker:up`.
 
@@ -160,7 +161,7 @@ Para desenvolvimento local com `docker compose`:
 
 - o inbox SMTP sobe junto em `http://127.0.0.1:8025`
 - recuperação de senha e verificação de cadastro passam pelo Mailpit local
-- mantenha `EXPOSE_RESET_CODE=true` apenas em ambiente local
+- habilite `EXPOSE_RESET_CODE=true` apenas quando precisar testar o fluxo local de auth/reset
 - em staging/produção, configure SMTP ou Resend e use `EXPOSE_RESET_CODE=false`
 
 ## Deploy recomendado
@@ -199,10 +200,34 @@ Smoke test automático:
 npm run smoke:coach-trial
 ```
 
+Fluxo local completo com backend Supabase + smokes de auth:
+
+```bash
+ENABLE_AUTH_SMOKE=1 npm run dev:backend-supabase-and-smoke
+```
+
 QA local completo com backend, atleta e coach:
 
 ```bash
 npm run qa:local
+```
+
+Playwright/E2E recomendado:
+
+```bash
+npm run test:e2e
+```
+
+Para filtros locais, prefira manter o wrapper:
+
+```bash
+npm run test:e2e -- tests/smoke.*.spec.js
+```
+
+Se precisar chamar o Playwright direto fora do `npm run`, use:
+
+```bash
+bash scripts/run-playwright.sh test
 ```
 
 Modo verboso com screenshot, HTML dump em falha e relatório JSON:
@@ -284,7 +309,8 @@ CROSSAPP_KIWIFY_CHECKOUT_PERFORMANCE_URL=
 
 Notas rápidas:
 
-- Em Docker local, o Compose pode sobrescrever `EXPOSE_RESET_CODE` para facilitar smoke tests de autenticação.
+- Use `.env.vercel.production.example` apenas como modelo; os valores reais de produção devem ficar fora do git.
+- Em Docker local, habilite `EXPOSE_RESET_CODE=true` apenas quando precisar rodar smoke tests de autenticação.
 - Para produção inicial com Resend, use `RESEND_FROM=onboarding@resend.dev` até verificar seu domínio.
 - `SENTRY_DSN` deve ficar vazio se você ainda não tiver um DSN real.
 - O backend agora poda automaticamente tabelas operacionais (`telemetry_events`, `ops_events`, `email_jobs`, tokens e `sync_snapshots`).

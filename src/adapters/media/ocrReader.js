@@ -147,7 +147,8 @@ export function normalizeOcrStructuralLine(line = '') {
 
 async function ensureTesseract() {
   if (!tesseractPromise) {
-    tesseractPromise = import('tesseract.js').then((module) => {
+    const tesseractModuleUrl = new URL('../../../node_modules/tesseract.js/dist/tesseract.esm.min.js', import.meta.url).href;
+    tesseractPromise = import(tesseractModuleUrl).then((module) => {
       const Tesseract = module?.default || module;
       if (!Tesseract?.recognize) {
         throw new Error('Tesseract não carregou corretamente');

@@ -1,5 +1,4 @@
 import { previewMultiWeekPdf, saveParsedWeeks } from '../../src/adapters/pdf/pdfRepository.js';
-import { isImageFile, extractTextFromImageFile } from '../../src/adapters/media/ocrReader.js';
 import { importWorkoutAsWeeks } from '../../src/core/usecases/exportWorkout.js';
 import { classifyUniversalImportFile, isPdfImportFile, isTextLikeImportFile } from '../../src/app/importFileTypes.js';
 import { parseTextIntoWeeks, prepareImportTextForParsing } from '../../src/app/workoutHelpers.js';
@@ -161,7 +160,7 @@ export function createAthleteImportReviewAdapter({
     let reviewText = '';
 
     try {
-      if (isImageFile(file)) {
+      if (isImageImportFile(file)) {
         source = 'image';
         onProgress({
           stage: 'media-ocr',
@@ -169,7 +168,7 @@ export function createAthleteImportReviewAdapter({
           fileName: file.name,
           source,
         });
-        rawText = await extractTextFromImageFile(file);
+        rawText = await readImageImportText(file);
       } else if (isTextLikeImportFile(file)) {
         source = 'text';
         rawText = await file.text();
@@ -220,6 +219,15 @@ export function createAthleteImportReviewAdapter({
       return { success: false, error: error?.message || 'Erro ao importar arquivo' };
     }
   }
+}
+
+function isImageImportFile(file) {
+  return !!file?.type?.startsWith('image/');
+}
+
+async function readImageImportText(file) {
+  const { extractTextFromImageFile } = await import('../../src/adapters/media/ocrReader.js');
+  return extractTextFromImageFile(file);
 }
 
 function summarizeWeeksForReview(weeks = [], source = 'text', fileName = '', options = {}) {

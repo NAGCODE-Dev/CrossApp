@@ -1,11 +1,15 @@
 // @ts-check
 import { defineConfig, devices } from '@playwright/test';
 
+if ('NO_COLOR' in process.env && 'FORCE_COLOR' in process.env) {
+  delete process.env.NO_COLOR;
+}
+
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:4173';
 const managedWebServer = process.env.PLAYWRIGHT_BASE_URL
   ? undefined
   : {
-      command: 'node scripts/playwright-web-server.mjs',
+      command: 'env -u NO_COLOR node scripts/playwright-web-server.mjs',
       url: 'http://127.0.0.1:4173',
       reuseExistingServer: !process.env.CI,
       timeout: 180 * 1000,

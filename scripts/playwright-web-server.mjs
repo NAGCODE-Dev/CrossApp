@@ -2,7 +2,7 @@ import http from 'node:http';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 import { createReadStream } from 'node:fs';
-import { access, open, readFile, rm, stat } from 'node:fs/promises';
+import { access, open, readFile, rm, stat, writeFile } from 'node:fs/promises';
 
 const rootDir = process.cwd();
 const distDir = path.join(rootDir, 'dist');
@@ -11,6 +11,10 @@ const host = '127.0.0.1';
 const port = 4173;
 const serverUrl = `http://${host}:${port}`;
 const lockRetryMs = 250;
+const trackedGeneratedArtifacts = [
+  'src/hub/tailwind.generated.css',
+  'src/ui/tailwind.generated.css',
+];
 
 let lockHandle = null;
 let ownedServer = null;
@@ -100,22 +104,63 @@ function isProcessAlive(pid) {
 }
 
 async function runBuild() {
+  const trackedArtifactSnapshots = await captureTrackedArtifacts();
   const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-  await new Promise((resolve, reject) => {
-    const child = spawn(npmCommand, ['run', 'build'], {
-      cwd: rootDir,
-      stdio: 'inherit',
-    });
+  const childEnv = buildBuildChildEnv();
+  try {
+    await new Promise((resolve, reject) => {
+      const child = spawn(npmCommand, ['run', 'build'], {
+        cwd: rootDir,
+        stdio: 'inherit',
+        env: childEnv,
+      });
 
-    child.on('error', reject);
-    child.on('exit', (code) => {
-      if (code === 0) {
-        resolve();
-        return;
-      }
-      reject(new Error(`build exited with code ${code}`));
+      child.on('error', reject);
+      child.on('exit', (code) => {
+        if (code === 0) {
+          resolve();
+          return;
+        }
+        reject(new Error(`build exited with code ${code}`));
+      });
     });
-  });
+  } finally {
+    await restoreTrackedArtifacts(trackedArtifactSnapshots);
+  }
+}
+
+function buildBuildChildEnv() {
+  const nextEnv = { ...process.env };
+
+  if ('NO_COLOR' in nextEnv && 'FORCE_COLOR' in nextEnv) {
+    delete nextEnv.NO_COLOR;
+  }
+
+  nextEnv.RYXEN_SUPPRESS_BUILD_OPTIONAL_WARNINGS = '1';
+  return nextEnv;
+}
+
+async function captureTrackedArtifacts() {
+  const snapshots = [];
+
+  for (const relativePath of trackedGeneratedArtifacts) {
+    const filePath = path.join(rootDir, relativePath);
+    try {
+      const contents = await readFile(filePath, 'utf8');
+      snapshots.push({ relativePath, contents });
+    } catch (error) {
+      if (error?.code !== 'ENOENT') throw error;
+    }
+  }
+
+  return snapshots;
+}
+
+async function restoreTrackedArtifacts(snapshots = []) {
+  for (const snapshot of snapshots) {
+    const filePath = path.join(rootDir, snapshot.relativePath);
+    await writeFile(filePath, snapshot.contents, 'utf8');
+  }
 }
 
 async function ensureDistExists() {

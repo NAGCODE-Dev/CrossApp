@@ -12,6 +12,13 @@ set -a
 source "$ROOT_DIR/.env.supabase"
 set +a
 
+ENABLE_AUTH_SMOKE="${ENABLE_AUTH_SMOKE:-0}"
+if [[ "$ENABLE_AUTH_SMOKE" != "1" && "$ENABLE_AUTH_SMOKE" != "true" ]]; then
+  echo "[dev-backend-supabase-and-smoke] Smoke de auth desabilitado por padrão."
+  echo "[dev-backend-supabase-and-smoke] Rode com ENABLE_AUTH_SMOKE=1 para permitir EXPOSE_RESET_CODE=true neste fluxo local."
+  exit 1
+fi
+
 export PORT="${PORT:-8788}"
 export FRONTEND_ORIGIN="${FRONTEND_ORIGIN:-http://localhost:8000}"
 export EXPOSE_RESET_CODE="${EXPOSE_RESET_CODE:-true}"

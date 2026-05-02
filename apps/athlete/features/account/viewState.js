@@ -35,6 +35,7 @@ export function buildAthleteAccountPageState(state, helpers) {
   const profileCard = athleteOverview?.profileCard || null;
   const personalSubscription = athleteOverview?.personalSubscription || null;
   const preferences = state?.preferences || {};
+  const syncStatus = state?.__ui?.syncStatus || {};
   const accountView = ['overview', 'profile', 'checkins', 'preferences', 'data'].includes(state?.__ui?.accountView)
     ? state.__ui.accountView
     : 'overview';
@@ -79,6 +80,7 @@ export function buildAthleteAccountPageState(state, helpers) {
     profileCard,
     personalSubscription,
     preferences,
+    syncStatus,
     accountView,
     isSummaryLoading,
     isWorkoutsLoading,

@@ -31,7 +31,7 @@
     "test": "npm run test:node && npm run test:athlete-react",
     "test:node": "node --test __tests__/*.test.mjs",
     "test:athlete-react": "vitest run --config apps/athlete-react/vite.config.mjs",
-    "test:e2e": "playwright test --project=chromium",
+    "test:e2e": "bash scripts/run-playwright.sh test --project=chromium",
     "smoke:auth": "node scripts/smoke-auth.mjs",
     "seed:coach-trial": "node scripts/seed-coach-trial.mjs",
     "smoke:coach-trial": "node scripts/smoke-coach-trial.mjs",

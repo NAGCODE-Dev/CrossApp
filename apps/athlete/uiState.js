@@ -10,6 +10,7 @@ import {
   normalizeAthleteImportStatus,
   normalizeAthleteOverviewState,
   normalizeAthleteSettings,
+  normalizeAthleteSyncStatus,
   normalizeAthleteWodState,
   normalizeCoachPortalState,
 } from './uiStateNormalize.js';
@@ -35,6 +36,7 @@ export function normalizeAthleteUiState(state) {
   next.settings = normalizeAthleteSettings(next.settings);
   next.guide = normalizeAthleteGuideState(next.guide);
   next.importStatus = normalizeAthleteImportStatus(next.importStatus);
+  next.syncStatus = normalizeAthleteSyncStatus(next.syncStatus);
   next.admin = normalizeAthleteAdminState(next.admin);
   next.athleteOverview = normalizeAthleteOverviewState(next.athleteOverview);
   next.coachPortal = normalizeCoachPortalState(next.coachPortal);
@@ -63,6 +65,7 @@ export function buildAthleteUiForRender({ state, uiState, uiBusy, profile }) {
     signupVerification: uiState.signupVerification,
     guide: uiState.guide,
     importStatus: uiState.importStatus,
+    syncStatus: uiState.syncStatus,
     admin: uiState.admin,
     athleteOverview: uiState.athleteOverview,
     coachPortal: uiState.coachPortal,

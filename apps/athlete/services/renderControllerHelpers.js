@@ -37,6 +37,7 @@ export function createRenderSignatures({ getObjectIdentity }) {
     getObjectIdentity(state?.__ui?.auth?.profile || null),
     getObjectIdentity(state?.__ui?.passwordReset || null),
     getObjectIdentity(state?.__ui?.admin || null),
+    getObjectIdentity(state?.__ui?.syncStatus || null),
     state?.__ui?.sessionRestore || 'idle',
     state?.__ui?.platformVariant || 'web',
   ].join('|');

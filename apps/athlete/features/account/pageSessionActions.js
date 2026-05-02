@@ -1,6 +1,7 @@
 export async function handleAthletePageSessionAction(action, context) {
   const {
     element,
+    toast,
     getUiState,
     applyUiState,
     applyUiPatch,
@@ -157,6 +158,128 @@ export async function handleAthletePageSessionAction(action, context) {
             await loadBenchmarkLibrary({ autoSelect: true });
           }
         }
+      }
+      return true;
+    }
+
+    case 'sync:retry': {
+      const bridge = getAppBridge();
+      if (!bridge?.retryPendingSync) {
+        throw new Error('Sincronização manual indisponível');
+      }
+
+      await applyUiPatch((state) => ({
+        ...state,
+        syncStatus: {
+          ...(state?.syncStatus || {}),
+          flushing: true,
+          lastError: '',
+        },
+      }), { render: false });
+
+      const result = await bridge.retryPendingSync();
+      const status = await bridge.getPendingSyncStatus?.();
+
+      await applyUiPatch((state) => ({
+        ...state,
+        syncStatus: {
+          ...(state?.syncStatus || {}),
+          ...(status || {}),
+          flushing: false,
+        },
+      }), {
+        render: true,
+        toastMessage: result?.success ? 'Sincronização concluída' : '',
+      });
+
+      if (!result?.success) {
+        toast?.('Ainda existem pendências para sincronizar');
+      }
+      return true;
+    }
+
+    case 'sync:item:dismiss': {
+      const kind = String(element?.dataset?.syncKind || '').trim();
+      if (!kind) {
+        throw new Error('Pendência inválida');
+      }
+      const confirmed = globalThis.confirm?.('Descartar esta pendência local? Isso remove apenas a fila deste item neste aparelho.');
+      if (confirmed === false) {
+        return true;
+      }
+      const bridge = getAppBridge();
+      if (!bridge?.dismissPendingSyncItem) {
+        throw new Error('Fila local indisponível');
+      }
+
+      await applyUiPatch((state) => ({
+        ...state,
+        syncStatus: {
+          ...(state?.syncStatus || {}),
+          activeItemKind: kind,
+          activeItemAction: 'dismiss',
+        },
+      }), { render: true });
+
+      const result = await bridge.dismissPendingSyncItem(kind);
+      const status = await bridge.getPendingSyncStatus?.();
+
+      await applyUiPatch((state) => ({
+        ...state,
+        syncStatus: {
+          ...(state?.syncStatus || {}),
+          ...(status || {}),
+          activeItemKind: '',
+          activeItemAction: '',
+        },
+      }), {
+        render: true,
+        toastMessage: result?.success ? 'Pendência removida da fila local' : '',
+      });
+
+      if (!result?.success) {
+        toast?.('Essa pendência já não está mais na fila');
+      }
+      return true;
+    }
+
+    case 'sync:item:retry': {
+      const kind = String(element?.dataset?.syncKind || '').trim();
+      if (!kind) {
+        throw new Error('Pendência inválida');
+      }
+      const bridge = getAppBridge();
+      if (!bridge?.retryPendingSyncItem) {
+        throw new Error('Retry por item indisponível');
+      }
+
+      await applyUiPatch((state) => ({
+        ...state,
+        syncStatus: {
+          ...(state?.syncStatus || {}),
+          activeItemKind: kind,
+          activeItemAction: 'retry',
+        },
+      }), { render: true });
+
+      const result = await bridge.retryPendingSyncItem(kind);
+      const status = await bridge.getPendingSyncStatus?.();
+
+      await applyUiPatch((state) => ({
+        ...state,
+        syncStatus: {
+          ...(state?.syncStatus || {}),
+          ...(status || {}),
+          activeItemKind: '',
+          activeItemAction: '',
+        },
+      }), {
+        render: true,
+        toastMessage: result?.success ? 'Item sincronizado' : '',
+      });
+
+      if (!result?.success) {
+        toast?.(result?.skipped ? 'Esse item não pode ser sincronizado agora' : 'Esse item continua pendente');
       }
       return true;
     }

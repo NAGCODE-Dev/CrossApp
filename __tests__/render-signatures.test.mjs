@@ -83,3 +83,28 @@ test('buildMainSignature reage à troca de subárea da conta', () => {
 
   assert.notEqual(buildMainSignature(overview), buildMainSignature(data));
 });
+
+test('buildHeaderSignature reage a mudanças no status de sincronização', () => {
+  const ids = new WeakMap();
+  let nextId = 0;
+  const getObjectIdentity = (value) => {
+    if (!value || typeof value !== 'object') return String(value ?? '');
+    if (!ids.has(value)) ids.set(value, `obj-${++nextId}`);
+    return ids.get(value);
+  };
+
+  const { buildHeaderSignature } = createRenderSignatures({ getObjectIdentity });
+
+  const idle = {
+    __ui: {
+      syncStatus: { online: true, pendingTotal: 0 },
+    },
+  };
+  const pending = {
+    __ui: {
+      syncStatus: { online: true, pendingTotal: 2 },
+    },
+  };
+
+  assert.notEqual(buildHeaderSignature(idle), buildHeaderSignature(pending));
+});

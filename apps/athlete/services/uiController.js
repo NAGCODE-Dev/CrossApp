@@ -25,6 +25,7 @@ export async function createAthleteUiStateController({ createStorage }) {
   });
   await uiStorage.set('state', uiState);
 
+  bindSyncStatusListeners();
   queueRemoteUiRestore();
 
   function scheduleUiStatePersist(nextState) {
@@ -91,11 +92,15 @@ export async function createAthleteUiStateController({ createStorage }) {
     setImportStatus,
     setUiState,
     patchUiState,
+    refreshSyncStatus,
     destroy() {
       clearTimeout(remoteRestoreTimeout);
       clearTimeout(uiSyncTimeout);
       clearTimeout(uiPersistTimeout);
       measurementSync.clear();
+      window.removeEventListener('online', handleNetworkStatusChange);
+      window.removeEventListener('offline', handleNetworkStatusChange);
+      window.removeEventListener('ryxen:sync-status', handleSyncStatusEvent);
     },
   };
 
@@ -115,5 +120,43 @@ export async function createAthleteUiStateController({ createStorage }) {
     } catch {
       // no-op
     }
+  }
+
+  function bindSyncStatusListeners() {
+    window.addEventListener('online', handleNetworkStatusChange);
+    window.addEventListener('offline', handleNetworkStatusChange);
+    window.addEventListener('ryxen:sync-status', handleSyncStatusEvent);
+    void refreshSyncStatus();
+  }
+
+  function handleNetworkStatusChange() {
+    void refreshSyncStatus({
+      online: navigator.onLine !== false,
+    });
+  }
+
+  function handleSyncStatusEvent(event) {
+    void refreshSyncStatus(event?.detail || {});
+  }
+
+  async function refreshSyncStatus(seed = {}) {
+    const bridge = getAppBridge?.();
+    let remoteStatus = {};
+    try {
+      remoteStatus = await bridge?.getPendingSyncStatus?.() || {};
+    } catch {
+      remoteStatus = {};
+    }
+
+    uiState = normalizeAthleteUiState({
+      ...uiState,
+      syncStatus: {
+        ...(uiState?.syncStatus || {}),
+        online: navigator.onLine !== false,
+        ...remoteStatus,
+        ...seed,
+      },
+    });
+    scheduleUiStatePersist(uiState);
   }
 }

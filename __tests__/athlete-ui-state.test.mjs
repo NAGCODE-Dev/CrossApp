@@ -29,6 +29,21 @@ test('normalizeAthleteUiState define conta e preferências novas com defaults se
     workoutPriority: 'uploaded',
   });
   assert.deepEqual(normalized.guide, { step: 0 });
+  assert.deepEqual(normalized.syncStatus, {
+    online: true,
+    isAuthenticated: false,
+    pendingAppState: false,
+    pendingOutboxCount: 0,
+    pendingTotal: 0,
+    pendingKinds: [],
+    pendingItems: [],
+    oldestPendingAt: '',
+    lastSyncAt: '',
+    lastError: '',
+    flushing: false,
+    activeItemKind: '',
+    activeItemAction: '',
+  });
 });
 
 test('buildUiSnapshotSignature reage a troca de aba da conta e preferências visuais', () => {

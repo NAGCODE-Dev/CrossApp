@@ -6,6 +6,7 @@ import {
   renderAccountDataSections,
   renderAccountProfileSection,
   renderAccountPreferencesSections,
+  renderAccountSyncSection,
   renderGuestBenefitsSection,
   renderGuestCoachPortalSection,
 } from './sections.js';
@@ -59,6 +60,7 @@ export function renderAthleteAccountPage(state, helpers) {
     profileCard,
     personalSubscription,
     preferences,
+    syncStatus,
     accountView,
     isSummaryLoading,
     isWorkoutsLoading,
@@ -179,14 +181,22 @@ export function renderAthleteAccountPage(state, helpers) {
             escapeHtml,
           })
         : accountView === 'data'
-          ? renderAccountDataSections(renderPageFold, {
-            profileEmail: profile.email,
-            planName,
-            planStatus,
-            athleteBenefitSource,
-            importUsage,
-            escapeHtml,
-          })
+          ? `
+            ${renderAccountDataSections(renderPageFold, {
+              profileEmail: profile.email,
+              planName,
+              planStatus,
+              athleteBenefitSource,
+              importUsage,
+              syncStatus,
+              escapeHtml,
+            })}
+
+            ${renderAccountSyncSection(renderPageFold, {
+              syncStatus,
+              escapeHtml,
+            })}
+          `
           : `
             ${renderAccountAccessSection(renderPageFold, {
               isBusy,
@@ -202,6 +212,11 @@ export function renderAthleteAccountPage(state, helpers) {
               importUsage,
               gymAccess,
               personalSubscription,
+              escapeHtml,
+            })}
+
+            ${renderAccountSyncSection(renderPageFold, {
+              syncStatus,
               escapeHtml,
             })}
 

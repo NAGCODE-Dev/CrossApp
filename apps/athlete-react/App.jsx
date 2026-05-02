@@ -1,50 +1,88 @@
-import React, { startTransition, useDeferredValue, useEffect, useRef, useState } from 'react';
+import React from 'react';
 import { AppFrame, useNativeShell, useReducedMotion } from '../../packages/ui/index.js';
-import { applyAuthRedirectFromLocation, signOut, startGoogleRedirect } from '../../packages/shared-web/auth.js';
-import { createAthleteImportReviewAdapter } from '../../packages/shared-web/athlete-import-review.js';
-import {
-  clearTodayDayOverride,
-  loadAthleteTodaySnapshot,
-  persistTodaySelection,
-} from '../../packages/shared-web/athlete-shell.js';
-import { saveImportedPlanSnapshot } from '../../packages/shared-web/athlete-services.js';
-import { validateWorkoutContract } from '../../packages/shared-web/flowContracts.js';
 import TodayPage from './routes/TodayPage.jsx';
 import ImportReviewSheet from './components/ImportReviewSheet.jsx';
-import { createTodayViewModel } from './services/todayViewModel.js';
+import { useAthleteTodaySnapshot } from './hooks/useAthleteTodaySnapshot.js';
+import { useAthleteImportFlow } from './hooks/useAthleteImportFlow.js';
+import { IMPORT_ACCEPT } from './services/appShellState.js';
 
-// ... (rest unchanged until handleConfirmReview)
+export default function App() {
+  const nativeShell = useNativeShell();
+  const reducedMotion = useReducedMotion();
+  const {
+    snapshot,
+    viewModel,
+    loading,
+    error,
+    message,
+    progressMessage,
+    setError,
+    setMessage,
+    setProgressMessage,
+    loadSnapshot,
+    handleSelectWeek,
+    handleSelectDay,
+    handleResetDay,
+    handleStartAuth,
+    handleSignOut,
+  } = useAthleteTodaySnapshot();
+  const {
+    fileInputRef,
+    review,
+    reviewText,
+    reviewTextDeferred,
+    importState,
+    setReviewText,
+    handleOpenImport,
+    handleImportFileChange,
+    handleReparseReview,
+    handleConfirmReview,
+    handleCancelReview,
+  } = useAthleteImportFlow({
+    snapshot,
+    setError,
+    setMessage,
+    setProgressMessage,
+    loadSnapshot,
+  });
 
-  async function handleConfirmReview() {
-    setImportState('saving');
-    const result = await reviewAdapterRef.current.commitImportReview();
-    if (!result?.success) {
-      setImportState('idle');
-      setError(result?.error || 'Não consegui salvar o plano.');
-      return;
-    }
+  return (
+    <AppFrame nativeShell={nativeShell} reducedMotion={reducedMotion}>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept={IMPORT_ACCEPT}
+        hidden
+        onChange={handleImportFileChange}
+      />
 
-    const workouts = result?.weeks?.flatMap(w => w.workouts || []) || [];
-    for (const workout of workouts) {
-      const validation = validateWorkoutContract(workout);
-      if (!validation.valid) {
-        setImportState('idle');
-        setError(`Plano inválido: ${validation.errors.join(', ')}`);
-        return;
-      }
-    }
+      <TodayPage
+        snapshot={snapshot}
+        viewModel={viewModel}
+        loading={loading}
+        error={error}
+        message={message}
+        progressMessage={progressMessage}
+        onOpenImport={handleOpenImport}
+        onSelectWeek={handleSelectWeek}
+        onSelectDay={handleSelectDay}
+        onResetDay={handleResetDay}
+        onStartAuth={handleStartAuth}
+        onSignOut={handleSignOut}
+      />
 
-    const nextWeek = result?.review?.weekNumbers?.[0] || result?.weeks?.[0]?.weekNumber || null;
-    const nextDay = result?.review?.days?.[0]?.day || null;
-    await persistTodaySelection({
-      activeWeekNumber: nextWeek,
-      currentDay: nextDay,
-    });
-    setReview(null);
-    setReviewText('');
-    setImportState('idle');
-    setMessage('Plano salvo com sucesso.');
-    await loadSnapshot();
-  }
-
-export default App;
+      <ImportReviewSheet
+        open={!!review}
+        review={review}
+        reviewText={reviewText}
+        reviewTextDeferred={reviewTextDeferred}
+        importState={importState}
+        onClose={handleCancelReview}
+        onChangeReviewText={setReviewText}
+        onReparse={handleReparseReview}
+        onConfirm={handleConfirmReview}
+        onCancel={handleCancelReview}
+      />
+    </AppFrame>
+  );
+}

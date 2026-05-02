@@ -40,6 +40,7 @@ temp/
 .env
 .env.*
 .env*.local
+!.env*.example
 .continue/
 local-files/
 .playwright-web-server.lock

@@ -21,10 +21,12 @@ const dirsToCopy = [
   'src',
   'branding',
   'icons',
+  'node_modules/tesseract.js/dist',
   'sports',
 ];
 
 const fileConfig = await loadFileConfig();
+const suppressOptionalWarnings = readEnv('RYXEN_SUPPRESS_BUILD_OPTIONAL_WARNINGS') === '1';
 
 function readEnv(...names) {
   for (const name of names) {
@@ -147,6 +149,7 @@ function reportNativeApiResolution(config) {
   if (apiBaseUrl !== '/api' || nativeApiBaseUrl) return;
 
   if (nativeTarget === 'emulator' && emulatorApiBaseUrl) {
+    if (suppressOptionalWarnings) return;
     console.warn(
       [
         '[build-static] aviso: build nativa configurada para emulador.',
@@ -157,6 +160,7 @@ function reportNativeApiResolution(config) {
     return;
   }
 
+  if (suppressOptionalWarnings) return;
   console.warn(
     [
       '[build-static] aviso: build nativa sem backend absoluto configurado.',
@@ -173,7 +177,7 @@ async function writeWellKnownFiles(outputDir) {
   const androidFingerprints = parseCsv(
     readEnv('RYXEN_ANDROID_APP_LINK_SHA256_CERT_FINGERPRINTS', 'CROSSAPP_ANDROID_APP_LINK_SHA256_CERT_FINGERPRINTS') || '',
   );
-  if (!androidFingerprints.length) {
+  if (!androidFingerprints.length && !suppressOptionalWarnings) {
     console.warn(
       '[build-static] aviso: RYXEN_ANDROID_APP_LINK_SHA256_CERT_FINGERPRINTS não definido. assetlinks.json será publicado vazio até a fingerprint oficial ser configurada.',
     );

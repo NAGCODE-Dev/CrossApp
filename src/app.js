@@ -494,6 +494,10 @@ const {
   syncAthletePrSnapshotWithQueue,
   syncAthleteMeasurementsSnapshotWithQueue,
   flushPendingSyncOutbox,
+  getPendingSyncStatus,
+  retryPendingSync,
+  retryPendingSyncItem,
+  dismissPendingSyncItem,
   restoreImportedPlanFromAccount,
 } = accountSyncDomain;
 
@@ -731,6 +735,10 @@ function exposeDebugAPIs() {
     cancelAthleteCheckinSession: handleCancelAthleteCheckinSession,
     getAppStateSnapshot: handleGetAppStateSnapshot,
     saveAppStateSnapshot: saveRemoteAppStateSnapshot,
+    getPendingSyncStatus,
+    retryPendingSync,
+    retryPendingSyncItem,
+    dismissPendingSyncItem,
     getImportedPlanSnapshot: handleGetImportedPlanSnapshot,
     saveImportedPlanSnapshot: handleSaveImportedPlanSnapshot,
     deleteImportedPlanSnapshot: handleDeleteImportedPlanSnapshot,

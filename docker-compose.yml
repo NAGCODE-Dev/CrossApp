@@ -29,12 +29,12 @@ services:
     environment:
       PORT: 8787
       DATABASE_URL: postgres://crossapp:crossapp@db:5432/crossapp
-      JWT_SECRET: ${JWT_SECRET:-crossapp-local-dev-secret}
+      JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET antes de subir o backend local}
       FRONTEND_ORIGIN: http://localhost:8000
       SUPPORT_EMAIL: nagcode.contact@gmail.com
       ADMIN_EMAILS: nagcode.contact@gmail.com
       DEV_EMAILS: nagcode.contact@gmail.com
-      EXPOSE_RESET_CODE: ${EXPOSE_RESET_CODE:-true}
+      EXPOSE_RESET_CODE: ${EXPOSE_RESET_CODE:-false}
       SMTP_HOST: mailpit
       SMTP_PORT: 1025
       SMTP_SECURE: "false"

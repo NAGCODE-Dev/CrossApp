@@ -3,8 +3,37 @@
     display: inline-flex;
     align-items: center;
     justify-content: flex-end;
+    flex-wrap: wrap;
     gap: 8px;
     max-width: 100%;
+  }
+
+  .header-syncGroup {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .header-syncRetry {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(138, 180, 255, 0.18);
+    background: rgba(138, 180, 255, 0.08);
+    color: #dbeafe;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+
+  .header-syncRetry:hover {
+    background: rgba(138, 180, 255, 0.12);
   }
 
   .session-statusChip {
@@ -96,6 +125,11 @@
 
   .header-accountGroup-native {
     gap: 8px;
+    justify-content: flex-end;
+  }
+
+  .header-syncGroup-native {
+    justify-content: flex-end;
   }
 
   .native-accountBtn {

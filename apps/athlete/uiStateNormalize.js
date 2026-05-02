@@ -34,6 +34,41 @@ export function normalizeAthleteImportStatus(importStatus) {
   return next;
 }
 
+export function normalizeAthleteSyncStatus(syncStatus) {
+  const next = syncStatus && typeof syncStatus === 'object' ? syncStatus : {};
+  next.online = next.online !== false;
+  next.isAuthenticated = next.isAuthenticated === true;
+  next.pendingAppState = next.pendingAppState === true;
+  next.pendingOutboxCount = Number.isFinite(Number(next.pendingOutboxCount)) ? Math.max(0, Number(next.pendingOutboxCount)) : 0;
+  next.pendingTotal = Number.isFinite(Number(next.pendingTotal))
+    ? Math.max(0, Number(next.pendingTotal))
+    : (next.pendingAppState ? 1 : 0) + next.pendingOutboxCount;
+  next.pendingKinds = Array.isArray(next.pendingKinds) ? next.pendingKinds.filter(Boolean).map((kind) => String(kind)) : [];
+  next.pendingItems = Array.isArray(next.pendingItems)
+    ? next.pendingItems
+      .filter((item) => item && typeof item === 'object')
+      .map((item) => ({
+        kind: String(item.kind || ''),
+        label: String(item.label || ''),
+        count: Number.isFinite(Number(item.count)) ? Math.max(0, Number(item.count)) : 0,
+        preview: String(item.preview || ''),
+        detail: String(item.detail || ''),
+        updatedAt: String(item.updatedAt || ''),
+        attempts: Number.isFinite(Number(item.attempts)) ? Math.max(0, Number(item.attempts)) : 0,
+        lastFailedAt: String(item.lastFailedAt || ''),
+        lastFailureMessage: String(item.lastFailureMessage || ''),
+        isOldest: item.isOldest === true,
+      }))
+    : [];
+  next.oldestPendingAt = typeof next.oldestPendingAt === 'string' ? next.oldestPendingAt : '';
+  next.lastSyncAt = typeof next.lastSyncAt === 'string' ? next.lastSyncAt : '';
+  next.lastError = typeof next.lastError === 'string' ? next.lastError : '';
+  next.flushing = next.flushing === true;
+  next.activeItemKind = typeof next.activeItemKind === 'string' ? next.activeItemKind : '';
+  next.activeItemAction = typeof next.activeItemAction === 'string' ? next.activeItemAction : '';
+  return next;
+}
+
 export function normalizeAthleteAdminState(admin) {
   const next = admin && typeof admin === 'object' ? admin : createEmptyAdminState();
   if (typeof next.query !== 'string') next.query = '';

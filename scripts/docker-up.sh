@@ -8,6 +8,7 @@ DB_PORT="${RYXEN_DB_PORT:-${CROSSAPP_DB_PORT:-5432}}"
 BACKEND_PORT="${RYXEN_BACKEND_PORT:-${CROSSAPP_BACKEND_PORT:-8787}}"
 MAILPIT_PORT="${RYXEN_MAILPIT_PORT:-${CROSSAPP_MAILPIT_PORT:-8025}}"
 FRONTEND_PORT="${RYXEN_FRONTEND_PORT:-${CROSSAPP_FRONTEND_PORT:-8000}}"
+JWT_SECRET_VALUE="${JWT_SECRET:-}"
 
 if ! command -v docker >/dev/null 2>&1; then
   echo "[docker-up] Docker não está instalado ou não está no PATH."
@@ -55,6 +56,16 @@ if [ -f "backend/.env" ]; then
   fi
 else
   echo "[docker-up] backend/.env não encontrado. O Docker Compose ainda sobe porque injeta as variáveis principais."
+fi
+
+if [ -z "$JWT_SECRET_VALUE" ]; then
+  if command -v openssl >/dev/null 2>&1; then
+    JWT_SECRET_VALUE="$(openssl rand -hex 32)"
+  else
+    JWT_SECRET_VALUE="$(date +%s)-ryxen-local-secret"
+  fi
+  export JWT_SECRET="$JWT_SECRET_VALUE"
+  echo "[docker-up] JWT_SECRET não definido. Gerando segredo efêmero para esta sessão local."
 fi
 
 echo "[docker-up] Subindo db, backend, mailpit e frontend..."

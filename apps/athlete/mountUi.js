@@ -22,7 +22,7 @@ export async function mountUI({ root }) {
 
   const { createStorage } = await import('../../src/adapters/storage/storageFactory.js');
   const uiController = await createAthleteUiStateController({ createStorage });
-  const { getUiState, setImportStatus, setUiState, patchUiState } = uiController;
+  const { getUiState, setImportStatus, setUiState, patchUiState, refreshSyncStatus } = uiController;
   let uiBusy = false;
   let uiBusyMessage = '';
   let loadingHideTimer = null;
@@ -75,6 +75,13 @@ export async function mountUI({ root }) {
     setLayoutText,
   });
 
+  const handleSyncStatusRender = () => {
+    void refreshSyncStatus().then(() => rerender()).catch(() => {});
+  };
+  window.addEventListener('online', handleSyncStatusRender);
+  window.addEventListener('offline', handleSyncStatusRender);
+  window.addEventListener('ryxen:sync-status', handleSyncStatusRender);
+
   const destroyEvents = bindAthleteAppEvents({
     pushEventLine,
     rerender: () => rerender(),
@@ -95,12 +102,16 @@ export async function mountUI({ root }) {
 
   // Primeira renderização: some com loading inicial
   setBusy(false);
+  await refreshSyncStatus();
   pushEventLine('UI montada');
   await rerender();
 
   return {
     rerender,
     destroy() {
+      window.removeEventListener('online', handleSyncStatusRender);
+      window.removeEventListener('offline', handleSyncStatusRender);
+      window.removeEventListener('ryxen:sync-status', handleSyncStatusRender);
       uiController.destroy();
       try { destroyEvents?.(); } catch (e) { console.warn('destroyEvents falhou', e); }
     },

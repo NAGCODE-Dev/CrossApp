@@ -14,7 +14,7 @@ set +a
 
 export PORT="${PORT:-8788}"
 export FRONTEND_ORIGIN="${FRONTEND_ORIGIN:-http://localhost:8000}"
-export EXPOSE_RESET_CODE="${EXPOSE_RESET_CODE:-true}"
+export EXPOSE_RESET_CODE="${EXPOSE_RESET_CODE:-false}"
 export DEV_EMAILS="${DEV_EMAILS:-nagcode.contact@gmail.com}"
 export SUPPORT_EMAIL="${SUPPORT_EMAIL:-nagcode.contact@gmail.com}"
 export JWT_SECRET="${JWT_SECRET:-dev-local-secret-123}"

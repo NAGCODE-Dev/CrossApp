@@ -53,6 +53,7 @@ export async function routeAthletePageClick(action, context) {
   return context.handleAthleteAccountHistoryAction(action, {
     element: context.element,
     root: context.root,
+    toast: context.toast,
     getUiState: context.getUiState,
     applyUiState: context.applyUiState,
     applyUiPatch: context.applyUiPatch,

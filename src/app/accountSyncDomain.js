@@ -27,6 +27,10 @@ export function createAccountSyncDomain({
 }) {
   let appStateSyncTimer = null;
   let onlineSyncListenerBound = false;
+  let syncStatusEmitterBound = false;
+  let lastSyncError = '';
+  let lastSuccessfulSyncAt = '';
+  let flushingPendingSync = false;
 
   function normalizeStorageKeys(keys) {
     return Array.isArray(keys) ? keys.filter(Boolean) : [keys].filter(Boolean);
@@ -83,7 +87,11 @@ export function createAccountSyncDomain({
       Promise.allSettled([
         flushPendingAppStateSync(),
         flushPendingSyncOutbox(),
-      ]).catch(() => {});
+      ])
+        .catch(() => {})
+        .finally(() => {
+          emitSyncStatus();
+        });
     });
   }
 
@@ -130,19 +138,25 @@ export function createAccountSyncDomain({
     const envelope = {
       snapshot,
       updatedAt: new Date().toISOString(),
+      pendingSync: true,
     };
 
     persistLocalAppStateEnvelope(envelope);
+    emitSyncStatus();
 
     if (!profile?.id || !navigatorObject?.onLine) {
-      return { success: false, queued: true };
+      return { success: false, queued: true, requiresAuth: !profile?.id };
     }
 
     const result = await handleSaveAppStateSnapshot(envelope);
+    lastSyncError = '';
+    lastSuccessfulSyncAt = result?.data?.appState?.updatedAt || new Date().toISOString();
     persistLocalAppStateEnvelope({
       snapshot: mergeAppStateSnapshot(snapshot, result?.data?.appState?.snapshot || {}),
-      updatedAt: result?.data?.appState?.updatedAt || envelope.updatedAt,
+      updatedAt: lastSuccessfulSyncAt || envelope.updatedAt,
+      pendingSync: false,
     });
+    emitSyncStatus();
     return { success: true };
   }
 
@@ -180,9 +194,15 @@ export function createAccountSyncDomain({
       persistLocalAppStateEnvelope({
         snapshot: mergeAppStateSnapshot(localEnvelope?.snapshot || {}, remoteAppState.snapshot || {}),
         updatedAt: remoteAppState.updatedAt || new Date().toISOString(),
+        pendingSync: false,
       });
+      lastSyncError = '';
+      lastSuccessfulSyncAt = remoteAppState.updatedAt || new Date().toISOString();
+      emitSyncStatus();
       return { success: true, restored: true };
     } catch (error) {
+      lastSyncError = error?.message || 'Falha ao restaurar estado da conta';
+      emitSyncStatus();
       console.warn('Falha ao restaurar estado sincronizado da conta:', error?.message || error);
       return { success: false, error };
     }
@@ -226,12 +246,26 @@ export function createAccountSyncDomain({
     const envelope = loadLocalAppStateEnvelope();
     if (!envelope?.snapshot) return { success: false, skipped: true };
 
-    const result = await handleSaveAppStateSnapshot(envelope);
-    persistLocalAppStateEnvelope({
-      snapshot: mergeAppStateSnapshot(envelope.snapshot, result?.data?.appState?.snapshot || {}),
-      updatedAt: result?.data?.appState?.updatedAt || envelope.updatedAt,
-    });
-    return { success: true };
+    try {
+      const result = await handleSaveAppStateSnapshot(envelope);
+      lastSyncError = '';
+      lastSuccessfulSyncAt = result?.data?.appState?.updatedAt || new Date().toISOString();
+      persistLocalAppStateEnvelope({
+        snapshot: mergeAppStateSnapshot(envelope.snapshot, result?.data?.appState?.snapshot || {}),
+        updatedAt: lastSuccessfulSyncAt || envelope.updatedAt,
+        pendingSync: false,
+      });
+      emitSyncStatus();
+      return { success: true };
+    } catch (error) {
+      lastSyncError = error?.message || 'Falha ao sincronizar estado do app';
+      persistLocalAppStateEnvelope({
+        ...envelope,
+        pendingSync: true,
+      });
+      emitSyncStatus();
+      throw error;
+    }
   }
 
   async function syncAthletePrSnapshotWithQueue(prs) {
@@ -241,15 +275,21 @@ export function createAccountSyncDomain({
 
     if (!navigatorObject?.onLine) {
       queueSyncOutboxItem('pr_snapshot', payload);
+      emitSyncStatus();
       return { success: false, queued: true };
     }
 
     try {
       const result = await remoteHandleSyncAthletePrSnapshot(payload);
       dequeueSyncOutboxItem('pr_snapshot');
+      lastSyncError = '';
+      lastSuccessfulSyncAt = new Date().toISOString();
+      emitSyncStatus();
       return result;
     } catch (error) {
-      queueSyncOutboxItem('pr_snapshot', payload);
+      recordSyncOutboxFailure('pr_snapshot', payload, error);
+      lastSyncError = error?.message || 'Falha ao sincronizar PRs';
+      emitSyncStatus();
       return { success: false, queued: true, error };
     }
   }
@@ -261,15 +301,21 @@ export function createAccountSyncDomain({
 
     if (!navigatorObject?.onLine) {
       queueSyncOutboxItem('measurement_snapshot', payload);
+      emitSyncStatus();
       return { success: false, queued: true };
     }
 
     try {
       const result = await remoteHandleSyncAthleteMeasurementsSnapshot(payload);
       dequeueSyncOutboxItem('measurement_snapshot');
+      lastSyncError = '';
+      lastSuccessfulSyncAt = new Date().toISOString();
+      emitSyncStatus();
       return result;
     } catch (error) {
-      queueSyncOutboxItem('measurement_snapshot', payload);
+      recordSyncOutboxFailure('measurement_snapshot', payload, error);
+      lastSyncError = error?.message || 'Falha ao sincronizar medidas';
+      emitSyncStatus();
       return { success: false, queued: true, error };
     }
   }
@@ -293,6 +339,7 @@ export function createAccountSyncDomain({
         await remoteHandleSyncAthletePrSnapshot(prSnapshot.payload || {});
         dequeueSyncOutboxItem('pr_snapshot');
       } catch (error) {
+        recordSyncOutboxFailure('pr_snapshot', prSnapshot.payload || {}, error);
         failures.push({ kind: 'pr_snapshot', error });
       }
     }
@@ -302,14 +349,20 @@ export function createAccountSyncDomain({
         await remoteHandleSyncAthleteMeasurementsSnapshot(Array.isArray(measurementSnapshot.payload) ? measurementSnapshot.payload : []);
         dequeueSyncOutboxItem('measurement_snapshot');
       } catch (error) {
+        recordSyncOutboxFailure('measurement_snapshot', Array.isArray(measurementSnapshot.payload) ? measurementSnapshot.payload : [], error);
         failures.push({ kind: 'measurement_snapshot', error });
       }
     }
 
     if (failures.length) {
+      lastSyncError = failures[0]?.error?.message || 'Falha ao sincronizar pendências';
+      emitSyncStatus();
       return { success: false, queued: true, failures };
     }
 
+    lastSyncError = '';
+    lastSuccessfulSyncAt = new Date().toISOString();
+    emitSyncStatus();
     return { success: true };
   }
 
@@ -381,11 +434,16 @@ export function createAccountSyncDomain({
   }
 
   function queueSyncOutboxItem(kind, payload) {
+    const previous = readSyncOutbox().find((item) => item?.kind === kind);
     const items = readSyncOutbox().filter((item) => item?.kind !== kind);
+    const isSamePayload = previous && getSyncPayloadSignature(previous?.payload) === getSyncPayloadSignature(payload);
     items.push({
       kind,
       payload,
-      updatedAt: new Date().toISOString(),
+      updatedAt: isSamePayload && previous?.updatedAt ? previous.updatedAt : new Date().toISOString(),
+      attempts: isSamePayload && Number.isFinite(Number(previous?.attempts)) ? Number(previous.attempts) : 0,
+      lastFailedAt: isSamePayload && typeof previous?.lastFailedAt === 'string' ? previous.lastFailedAt : '',
+      lastFailureMessage: isSamePayload && typeof previous?.lastFailureMessage === 'string' ? previous.lastFailureMessage : '',
     });
     writeSyncOutbox(items);
   }
@@ -401,6 +459,155 @@ export function createAccountSyncDomain({
 
   function persistLocalAppStateEnvelope(envelope) {
     writeLocalJson(APP_STATE_SYNC_KEY, envelope || {});
+  }
+
+  function recordSyncOutboxFailure(kind, payload, error) {
+    const normalizedKind = String(kind || '').trim();
+    if (!normalizedKind) return;
+    const previous = readSyncOutbox().find((item) => item?.kind === normalizedKind);
+    const items = readSyncOutbox().filter((item) => item?.kind !== normalizedKind);
+    items.push({
+      kind: normalizedKind,
+      payload,
+      updatedAt: previous?.updatedAt || new Date().toISOString(),
+      attempts: (Number.isFinite(Number(previous?.attempts)) ? Number(previous.attempts) : 0) + 1,
+      lastFailedAt: new Date().toISOString(),
+      lastFailureMessage: error?.message || 'Falha ao sincronizar item',
+    });
+    writeSyncOutbox(items);
+  }
+
+  function getPendingSyncStatus() {
+    const profile = handleGetProfile()?.data || null;
+    const envelope = loadLocalAppStateEnvelope();
+    const outbox = readSyncOutbox();
+    const pendingAppState = envelope?.pendingSync === true;
+    const pendingOutboxCount = outbox.length;
+    const pendingItems = outbox
+      .map(describePendingSyncItem)
+      .filter(Boolean)
+      .sort(comparePendingSyncItemsByAge)
+      .map((item, index) => ({
+        ...item,
+        isOldest: index === 0,
+      }));
+
+    return {
+      online: navigatorObject?.onLine !== false,
+      isAuthenticated: !!profile?.id,
+      pendingAppState,
+      pendingOutboxCount,
+      pendingTotal: (pendingAppState ? 1 : 0) + pendingOutboxCount,
+      pendingKinds: outbox.map((item) => String(item?.kind || '')).filter(Boolean),
+      pendingItems,
+      oldestPendingAt: pendingItems[0]?.updatedAt || '',
+      lastSyncAt: lastSuccessfulSyncAt || envelope?.updatedAt || '',
+      lastError: lastSyncError,
+      flushing: flushingPendingSync,
+    };
+  }
+
+  async function retryPendingSync() {
+    flushingPendingSync = true;
+    emitSyncStatus();
+    try {
+      const results = await Promise.allSettled([
+        flushPendingAppStateSync(),
+        flushPendingSyncOutbox(),
+      ]);
+      const failures = results.flatMap((result) => {
+        if (result.status === 'rejected') {
+          return [result.reason].filter(Boolean);
+        }
+        if (result.value?.success === false && result.value?.skipped !== true) {
+          return [result.value];
+        }
+        return [];
+      });
+      if (failures.length) {
+        lastSyncError = failures[0]?.message || 'Falha ao sincronizar pendências';
+        return { success: false, failures };
+      }
+      return { success: true };
+    } finally {
+      flushingPendingSync = false;
+      emitSyncStatus();
+    }
+  }
+
+  async function retryPendingSyncItem(kind) {
+    const normalizedKind = String(kind || '').trim();
+    if (!normalizedKind) {
+      return { success: false, error: 'Tipo de pendência inválido' };
+    }
+
+    const profile = handleGetProfile()?.data || null;
+    if (!profile?.id || !navigatorObject?.onLine) {
+      return { success: false, skipped: true };
+    }
+
+    const item = readSyncOutbox().find((entry) => String(entry?.kind || '') === normalizedKind);
+    if (!item) {
+      return { success: false, skipped: true };
+    }
+
+    try {
+      if (normalizedKind === 'pr_snapshot') {
+        await remoteHandleSyncAthletePrSnapshot(item.payload || {});
+      } else if (normalizedKind === 'measurement_snapshot') {
+        await remoteHandleSyncAthleteMeasurementsSnapshot(Array.isArray(item.payload) ? item.payload : []);
+      } else {
+        return { success: false, skipped: true };
+      }
+
+      dequeueSyncOutboxItem(normalizedKind);
+      lastSyncError = '';
+      lastSuccessfulSyncAt = new Date().toISOString();
+      emitSyncStatus();
+      return { success: true, synced: normalizedKind };
+    } catch (error) {
+      recordSyncOutboxFailure(normalizedKind, item.payload, error);
+      lastSyncError = error?.message || 'Falha ao sincronizar item pendente';
+      emitSyncStatus();
+      return { success: false, queued: true, error };
+    }
+  }
+
+  function dismissPendingSyncItem(kind) {
+    const normalizedKind = String(kind || '').trim();
+    if (!normalizedKind) {
+      return { success: false, error: 'Tipo de pendência inválido' };
+    }
+
+    const before = readSyncOutbox();
+    const after = before.filter((item) => String(item?.kind || '') !== normalizedKind);
+    if (after.length === before.length) {
+      return { success: false, skipped: true };
+    }
+
+    writeSyncOutbox(after);
+    emitSyncStatus();
+    return { success: true, removed: normalizedKind };
+  }
+
+  function emitSyncStatus() {
+    if (!windowObject?.dispatchEvent || typeof windowObject.dispatchEvent !== 'function') return;
+    bindSyncStatusEmitter();
+    try {
+      windowObject.dispatchEvent(new windowObject.CustomEvent('ryxen:sync-status', {
+        detail: getPendingSyncStatus(),
+      }));
+    } catch {
+      // no-op
+    }
+  }
+
+  function bindSyncStatusEmitter() {
+    if (syncStatusEmitterBound || !windowObject?.addEventListener) return;
+    syncStatusEmitterBound = true;
+    windowObject.addEventListener('offline', () => {
+      emitSyncStatus();
+    });
   }
 
   function mergeAppStateSnapshot(base = {}, override = {}) {
@@ -429,6 +636,89 @@ export function createAccountSyncDomain({
     return value && typeof value === 'object' && !Array.isArray(value);
   }
 
+  function describePendingSyncItem(item) {
+    const kind = String(item?.kind || '').trim();
+    if (!kind) return null;
+    const payload = item?.payload;
+    const updatedAt = typeof item?.updatedAt === 'string' ? item.updatedAt : '';
+
+    if (kind === 'pr_snapshot') {
+      const names = Object.keys(payload && typeof payload === 'object' ? payload : {}).filter(Boolean);
+      const preview = names.slice(0, 3).join(', ');
+      return {
+        kind,
+        label: 'PRs',
+        count: names.length,
+        preview,
+        detail: names.length
+          ? `${names.length} movimento(s) aguardando sync${preview ? `: ${preview}` : ''}`
+          : 'PRs aguardando sync',
+        updatedAt,
+        attempts: Number.isFinite(Number(item?.attempts)) ? Number(item.attempts) : 0,
+        lastFailedAt: typeof item?.lastFailedAt === 'string' ? item.lastFailedAt : '',
+        lastFailureMessage: typeof item?.lastFailureMessage === 'string' ? item.lastFailureMessage : '',
+        isOldest: false,
+      };
+    }
+
+    if (kind === 'measurement_snapshot') {
+      const entries = Array.isArray(payload) ? payload : [];
+      const preview = entries.slice(0, 3).map((entry) => {
+        const label = String(entry?.label || entry?.type || 'medida').trim();
+        const value = entry?.value == null || entry?.value === ''
+          ? ''
+          : ` ${String(entry.value)}${entry?.unit ? String(entry.unit) : ''}`;
+        return `${label}${value}`.trim();
+      }).join(', ');
+      return {
+        kind,
+        label: 'Medidas',
+        count: entries.length,
+        preview,
+        detail: entries.length
+          ? `${entries.length} medida(s) aguardando sync${preview ? `: ${preview}` : ''}`
+          : 'Medidas aguardando sync',
+        updatedAt,
+        attempts: Number.isFinite(Number(item?.attempts)) ? Number(item.attempts) : 0,
+        lastFailedAt: typeof item?.lastFailedAt === 'string' ? item.lastFailedAt : '',
+        lastFailureMessage: typeof item?.lastFailureMessage === 'string' ? item.lastFailureMessage : '',
+        isOldest: false,
+      };
+    }
+
+    return {
+      kind,
+      label: kind,
+      count: 1,
+      preview: '',
+      detail: 'Pendência local aguardando sync',
+      updatedAt,
+      attempts: Number.isFinite(Number(item?.attempts)) ? Number(item.attempts) : 0,
+      lastFailedAt: typeof item?.lastFailedAt === 'string' ? item.lastFailedAt : '',
+      lastFailureMessage: typeof item?.lastFailureMessage === 'string' ? item.lastFailureMessage : '',
+      isOldest: false,
+    };
+  }
+
+  function comparePendingSyncItemsByAge(a, b) {
+    const aTime = Date.parse(a?.updatedAt || '');
+    const bTime = Date.parse(b?.updatedAt || '');
+    const aValid = Number.isFinite(aTime);
+    const bValid = Number.isFinite(bTime);
+    if (aValid && bValid) return aTime - bTime;
+    if (aValid) return -1;
+    if (bValid) return 1;
+    return String(a?.label || '').localeCompare(String(b?.label || ''));
+  }
+
+  function getSyncPayloadSignature(payload) {
+    try {
+      return JSON.stringify(payload ?? null);
+    } catch {
+      return '';
+    }
+  }
+
   return {
     syncImportedPlanToAccount,
     bindOnlineSyncListener,
@@ -440,6 +730,10 @@ export function createAccountSyncDomain({
     syncAthletePrSnapshotWithQueue,
     syncAthleteMeasurementsSnapshotWithQueue,
     flushPendingSyncOutbox,
+    getPendingSyncStatus,
+    retryPendingSync,
+    retryPendingSyncItem,
+    dismissPendingSyncItem,
     restoreImportedPlanFromAccount,
   };
 }

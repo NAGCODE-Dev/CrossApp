@@ -9,6 +9,8 @@ import './styles.css';
 inject();
 injectSpeedInsights();
 
+await ensureRuntimeConfig();
+
 const rootNode = document.getElementById('athlete-react-root');
 if (rootNode) {
   createRoot(rootNode).render(
@@ -16,4 +18,17 @@ if (rootNode) {
       <App />
     </React.StrictMode>,
   );
+}
+
+async function ensureRuntimeConfig() {
+  if (window.__RYXEN_CONFIG__) return;
+
+  await new Promise((resolve) => {
+    const script = document.createElement('script');
+    script.src = '/config.js';
+    script.async = false;
+    script.onload = () => resolve();
+    script.onerror = () => resolve();
+    document.head.appendChild(script);
+  });
 }

@@ -10,4 +10,5 @@ export {
   renderAccountDataSections,
   renderAccountProfileSection,
   renderAccountPreferencesSections,
+  renderAccountSyncSection,
 } from './memberSections.js';

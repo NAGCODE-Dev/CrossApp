@@ -252,7 +252,7 @@ Ou instalar manualmente em `~/android-studio`.
 
 ## 7. Auth local no emulador
 
-Para ambiente local, o Docker sobe com:
+Para ambiente local, habilite manualmente quando precisar:
 
 - `EXPOSE_RESET_CODE=true`
 - `DEV_EMAILS=nagcode.contact@gmail.com`
