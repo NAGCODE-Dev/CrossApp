@@ -11,13 +11,11 @@ import {
 } from './authFlow';
 import { clearAuthSession, readProfile, readToken, writeProfile, writeToken } from './storage';
 import type { CoachLoginState, CoachProfile } from './types';
+import type { CoachWorkspaceProps } from './workspaceTypes';
 import '../coach/styles.css';
 
 const CoachWorkspace = React.lazy(() => import('./workspace.js'));
-const CoachWorkspaceView = CoachWorkspace as unknown as React.ComponentType<{
-  profile: CoachProfile | null;
-  onLogout: () => void;
-}>;
+const CoachWorkspaceView = CoachWorkspace as unknown as React.ComponentType<CoachWorkspaceProps>;
 const RYXEN_ICON_SRC = new URL('../branding/exports/ryxen-icon-64.png', import.meta.url).href;
 
 const apiRequest = createCoachApiRequest({ readToken });

@@ -1,6 +1,9 @@
 export interface CoachProfile {
   email?: string;
   name?: string;
+  isAdmin?: boolean;
+  is_admin?: boolean;
+  [key: string]: unknown;
 }
 
 export interface CoachAuthRedirectResult {
@@ -68,8 +71,8 @@ export interface WorkoutDraftPayload {
   strengthRestSeconds: string;
   strengthExercises: StrengthExerciseDraft[];
   workoutAudienceMode: string;
-  targetMembershipIds: string[];
-  targetGroupIds: string[];
+  targetMembershipIds: Array<string | number>;
+  targetGroupIds: Array<string | number>;
 }
 
 export interface CoachOption {

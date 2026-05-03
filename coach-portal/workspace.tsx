@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { getRuntimeConfig } from '../packages/shared-web/runtime.js';
-import { coachRequestOptional, createCoachApiRequest, resolveCoachKiwifyCheckoutUrl } from './apiClient.js';
+import { coachRequestOptional, createCoachApiRequest, resolveCoachKiwifyCheckoutUrl } from './apiClient';
 import {
   BENCHMARK_CATEGORY_TABS,
   BENCHMARK_SOURCE_OPTIONS,
   DEFAULT_WORKOUT_DRAFT,
-} from './constants.js';
+} from './constants';
 import {
   clearWorkoutDraft,
   hasWorkoutDraftContent,
@@ -13,7 +13,7 @@ import {
   readToken,
   readWorkoutDraft,
   writeWorkoutDraft,
-} from './storage.js';
+} from './storage';
 import {
   benchmarkCategoryLabel,
   benchmarkSourceLabel,
@@ -29,12 +29,25 @@ import {
   resolveBillingProvider,
   sportLabel,
   statCard,
-} from './workspaceHelpers.js';
+} from './workspaceHelpers';
+import {
+  INITIAL_COACH_DASHBOARD,
+  INITIAL_COACH_FORMS,
+} from './workspaceTypes';
+import type {
+  CoachBenchmarkDetail,
+  CoachDashboardState,
+  CoachPortalForms,
+  CoachWorkspaceProps,
+} from './workspaceTypes';
 import '../coach/styles.css';
 
 const apiRequest = createCoachApiRequest({ readToken });
 
-export default function CoachWorkspace({ profile: initialProfile = null, onLogout = null } = {}) {
+export default function CoachWorkspace({
+  profile: initialProfile = null,
+  onLogout = null,
+}: CoachWorkspaceProps = {}) {
   const token = readToken();
   const profile = initialProfile || readProfile();
   const availableSportOptions = getAvailableSportOptions(getRuntimeConfig());
@@ -44,44 +57,12 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [selectedBenchmarkSlug, setSelectedBenchmarkSlug] = useState('');
-  const [selectedBenchmarkDetail, setSelectedBenchmarkDetail] = useState(null);
+  const [selectedBenchmarkDetail, setSelectedBenchmarkDetail] =
+    useState<CoachBenchmarkDetail | null>(null);
   const [benchmarkDetailLoading, setBenchmarkDetailLoading] = useState(false);
-  const [dashboard, setDashboard] = useState({
-    subscription: null,
-    entitlements: [],
-    gymAccess: [],
-    gyms: [],
-    feed: [],
-    benchmarks: [],
-    benchmarkPagination: { total: 0, page: 1, limit: 30, pages: 1 },
-    members: [],
-    groups: [],
-    checkinSessions: [],
-    selectedGymId: null,
-    selectedSportType: 'cross',
-    insights: null,
-  });
-  const [forms, setForms] = useState({
-    gymName: '',
-    gymSlug: '',
-    memberEmail: '',
-    memberRole: 'athlete',
-    groupName: '',
-    groupDescription: '',
-    selectedGroupMemberIds: [],
-    sessionTitle: '',
-    sessionStartsAt: '',
-    sessionEndsAt: '',
-    sessionCheckInClosesAt: '',
-    sessionCapacity: '',
-    sessionLocation: '',
-    sessionNotes: '',
-    ...DEFAULT_WORKOUT_DRAFT,
-    benchmarkQuery: '',
-    benchmarkCategory: '',
-    benchmarkSource: '',
-    benchmarkSort: 'year_desc',
-  });
+  const [dashboard, setDashboard] =
+    useState<CoachDashboardState>(INITIAL_COACH_DASHBOARD);
+  const [forms, setForms] = useState<CoachPortalForms>(INITIAL_COACH_FORMS);
 
   const selectedGym = useMemo(
     () => dashboard.gyms.find((gym) => gym.id === dashboard.selectedGymId) || null,
@@ -147,7 +128,10 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
     forms.targetGroupIds,
   ]);
 
-  async function loadDashboard(nextGymId = null, nextSportType = null) {
+  async function loadDashboard(
+    nextGymId: number | string | null = null,
+    nextSportType: string | null = null,
+  ) {
     setLoading(true);
     setError('');
     try {
@@ -155,7 +139,8 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
       const selectedSportType = availableSportOptions.some((sport) => sport.value === preferredSportType)
         ? preferredSportType
         : (availableSportOptions[0]?.value || 'cross');
-      const [subscription, entitlementsRes, gymsRes, feedRes, benchmarksRes] = await Promise.all([
+      const [subscription, entitlementsRes, gymsRes, feedRes, benchmarksRes] =
+        await Promise.all([
         apiRequest('/billing/status'),
         apiRequest('/billing/entitlements'),
         apiRequest('/gyms/me'),
@@ -171,10 +156,10 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
           .map((item) => [Number(item.gymId), item]),
       );
       const selectedGymId = nextGymId || dashboard.selectedGymId || gyms[0]?.id || null;
-      let members = [];
-      let groups = [];
-      let insights = null;
-      let checkinSessions = [];
+      let members: CoachDashboardState['members'] = [];
+      let groups: CoachDashboardState['groups'] = [];
+      let insights: CoachDashboardState['insights'] = null;
+      let checkinSessions: CoachDashboardState['checkinSessions'] = [];
       if (selectedGymId) {
         const selectedGymAccess = gymAccessById.get(Number(selectedGymId)) || null;
         const [membersRes, groupsRes, insightsRes, checkinSessionsRes] = await Promise.all([
@@ -213,13 +198,13 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
         insights,
       });
     } catch (err) {
-      setError(err.message || 'Erro ao carregar portal');
+      setError((err as Error | undefined)?.message || 'Erro ao carregar portal');
     } finally {
       setLoading(false);
     }
   }
 
-  async function handleCreateGym(event) {
+  async function handleCreateGym(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setError('');
@@ -232,21 +217,21 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
       setMessage(`Gym criado: ${res?.gym?.name || ''}`);
       await loadDashboard(res?.gym?.id || null, dashboard.selectedSportType);
     } catch (err) {
-      setError(err.message || 'Erro ao criar gym');
+      setError((err as Error | undefined)?.message || 'Erro ao criar gym');
     } finally {
       setLoading(false);
     }
   }
 
-  async function handleSelectGym(gymId) {
+  async function handleSelectGym(gymId: number | string | null) {
     await loadDashboard(gymId, dashboard.selectedSportType);
   }
 
-  async function handleSelectSportType(sportType) {
+  async function handleSelectSportType(sportType: string) {
     await loadDashboard(dashboard.selectedGymId, sportType);
   }
 
-  async function handleAddMember(event) {
+  async function handleAddMember(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!dashboard.selectedGymId) return;
     setLoading(true);
@@ -263,13 +248,13 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
       setMessage('Membro adicionado');
       await loadDashboard(dashboard.selectedGymId, dashboard.selectedSportType);
     } catch (err) {
-      setError(err.message || 'Erro ao adicionar membro');
+      setError((err as Error | undefined)?.message || 'Erro ao adicionar membro');
     } finally {
       setLoading(false);
     }
   }
 
-  async function handleCreateGroup(event) {
+  async function handleCreateGroup(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!dashboard.selectedGymId) return;
     setLoading(true);
@@ -293,13 +278,13 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
       setMessage('Grupo criado');
       await loadDashboard(dashboard.selectedGymId, dashboard.selectedSportType);
     } catch (err) {
-      setError(err.message || 'Erro ao criar grupo');
+      setError((err as Error | undefined)?.message || 'Erro ao criar grupo');
     } finally {
       setLoading(false);
     }
   }
 
-  async function handleCreateCheckinSession(event) {
+  async function handleCreateCheckinSession(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!dashboard.selectedGymId) return;
     setLoading(true);
@@ -332,13 +317,16 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
       setMessage('Sessão criada');
       await loadDashboard(dashboard.selectedGymId, dashboard.selectedSportType);
     } catch (err) {
-      setError(err.message || 'Erro ao criar sessão');
+      setError((err as Error | undefined)?.message || 'Erro ao criar sessão');
     } finally {
       setLoading(false);
     }
   }
 
-  async function handleMarkSessionCheckIn(sessionId, gymMembershipId) {
+  async function handleMarkSessionCheckIn(
+    sessionId: number | string | null | undefined,
+    gymMembershipId: number | string | null | undefined,
+  ) {
     if (!dashboard.selectedGymId || !sessionId || !gymMembershipId) return;
     setLoading(true);
     setError('');
@@ -350,13 +338,16 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
       setMessage('Check-in registrado');
       await loadDashboard(dashboard.selectedGymId, dashboard.selectedSportType);
     } catch (err) {
-      setError(err.message || 'Erro ao registrar check-in');
+      setError((err as Error | undefined)?.message || 'Erro ao registrar check-in');
     } finally {
       setLoading(false);
     }
   }
 
-  async function handleCancelSessionCheckIn(sessionId, gymMembershipId) {
+  async function handleCancelSessionCheckIn(
+    sessionId: number | string | null | undefined,
+    gymMembershipId: number | string | null | undefined,
+  ) {
     if (!dashboard.selectedGymId || !sessionId || !gymMembershipId) return;
     setLoading(true);
     setError('');
@@ -368,13 +359,16 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
       setMessage('Check-in cancelado');
       await loadDashboard(dashboard.selectedGymId, dashboard.selectedSportType);
     } catch (err) {
-      setError(err.message || 'Erro ao cancelar check-in');
+      setError((err as Error | undefined)?.message || 'Erro ao cancelar check-in');
     } finally {
       setLoading(false);
     }
   }
 
-  function toggleSelection(key, value) {
+  function toggleSelection(
+    key: 'selectedGroupMemberIds' | 'targetMembershipIds' | 'targetGroupIds',
+    value: number | string,
+  ) {
     setForms((prev) => {
       const current = Array.isArray(prev[key]) ? prev[key] : [];
       const exists = current.includes(value);
@@ -385,22 +379,33 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
     });
   }
 
-  function updateCollectionItem(key, index, field, value) {
+  function updateCollectionItem(
+    key: 'runningSegments' | 'strengthExercises',
+    index: number,
+    field: string,
+    value: string,
+  ) {
     setForms((prev) => {
-      const nextItems = Array.isArray(prev[key]) ? [...prev[key]] : [];
+      const nextItems = Array.isArray(prev[key]) ? [...prev[key]] as any[] : [];
       nextItems[index] = { ...(nextItems[index] || {}), [field]: value };
-      return { ...prev, [key]: nextItems };
+      return { ...prev, [key]: nextItems } as CoachPortalForms;
     });
   }
 
-  function addCollectionItem(key, factory) {
+  function addCollectionItem(
+    key: 'runningSegments' | 'strengthExercises',
+    factory: () => Record<string, string>,
+  ) {
     setForms((prev) => ({
       ...prev,
       [key]: [...(Array.isArray(prev[key]) ? prev[key] : []), factory()],
     }));
   }
 
-  function removeCollectionItem(key, index) {
+  function removeCollectionItem(
+    key: 'runningSegments' | 'strengthExercises',
+    index: number,
+  ) {
     setForms((prev) => {
       const current = Array.isArray(prev[key]) ? prev[key] : [];
       if (current.length <= 1) return prev;
@@ -411,7 +416,7 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
     });
   }
 
-  async function handlePublishWorkout(event) {
+  async function handlePublishWorkout(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!dashboard.selectedGymId) return;
     setLoading(true);
@@ -495,7 +500,7 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
       setMessage('Treino publicado');
       await loadDashboard(dashboard.selectedGymId, dashboard.selectedSportType);
     } catch (err) {
-      setError(err.message || 'Erro ao publicar treino');
+      setError((err as Error | undefined)?.message || 'Erro ao publicar treino');
     } finally {
       setLoading(false);
     }
@@ -506,6 +511,11 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
     source = forms.benchmarkSource,
     sort = forms.benchmarkSort,
     page = 1,
+  }: {
+    category?: string;
+    source?: string;
+    sort?: string;
+    page?: number;
   } = {}) {
     setLoading(true);
     setError('');
@@ -530,13 +540,13 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
         benchmarkSort: sort,
       }));
     } catch (err) {
-      setError(err.message || 'Erro ao buscar benchmarks');
+      setError((err as Error | undefined)?.message || 'Erro ao buscar benchmarks');
     } finally {
       setLoading(false);
     }
   }
 
-  async function handleOpenBenchmark(slug) {
+  async function handleOpenBenchmark(slug: string) {
     const normalizedSlug = String(slug || '').trim().toLowerCase();
     if (!normalizedSlug) return;
     setBenchmarkDetailLoading(true);
@@ -553,7 +563,7 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
       setSelectedBenchmarkSlug(normalizedSlug);
       setSelectedBenchmarkDetail(res || null);
     } catch (err) {
-      setError(err.message || 'Erro ao carregar benchmark');
+      setError((err as Error | undefined)?.message || 'Erro ao carregar benchmark');
     } finally {
       setBenchmarkDetailLoading(false);
     }
@@ -588,7 +598,7 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
       }
       throw new Error('Checkout indisponível');
     } catch (err) {
-      setError(err.message || 'Erro ao abrir checkout');
+      setError((err as Error | undefined)?.message || 'Erro ao abrir checkout');
       setLoading(false);
     }
   }
@@ -604,7 +614,7 @@ export default function CoachWorkspace({ profile: initialProfile = null, onLogou
       setMessage('Acesso local liberado');
       await loadDashboard(dashboard.selectedGymId, dashboard.selectedSportType);
     } catch (err) {
-      setError(err.message || 'Erro ao ativar plano local');
+      setError((err as Error | undefined)?.message || 'Erro ao ativar plano local');
     } finally {
       setLoading(false);
     }
