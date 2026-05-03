@@ -1,10 +1,10 @@
 import React from 'react';
 import { AppFrame, useNativeShell, useReducedMotion } from '../../packages/ui/index.js';
-import TodayPage from './routes/TodayPage.jsx';
-import ImportReviewSheet from './components/ImportReviewSheet.jsx';
-import { useAthleteTodaySnapshot } from './hooks/useAthleteTodaySnapshot.js';
-import { useAthleteImportFlow } from './hooks/useAthleteImportFlow.js';
-import { IMPORT_ACCEPT } from './services/appShellState.js';
+import TodayPage from './routes/TodayPage';
+import ImportReviewSheet from './components/ImportReviewSheet';
+import { useAthleteTodaySnapshot } from './hooks/useAthleteTodaySnapshot';
+import { useAthleteImportFlow } from './hooks/useAthleteImportFlow';
+import { IMPORT_ACCEPT } from './services/appShellState';
 
 export default function App() {
   const nativeShell = useNativeShell();

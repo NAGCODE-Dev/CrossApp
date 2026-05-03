@@ -1,0 +1,7 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./apps/athlete-react/tsconfig.json" },
+    { "path": "./coach-portal/tsconfig.json" }
+  ]
+}

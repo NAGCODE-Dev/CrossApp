@@ -1,0 +1,25 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["vite/client", "vitest/globals"]
+  },
+  "include": [
+    "./**/*.ts",
+    "./**/*.tsx",
+    "./**/*.js",
+    "./**/*.jsx",
+    "./**/*.mjs",
+    "../../packages/shared-web/**/*.js",
+    "../../packages/shared-web/**/*.jsx",
+    "../../packages/shared-web/**/*.mjs",
+    "../../packages/ui/**/*.js",
+    "../../packages/ui/**/*.jsx",
+    "../../src/**/*.js",
+    "../../src/**/*.jsx",
+    "../../types/**/*.d.ts"
+  ],
+  "exclude": [
+    "../../dist",
+    "../../node_modules"
+  ]
+}

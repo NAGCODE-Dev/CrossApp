@@ -1,0 +1,9 @@
+{
+  "attachmentFolderPath": "notes/Inbox",
+  "alwaysUpdateLinks": true,
+  "newFileLocation": "folder",
+  "newFileFolderPath": "notes/Inbox",
+  "promptDelete": false,
+  "showFrontmatter": false,
+  "showInlineTitle": true
+}

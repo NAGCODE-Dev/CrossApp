@@ -6,6 +6,13 @@ import {
   SectionCard,
   SheetModal,
 } from '../../../packages/ui/index.js';
+import type { ImportReviewDay, ImportReviewSheetProps } from '../types';
+
+const MetricStripView = MetricStrip as any;
+const PrimaryActionView = PrimaryAction as any;
+const SecondaryActionView = SecondaryAction as any;
+const SectionCardView = SectionCard as any;
+const SheetModalView = SheetModal as any;
 
 export default function ImportReviewSheet({
   open,
@@ -18,28 +25,28 @@ export default function ImportReviewSheet({
   onReparse,
   onConfirm,
   onCancel,
-}) {
-  const days = Array.isArray(review?.days) ? review.days : [];
+}: ImportReviewSheetProps) {
+  const days: ImportReviewDay[] = Array.isArray(review?.days) ? review.days : [];
   const reviewLines = String(reviewTextDeferred || '').split('\n').filter(Boolean).length;
 
   return (
-    <SheetModal
+    <SheetModalView
       open={open}
       title="Revisão ativa do plano"
       subtitle="Edite o texto que o parser vai interpretar antes de salvar. Isso ajuda muito quando OCR, cabeçalho ou nome do arquivo entram no meio do treino."
       onClose={onClose}
       footer={(
         <>
-          <SecondaryAction onClick={onCancel} disabled={importState === 'saving'}>
+          <SecondaryActionView onClick={onCancel} disabled={importState === 'saving'}>
             Cancelar
-          </SecondaryAction>
-          <PrimaryAction onClick={onConfirm} disabled={importState === 'saving'}>
+          </SecondaryActionView>
+          <PrimaryActionView onClick={onConfirm} disabled={importState === 'saving'}>
             {importState === 'saving' ? 'Salvando...' : 'Salvar plano'}
-          </PrimaryAction>
+          </PrimaryActionView>
         </>
       )}
     >
-      <MetricStrip
+      <MetricStripView
         metrics={[
           { label: 'Semanas', value: String(review?.weeksCount || 0).padStart(2, '0'), detail: review?.fileName || 'Arquivo atual' },
           { label: 'Dias', value: String(review?.totalDays || 0).padStart(2, '0'), detail: `${reviewLines} linhas revisadas` },
@@ -48,14 +55,14 @@ export default function ImportReviewSheet({
         ]}
       />
 
-      <SectionCard
+      <SectionCardView
         eyebrow="Texto fonte"
         title="Revisão editorial do parser"
         subtitle="Se o OCR trouxe ruído, troque o texto cru aqui e mande reprocessar o preview."
         actions={(
-          <SecondaryAction onClick={onReparse} disabled={!review?.canEditText || importState === 'reparsing'}>
+          <SecondaryActionView onClick={onReparse} disabled={!review?.canEditText || importState === 'reparsing'}>
             {importState === 'reparsing' ? 'Reprocessando...' : 'Reprocessar preview'}
-          </SecondaryAction>
+          </SecondaryActionView>
         )}
       >
         <label className="ath-reviewLabel" htmlFor="athlete-review-text">
@@ -68,12 +75,12 @@ export default function ImportReviewSheet({
           onChange={(event) => onChangeReviewText(event.target.value)}
           spellCheck="false"
         />
-      </SectionCard>
+      </SectionCardView>
 
-      <SectionCard eyebrow="Resumo" title="O que o preview entendeu">
+      <SectionCardView eyebrow="Resumo" title="O que o preview entendeu" subtitle="Dias, blocos e movimentos inferidos a partir do texto revisado.">
         <div className="ath-reviewMetrics">
-          {days.map((day) => (
-            <article key={`${day.weekNumber}-${day.day}`} className="ath-reviewDay">
+          {days.map((day, index) => (
+            <article key={`${day.weekNumber || 'week'}-${day.day || 'day'}-${index}`} className="ath-reviewDay">
               <strong>{day.day}</strong>
               <span>Semana {day.weekNumber || '-'}</span>
               {day.blockTypes?.length ? <span>{day.blockTypes.join(' · ')}</span> : null}
@@ -82,7 +89,7 @@ export default function ImportReviewSheet({
             </article>
           ))}
         </div>
-      </SectionCard>
-    </SheetModal>
+      </SectionCardView>
+    </SheetModalView>
   );
 }

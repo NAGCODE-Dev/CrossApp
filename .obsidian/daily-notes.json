@@ -1,0 +1,6 @@
+{
+  "folder": "notes/Sessions",
+  "format": "YYYY-MM-DD",
+  "template": "notes/Templates/Session Template.md",
+  "autorun": false
+}

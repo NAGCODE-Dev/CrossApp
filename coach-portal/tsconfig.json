@@ -1,0 +1,19 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["vite/client"]
+  },
+  "include": [
+    "./**/*.ts",
+    "./**/*.tsx",
+    "./**/*.js",
+    "./**/*.jsx",
+    "../packages/shared-web/**/*.js",
+    "../packages/shared-web/**/*.jsx",
+    "../types/**/*.d.ts"
+  ],
+  "exclude": [
+    "../dist",
+    "../node_modules"
+  ]
+}

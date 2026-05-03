@@ -2,8 +2,8 @@ import React from 'react';
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 
-import TodayPage from './TodayPage.jsx';
-import { createTodayViewModel } from '../services/todayViewModel.js';
+import TodayPage from './TodayPage';
+import { createTodayViewModel } from '../services/todayViewModel';
 
 function buildSnapshot(withWorkout = true) {
   return {
@@ -18,7 +18,7 @@ function buildSnapshot(withWorkout = true) {
       }],
     }] : [],
     activeWeekNumber: withWorkout ? 24 : null,
-    currentDay: withWorkout ? 'Quarta' : 'Quarta',
+    currentDay: 'Quarta',
     workout: withWorkout ? {
       day: 'Quarta',
       blocks: [

@@ -44,3 +44,5 @@ temp/
 .continue/
 local-files/
 .playwright-web-server.lock
+docs/AGENT_CONTEXT.md
+.gitignore

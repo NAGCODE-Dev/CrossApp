@@ -35,9 +35,8 @@ export default defineConfig({
     globals: true,
     setupFiles: './test/setup.js',
     include: [
-      './**/*.test.{js,jsx,mjs}',
-      '../../packages/shared-web/**/*.test.{js,jsx,mjs}',
-      '../../coach-portal/**/*.test.{js,jsx,mjs}',
+      './**/*.test.{js,jsx,ts,tsx,mjs}',
+      '../../packages/shared-web/**/*.test.{js,jsx,ts,tsx,mjs}',
     ],
   },
 });

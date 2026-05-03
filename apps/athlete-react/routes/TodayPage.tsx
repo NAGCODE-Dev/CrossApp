@@ -11,6 +11,18 @@ import {
   TopBar,
   WorkoutCard,
 } from '../../../packages/ui/index.js';
+import type { TodayPageProps, WorkoutBlockSummary } from '../types';
+
+const BottomNavView = BottomNav as any;
+const ChipRailView = ChipRail as any;
+const EmptyStateView = EmptyState as any;
+const HeroView = Hero as any;
+const MetricStripView = MetricStrip as any;
+const PrimaryActionView = PrimaryAction as any;
+const SecondaryActionView = SecondaryAction as any;
+const SectionCardView = SectionCard as any;
+const TopBarView = TopBar as any;
+const WorkoutCardView = WorkoutCard as any;
 
 export default function TodayPage({
   snapshot,
@@ -25,14 +37,14 @@ export default function TodayPage({
   onResetDay,
   onStartAuth,
   onSignOut,
-}) {
+}: TodayPageProps) {
   const profile = snapshot?.profile || null;
   const workout = viewModel?.workout || null;
-  const workoutBlocks = Array.isArray(workout?.blocks) ? workout.blocks : [];
+  const workoutBlocks: WorkoutBlockSummary[] = Array.isArray(workout?.blocks) ? workout.blocks : [];
 
   return (
     <>
-      <TopBar
+      <TopBarView
         eyebrow="Ryxen Athlete"
         title="Editorial Today"
         subtitle={profile?.email ? profile.email : 'Shell React/Vite em rollout controlado, ligada aos mesmos contratos de sessão e plano importado do app atual.'}
@@ -40,23 +52,23 @@ export default function TodayPage({
           <>
             <a className="ath-legacyLink" href="/sports/cross/index.html?legacy=1">Abrir legado</a>
             {profile?.email ? (
-              <SecondaryAction onClick={onSignOut}>Sair</SecondaryAction>
+              <SecondaryActionView onClick={onSignOut}>Sair</SecondaryActionView>
             ) : (
-              <PrimaryAction onClick={onStartAuth}>Entrar com Google</PrimaryAction>
+              <PrimaryActionView onClick={onStartAuth}>Entrar com Google</PrimaryActionView>
             )}
           </>
         )}
       />
 
-      <Hero
+      <HeroView
         eyebrow={viewModel?.hero?.eyebrow}
         title={loading ? 'Carregando Today' : viewModel?.hero?.title || 'Today'}
         subtitle={error || progressMessage || message || viewModel?.hero?.subtitle}
         badges={viewModel?.hero?.badges || []}
         actions={(
           <>
-            <PrimaryAction onClick={onOpenImport}>Importar plano</PrimaryAction>
-            <SecondaryAction onClick={onResetDay}>Dia automático</SecondaryAction>
+            <PrimaryActionView onClick={onOpenImport}>Importar plano</PrimaryActionView>
+            <SecondaryActionView onClick={onResetDay}>Dia automático</SecondaryActionView>
           </>
         )}
         aside={viewModel?.importedPlanSummary ? (
@@ -74,19 +86,19 @@ export default function TodayPage({
         )}
       />
 
-      <MetricStrip metrics={viewModel?.metrics || []} />
+      <MetricStripView metrics={viewModel?.metrics || []} />
 
       {viewModel?.weekItems?.length ? (
-        <ChipRail label="Semanas" items={viewModel.weekItems} onSelect={onSelectWeek} />
+        <ChipRailView label="Semanas" items={viewModel.weekItems} onSelect={onSelectWeek} />
       ) : null}
 
       {viewModel?.dayItems?.length ? (
-        <ChipRail label="Dias" items={viewModel.dayItems} onSelect={onSelectDay} />
+        <ChipRailView label="Dias" items={viewModel.dayItems} onSelect={onSelectDay} />
       ) : null}
 
       {workout ? (
         <>
-          <SectionCard
+          <SectionCardView
             eyebrow="Overview"
             title={workout.day || snapshot?.currentDay || 'Treino do dia'}
             subtitle={snapshot?.workoutMeta?.blockCount ? `${snapshot.workoutMeta.blockCount} blocos em leitura direta do plano importado.` : 'Leitura do plano disponível.'}
@@ -105,28 +117,28 @@ export default function TodayPage({
                 <strong>{snapshot?.currentDay || '-'}</strong>
               </div>
             </div>
-          </SectionCard>
+          </SectionCardView>
 
-          <SectionCard eyebrow="Blocos" title="Treino estruturado" subtitle="Leitura orientada por blocos, períodos e objetivo.">
+          <SectionCardView eyebrow="Blocos" title="Treino estruturado" subtitle="Leitura orientada por blocos, períodos e objetivo.">
             {workoutBlocks.map((block, index) => (
-              <WorkoutCard key={`${block.type}-${block.title}-${index}`} block={block} index={index} />
+              <WorkoutCardView key={`${block.type || 'block'}-${block.title || 'untitled'}-${index}`} block={block} index={index} />
             ))}
-          </SectionCard>
+          </SectionCardView>
         </>
       ) : (
-        <EmptyState
+        <EmptyStateView
           title="Sem treino estruturado por aqui ainda"
           copy="Você pode importar um plano local agora ou entrar para usar o snapshot remoto da conta quando houver um plano sincronizado."
           actions={(
             <>
-              <PrimaryAction onClick={onOpenImport}>Importar agora</PrimaryAction>
-              {!profile?.email ? <SecondaryAction onClick={onStartAuth}>Entrar</SecondaryAction> : null}
+              <PrimaryActionView onClick={onOpenImport}>Importar agora</PrimaryActionView>
+              {!profile?.email ? <SecondaryActionView onClick={onStartAuth}>Entrar</SecondaryActionView> : null}
             </>
           )}
         />
       )}
 
-      <SectionCard eyebrow="Roadmap" title="History e Account entram depois" subtitle="O piloto está centrado no Today, com uma estética nova e uma revisão de importação que o atleta controla.">
+      <SectionCardView eyebrow="Roadmap" title="History e Account entram depois" subtitle="O piloto está centrado no Today, com uma estética nova e uma revisão de importação que o atleta controla.">
         <div className="ath-roadmapGrid">
           <article className="ath-roadmapCard">
             <strong>History</strong>
@@ -141,9 +153,9 @@ export default function TodayPage({
             <span>O legado segue disponível para comparação e segurança de rollout.</span>
           </article>
         </div>
-      </SectionCard>
+      </SectionCardView>
 
-      <BottomNav
+      <BottomNavView
         items={[
           { key: 'today', label: 'Today', caption: 'piloto ativo', active: true, href: '/athlete/' },
           { key: 'history', label: 'History', caption: 'em breve', disabled: true, href: '/athlete/' },

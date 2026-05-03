@@ -1,0 +1,22 @@
+{
+  "items": [
+    {
+      "type": "file",
+      "path": "notes/Home.md",
+      "subpath": null,
+      "ctime": 1770000000000
+    },
+    {
+      "type": "file",
+      "path": "docs/AGENT_CONTEXT.md",
+      "subpath": null,
+      "ctime": 1770000000001
+    },
+    {
+      "type": "file",
+      "path": "notes/Inbox/Start Here.md",
+      "subpath": null,
+      "ctime": 1770000000002
+    }
+  ]
+}

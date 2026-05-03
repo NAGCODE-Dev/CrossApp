@@ -2,7 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { inject } from '@vercel/analytics';
 import { injectSpeedInsights } from '@vercel/speed-insights';
-import App from './App.jsx';
+import App from './App';
 import '../../packages/ui/styles.css';
 import './styles.css';
 
@@ -20,10 +20,10 @@ if (rootNode) {
   );
 }
 
-async function ensureRuntimeConfig() {
+async function ensureRuntimeConfig(): Promise<void> {
   if (window.__RYXEN_CONFIG__) return;
 
-  await new Promise((resolve) => {
+  await new Promise<void>((resolve) => {
     const script = document.createElement('script');
     script.src = '/config.js';
     script.async = false;

@@ -28,7 +28,7 @@ export async function runAthleteBootstrapFlow() {
     const nativeAuthRedirect = await setupNativeAuthRedirects();
     if (nativeAuthRedirect?.handled) return;
 
-    const authRedirect = applyAuthRedirectFromLocation();
+    const authRedirect = await applyAuthRedirectFromLocation();
     const initResult = await initApplication();
     if (!initResult.success) return;
     markBootstrapStep('init_ready');
@@ -117,8 +117,8 @@ async function setupNativeAuthRedirects() {
   const appPlugin = getCapacitorAppPlugin();
   if (!appPlugin?.addListener) return null;
 
-  appPlugin.addListener('appUrlOpen', ({ url } = {}) => {
-    const result = applyAuthRedirectFromUrl(url || '');
+  appPlugin.addListener('appUrlOpen', async ({ url } = {}) => {
+    const result = await applyAuthRedirectFromUrl(url || '');
     if (result?.handled) {
       redirectAfterNativeAuth(result);
     }
@@ -126,7 +126,7 @@ async function setupNativeAuthRedirects() {
 
   try {
     const launch = await appPlugin.getLaunchUrl?.();
-    const result = applyAuthRedirectFromUrl(String(launch?.url || ''));
+    const result = await applyAuthRedirectFromUrl(String(launch?.url || ''));
     if (result?.handled) {
       return result;
     }

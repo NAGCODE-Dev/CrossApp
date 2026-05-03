@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { isAthleteReactShellEnabled, resolveAthleteEntryUrl } from './rollout.js';
+import { isAthleteReactShellEnabled, resolveAthleteEntryUrl } from './rollout';
 
 describe('athlete rollout flag', () => {
   it('liga a shell nova quando athleteReactShell está habilitada', () => {

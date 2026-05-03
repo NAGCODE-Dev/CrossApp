@@ -5,11 +5,17 @@ import {
   loadAthleteTodaySnapshot,
   persistTodaySelection,
 } from '../../../packages/shared-web/athlete-shell.js';
-import { createTodayViewModel } from '../services/todayViewModel.js';
-import { buildInitialSnapshot, normalizeAuthMessage } from '../services/appShellState.js';
+import { createTodayViewModel } from '../services/todayViewModel';
+import { buildInitialSnapshot, normalizeAuthMessage } from '../services/appShellState';
+import type {
+  AthleteSnapshot,
+  AuthResult,
+  TodaySelectionItem,
+  UseAthleteTodaySnapshotResult,
+} from '../types';
 
-export function useAthleteTodaySnapshot() {
-  const [snapshot, setSnapshot] = useState(() => buildInitialSnapshot());
+export function useAthleteTodaySnapshot(): UseAthleteTodaySnapshotResult {
+  const [snapshot, setSnapshot] = useState<AthleteSnapshot>(() => buildInitialSnapshot());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
@@ -20,13 +26,17 @@ export function useAthleteTodaySnapshot() {
   const loadSnapshot = useCallback(async () => {
     setLoading(true);
     try {
-      const nextSnapshot = await loadAthleteTodaySnapshot({ sportType: 'cross' });
+      const nextSnapshot = (await loadAthleteTodaySnapshot({
+        sportType: 'cross',
+      })) as AthleteSnapshot;
       startTransition(() => {
         setSnapshot(nextSnapshot);
       });
       setError('');
     } catch (nextError) {
-      setError(nextError?.message || 'Não consegui carregar o Today agora.');
+      const message =
+        nextError instanceof Error ? nextError.message : 'Não consegui carregar o Today agora.';
+      setError(message);
     } finally {
       setLoading(false);
       setProgressMessage('');
@@ -37,7 +47,7 @@ export function useAthleteTodaySnapshot() {
     let cancelled = false;
 
     async function boot() {
-      const authResult = await applyAuthRedirectFromLocation();
+      const authResult: AuthResult = await applyAuthRedirectFromLocation();
       if (cancelled) return;
 
       const authMessage = normalizeAuthMessage(authResult);
@@ -54,13 +64,13 @@ export function useAthleteTodaySnapshot() {
       await loadSnapshot();
     }
 
-    boot();
+    void boot();
     return () => {
       cancelled = true;
     };
   }, [loadSnapshot]);
 
-  const handleSelectWeek = useCallback(async (item) => {
+  const handleSelectWeek = useCallback(async (item: TodaySelectionItem) => {
     const nextWeekNumber = Number(item?.key || item?.weekNumber) || null;
     await persistTodaySelection({
       activeWeekNumber: nextWeekNumber,
@@ -69,7 +79,7 @@ export function useAthleteTodaySnapshot() {
     await loadSnapshot();
   }, [loadSnapshot, snapshot]);
 
-  const handleSelectDay = useCallback(async (item) => {
+  const handleSelectDay = useCallback(async (item: TodaySelectionItem) => {
     const nextDay = String(item?.key || item?.day || '').trim() || null;
     await persistTodaySelection({
       activeWeekNumber: snapshot?.activeWeekNumber || null,

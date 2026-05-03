@@ -1,4 +1,5 @@
 import { getStoredProfile } from '../../../packages/shared-web/auth.js';
+import type { AthleteSnapshot, AuthResult } from '../types';
 
 export const IMPORT_ACCEPT = [
   '.pdf',
@@ -18,7 +19,7 @@ export const IMPORT_ACCEPT = [
   'image/webp',
 ].join(',');
 
-export function buildInitialSnapshot() {
+export function buildInitialSnapshot(): AthleteSnapshot {
   return {
     profile: getStoredProfile(),
     weeks: [],
@@ -39,7 +40,7 @@ export function buildInitialSnapshot() {
   };
 }
 
-export function normalizeAuthMessage(result) {
+export function normalizeAuthMessage(result: AuthResult | null | undefined): string {
   if (!result?.handled) return '';
   if (result.success) return 'Sessão iniciada com Google.';
   return result.error || 'Não foi possível concluir o login com Google.';

@@ -1,9 +1,18 @@
 import { useDeferredValue, useMemo, useRef, useState } from 'react';
 import { hasStoredSession } from '../../../packages/shared-web/auth.js';
 import { createAthleteImportReviewAdapter } from '../../../packages/shared-web/athlete-import-review.js';
+import type { SharedWorkoutWeek } from '../../../packages/shared-web/athlete-shell.js';
 import { saveImportedPlanSnapshot } from '../../../packages/shared-web/athlete-services.js';
 import { persistTodaySelection } from '../../../packages/shared-web/athlete-shell.js';
 import { validateWorkoutContract } from '../../../packages/shared-web/flowContracts.js';
+import type {
+  EventLikeWithFiles,
+  ImportReview,
+  ImportReviewAdapter,
+  ImportState,
+  UseAthleteImportFlowArgs,
+  UseAthleteImportFlowResult,
+} from '../types';
 
 export function useAthleteImportFlow({
   snapshot,
@@ -11,16 +20,16 @@ export function useAthleteImportFlow({
   setMessage,
   setProgressMessage,
   loadSnapshot,
-}) {
-  const fileInputRef = useRef(null);
+}: UseAthleteImportFlowArgs): UseAthleteImportFlowResult {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const selectionRef = useRef({
     activeWeekNumber: snapshot?.activeWeekNumber || null,
     currentDay: snapshot?.currentDay || null,
   });
   const syncFeedbackRef = useRef('');
-  const [review, setReview] = useState(null);
+  const [review, setReview] = useState<ImportReview | null>(null);
   const [reviewText, setReviewText] = useState('');
-  const [importState, setImportState] = useState('idle');
+  const [importState, setImportState] = useState<ImportState>('idle');
 
   selectionRef.current = {
     activeWeekNumber: snapshot?.activeWeekNumber || null,
@@ -29,32 +38,43 @@ export function useAthleteImportFlow({
 
   const reviewTextDeferred = useDeferredValue(reviewText);
 
-  const reviewAdapter = useMemo(() => createAthleteImportReviewAdapter({
-    getActiveWeekNumber: () => selectionRef.current.activeWeekNumber,
-    getFallbackDay: () => selectionRef.current.currentDay,
-    onProgress: ({ message: nextMessage = '' } = {}) => {
-      setProgressMessage(String(nextMessage || '').trim());
-    },
-    syncImportedPlan: async (weeks, metadata) => {
-      if (!hasStoredSession()) {
-        syncFeedbackRef.current = '';
-        return { success: true, skipped: true };
-      }
+  const reviewAdapter = useMemo(() => {
+    const adapterConfig = {
+        getActiveWeekNumber: () => selectionRef.current.activeWeekNumber,
+        getFallbackDay: () => selectionRef.current.currentDay,
+        onProgress: ({ message: nextMessage = '' } = {}) => {
+          setProgressMessage(String(nextMessage || '').trim());
+        },
+        syncImportedPlan: async (
+          weeks: SharedWorkoutWeek[],
+          metadata: Record<string, unknown>,
+        ) => {
+          if (!hasStoredSession()) {
+            syncFeedbackRef.current = '';
+            return { success: true, skipped: true };
+          }
 
-      try {
-        await saveImportedPlanSnapshot({
-          weeks,
-          metadata,
-          activeWeekNumber: Number(weeks?.[0]?.weekNumber) || selectionRef.current.activeWeekNumber || null,
-        });
-        syncFeedbackRef.current = '';
-        return { success: true };
-      } catch {
-        syncFeedbackRef.current = 'Plano salvo localmente, mas a sincronização da conta falhou.';
-        return { success: false, skipped: true };
-      }
-    },
-  }), [setProgressMessage]);
+          try {
+            await saveImportedPlanSnapshot({
+              weeks,
+              metadata,
+              activeWeekNumber:
+                Number(weeks?.[0]?.weekNumber) ||
+                selectionRef.current.activeWeekNumber ||
+                null,
+            });
+            syncFeedbackRef.current = '';
+            return { success: true };
+          } catch {
+            syncFeedbackRef.current =
+              'Plano salvo localmente, mas a sincronização da conta falhou.';
+            return { success: false, skipped: true };
+          }
+        },
+      };
+
+    return createAthleteImportReviewAdapter(adapterConfig) as ImportReviewAdapter;
+  }, [setProgressMessage]);
 
   async function handleOpenImport() {
     setError('');
@@ -62,7 +82,7 @@ export function useAthleteImportFlow({
     fileInputRef.current?.click();
   }
 
-  async function handleImportFileChange(event) {
+  async function handleImportFileChange(event: EventLikeWithFiles) {
     const [file] = Array.from(event?.target?.files || []);
     event.target.value = '';
     if (!file) return;
@@ -110,12 +130,15 @@ export function useAthleteImportFlow({
       return;
     }
 
-    const workouts = result?.weeks?.flatMap((week) => week.workouts || []) || [];
+    const workouts =
+      result?.weeks?.flatMap((week) => week.workouts || []) || [];
     for (const workout of workouts) {
       const validation = validateWorkoutContract(workout);
       if (!validation.valid) {
         setImportState('idle');
-        setError(`Plano inválido: ${validation.errors.map((item) => item.message).join(', ')}`);
+        setError(
+          `Plano inválido: ${validation.errors.map((item: { message: string }) => item.message).join(', ')}`,
+        );
         return;
       }
     }
