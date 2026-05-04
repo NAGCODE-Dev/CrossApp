@@ -54,7 +54,7 @@
     "@capacitor/app": "^6.0.3",
     "@capacitor/cli": "^6.2.1",
     "@capacitor/core": "^6.2.1",
-    "@sentry/browser": "^8.33.1",
+    "@sentry/browser": "^8.55.2",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
     "react": "^18.3.1",
