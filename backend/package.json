@@ -9,7 +9,7 @@
     "dev": "node --watch src/server.js"
   },
   "dependencies": {
-    "@sentry/node": "^8.33.1",
+    "@sentry/node": "^8.55.2",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
@@ -17,7 +17,7 @@
     "express-rate-limit": "^8.4.0",
     "jose": "^5.9.6",
     "jsonwebtoken": "^9.0.2",
-    "nodemailer": "^8.0.6",
+    "nodemailer": "^8.0.7",
     "pg": "^8.20.0"
   }
 }
