@@ -10,6 +10,8 @@ function readRequestJson(request) {
 }
 
 function resolveAthleteApiMocks(pathname, request, state) {
+  const sportType = new URL(request.url()).searchParams.get('sportType') || 'cross';
+
   if (pathname === '/billing/status') {
     return {
       plan: state.subscription.plan,
@@ -30,13 +32,52 @@ function resolveAthleteApiMocks(pathname, request, state) {
   }
 
   if (pathname === '/workouts/feed') {
+    const sportTitle =
+      sportType === 'running'
+        ? 'Longão Progressivo'
+        : sportType === 'strength'
+          ? 'Lower Strength'
+          : 'Open Prep';
+    const sportPayload =
+      sportType === 'running'
+        ? {
+            session: {
+              type: 'long',
+              distanceKm: 12,
+              durationMin: 68,
+              targetPace: '5:40/km',
+              zone: 'Z2',
+              notes: 'Controle a respiração e mantenha a cadência.',
+            },
+            blocks: [{ type: 'RUNNING', lines: ['12 km progressivo'] }],
+          }
+        : sportType === 'strength'
+          ? {
+              strength: {
+                focus: 'Lower',
+                loadGuidance: 'Carga moderada',
+                rir: 2,
+                exercises: [
+                  {
+                    name: 'Back Squat',
+                    sets: 5,
+                    reps: '5',
+                    load: '120 kg',
+                    rir: 2,
+                  },
+                ],
+              },
+              blocks: [{ type: 'STRENGTH', lines: ['Back Squat | 5x5 | 120 kg'] }],
+            }
+          : undefined;
     return {
       workouts: [
         {
           id: 'feed-1',
-          title: 'Open Prep',
+          title: sportTitle,
           gym_name: 'Ryxen Remote',
-          sport_type: 'cross',
+          sport_type: sportType,
+          payload: sportPayload,
         },
       ],
     };
@@ -141,15 +182,83 @@ function resolveAthleteApiMocks(pathname, request, state) {
   }
 
   if (pathname === '/athletes/me/workouts/recent') {
+    const recentTitle =
+      sportType === 'running'
+        ? 'Intervalado 6x400'
+        : sportType === 'strength'
+          ? 'Upper + Pull'
+          : 'Lower + Engine';
     return {
       recentWorkouts: [
         {
           id: 'recent-workout-1',
-          title: 'Lower + Engine',
-          sport_type: 'cross',
+          title: recentTitle,
+          sport_type: sportType,
           scheduled_date: '2026-04-22',
         },
       ],
+    };
+  }
+
+  if (pathname === '/athletes/me/running/history') {
+    return {
+      logs: [
+        {
+          id: 'run-log-1',
+          title: 'Longão Progressivo',
+          session_type: 'long',
+          logged_at: '2026-04-21T09:00:00.000Z',
+          distance_km: 12,
+          duration_min: 68,
+          avg_pace: '5:40/km',
+          zone: 'Z2',
+          completion_state: 'done',
+        },
+      ],
+      summary: {
+        total_sessions: 1,
+        total_distance_km: 12,
+        avg_duration_min: 68,
+      },
+    };
+  }
+
+  if (pathname === '/athletes/me/running/logs' && request.method() === 'POST') {
+    const body = readRequestJson(request);
+    return {
+      ok: true,
+      log: {
+        id: 'run-log-created',
+        ...body,
+      },
+    };
+  }
+
+  if (pathname === '/athletes/me/strength/history') {
+    return {
+      logs: [
+        {
+          id: 'strength-log-1',
+          exercise: 'Back Squat',
+          logged_at: '2026-04-21T09:00:00.000Z',
+          sets_count: 5,
+          reps_text: '5',
+          load_value: 120,
+          rir: 2,
+          completion_state: 'done',
+        },
+      ],
+    };
+  }
+
+  if (pathname === '/athletes/me/strength/logs' && request.method() === 'POST') {
+    const body = readRequestJson(request);
+    return {
+      ok: true,
+      log: {
+        id: 'strength-log-created',
+        ...body,
+      },
     };
   }
 

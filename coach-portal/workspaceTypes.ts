@@ -12,8 +12,23 @@ export interface CoachBenchmarkPagination {
   pages: number;
 }
 
+export interface CoachSubscription {
+  plan?: string;
+  plan_id?: string;
+  status?: string;
+  renewAt?: string | number | Date | null;
+  renew_at?: string | number | Date | null;
+  [key: string]: unknown;
+}
+
+export interface CoachGymAccess {
+  gymId?: number | string;
+  canCoachManage?: boolean;
+  [key: string]: unknown;
+}
+
 export interface CoachGym {
-  id?: number | string;
+  id: number | string;
   name?: string;
   slug?: string;
   role?: string;
@@ -23,7 +38,7 @@ export interface CoachGym {
 }
 
 export interface CoachMember {
-  id?: number | string;
+  id: number | string;
   role?: string;
   status?: string;
   name?: string;
@@ -35,7 +50,7 @@ export interface CoachMember {
 }
 
 export interface CoachGroup {
-  id?: number | string;
+  id: number | string;
   name?: string;
   description?: string;
   member_count?: number;
@@ -44,7 +59,7 @@ export interface CoachGroup {
 }
 
 export interface CoachFeedItem {
-  id?: number | string;
+  id: number | string;
   title?: string;
   gym_name?: string;
   sport_type?: string;
@@ -53,24 +68,47 @@ export interface CoachFeedItem {
   } | null;
 }
 
+export interface CoachBenchmarkPayload {
+  reps?: number | number[];
+  rounds?: number;
+  timeCapMinutes?: number;
+  distanceMeters?: number;
+  movement?: string;
+  movements?: string[];
+  stations?: string[];
+  sourceUrl?: string;
+  [key: string]: unknown;
+}
+
 export interface CoachBenchmarkItem {
-  id?: number | string;
-  slug?: string;
+  id: number | string;
+  slug: string;
   name?: string;
   category?: string;
   year?: number | string;
   official_source?: string;
-  payload?: Record<string, unknown>;
+  description?: string;
+  score_type?: string;
+  payload?: CoachBenchmarkPayload;
+}
+
+export interface CoachBenchmarkLeaderboardRow {
+  rank?: number | string;
+  name?: string;
+  score_display?: string;
 }
 
 export interface CoachBenchmarkDetail {
   benchmark?: CoachBenchmarkItem | null;
-  leaderboard?: unknown[];
+  leaderboard?: CoachBenchmarkLeaderboardRow[];
+  viewerLatestResult?: {
+    score_display?: string;
+  } | null;
 }
 
 export interface CoachCheckinEntry {
-  id?: number | string;
-  gymMembershipId?: number | string;
+  id: number | string;
+  gymMembershipId: number | string;
   attendeeDisplayName?: string;
   attendeeLabel?: string;
   attendeeEmail?: string;
@@ -80,7 +118,7 @@ export interface CoachCheckinEntry {
 }
 
 export interface CoachCheckinSession {
-  id?: number | string;
+  id: number | string;
   title?: string;
   starts_at?: string;
   location?: string;
@@ -93,7 +131,7 @@ export interface CoachCheckinSession {
     checkInClosesAt?: string;
     checkInClosed?: boolean;
   } | null;
-  entries?: CoachCheckinEntry[];
+  entries: CoachCheckinEntry[];
 }
 
 export interface CoachInsights {
@@ -122,9 +160,9 @@ export interface CoachInsights {
 }
 
 export interface CoachDashboardState {
-  subscription: Record<string, unknown> | null;
+  subscription: CoachSubscription | null;
   entitlements: string[];
-  gymAccess: Array<Record<string, unknown>>;
+  gymAccess: CoachGymAccess[];
   gyms: CoachGym[];
   feed: CoachFeedItem[];
   benchmarks: CoachBenchmarkItem[];

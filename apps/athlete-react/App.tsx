@@ -64,6 +64,7 @@ export default function App() {
         message={message}
         progressMessage={progressMessage}
         onOpenImport={handleOpenImport}
+        onRetryLoad={loadSnapshot}
         onSelectWeek={handleSelectWeek}
         onSelectDay={handleSelectDay}
         onResetDay={handleResetDay}

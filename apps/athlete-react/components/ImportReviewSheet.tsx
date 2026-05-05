@@ -28,6 +28,10 @@ export default function ImportReviewSheet({
 }: ImportReviewSheetProps) {
   const days: ImportReviewDay[] = Array.isArray(review?.days) ? review.days : [];
   const reviewLines = String(reviewTextDeferred || '').split('\n').filter(Boolean).length;
+  const sourceLabel = String(review?.source || 'import').trim() || 'import';
+  const fileLabel = String(review?.fileName || 'Arquivo atual').trim() || 'Arquivo atual';
+  const canEdit = Boolean(review?.canEditText);
+  const hasStructuredPreview = days.length > 0;
 
   return (
     <SheetModalView
@@ -56,6 +60,27 @@ export default function ImportReviewSheet({
       />
 
       <SectionCardView
+        eyebrow="Contexto"
+        title="Antes de salvar"
+        subtitle="Cheque de onde veio esse preview e qual é o modo atual da revisão."
+      >
+        <div className="ath-reviewContextGrid">
+          <article className="ath-reviewContextCard">
+            <strong>Arquivo</strong>
+            <span>{fileLabel}</span>
+          </article>
+          <article className="ath-reviewContextCard">
+            <strong>Origem</strong>
+            <span>{sourceLabel}</span>
+          </article>
+          <article className="ath-reviewContextCard">
+            <strong>Modo</strong>
+            <span>{canEdit ? 'Texto revisável antes do save' : 'Preview somente leitura'}</span>
+          </article>
+        </div>
+      </SectionCardView>
+
+      <SectionCardView
         eyebrow="Texto fonte"
         title="Revisão editorial do parser"
         subtitle="Se o OCR trouxe ruído, troque o texto cru aqui e mande reprocessar o preview."
@@ -78,17 +103,24 @@ export default function ImportReviewSheet({
       </SectionCardView>
 
       <SectionCardView eyebrow="Resumo" title="O que o preview entendeu" subtitle="Dias, blocos e movimentos inferidos a partir do texto revisado.">
-        <div className="ath-reviewMetrics">
-          {days.map((day, index) => (
-            <article key={`${day.weekNumber || 'week'}-${day.day || 'day'}-${index}`} className="ath-reviewDay">
-              <strong>{day.day}</strong>
-              <span>Semana {day.weekNumber || '-'}</span>
-              {day.blockTypes?.length ? <span>{day.blockTypes.join(' · ')}</span> : null}
-              {day.goal ? <span>Objetivo: {day.goal}</span> : null}
-              {day.movements?.length ? <span>{day.movements.join(', ')}</span> : null}
-            </article>
-          ))}
-        </div>
+        {hasStructuredPreview ? (
+          <div className="ath-reviewMetrics">
+            {days.map((day, index) => (
+              <article key={`${day.weekNumber || 'week'}-${day.day || 'day'}-${index}`} className="ath-reviewDay">
+                <strong>{day.day}</strong>
+                <span>Semana {day.weekNumber || '-'}</span>
+                {day.blockTypes?.length ? <span>{day.blockTypes.join(' · ')}</span> : null}
+                {day.goal ? <span>Objetivo: {day.goal}</span> : null}
+                {day.movements?.length ? <span>{day.movements.join(', ')}</span> : null}
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="ath-reviewEmpty">
+            <strong>O parser ainda não montou dias resumidos</strong>
+            <span>Você ainda pode revisar o texto acima e reprocessar o preview antes de salvar.</span>
+          </div>
+        )}
       </SectionCardView>
     </SheetModalView>
   );

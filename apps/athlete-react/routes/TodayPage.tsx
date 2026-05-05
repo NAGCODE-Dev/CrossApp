@@ -32,6 +32,7 @@ export default function TodayPage({
   message,
   progressMessage,
   onOpenImport,
+  onRetryLoad,
   onSelectWeek,
   onSelectDay,
   onResetDay,
@@ -41,6 +42,9 @@ export default function TodayPage({
   const profile = snapshot?.profile || null;
   const workout = viewModel?.workout || null;
   const workoutBlocks: WorkoutBlockSummary[] = Array.isArray(workout?.blocks) ? workout.blocks : [];
+  const hasWeeks = Array.isArray(snapshot?.weeks) && snapshot.weeks.length > 0;
+  const showLoadingState = loading && !workout && !hasWeeks;
+  const showRetryState = !!error && !loading;
 
   return (
     <>
@@ -87,6 +91,56 @@ export default function TodayPage({
       />
 
       <MetricStripView metrics={viewModel?.metrics || []} />
+
+      {showRetryState ? (
+        <SectionCardView
+          eyebrow="Status"
+          title="Não consegui sincronizar seu Today agora"
+          subtitle="Sua sessão pode estar válida, mas o snapshot do dia não respondeu como esperado. Você pode tentar de novo ou seguir com um plano local."
+          tone="default"
+          actions={(
+            <>
+              <PrimaryActionView onClick={onRetryLoad}>Tentar de novo</PrimaryActionView>
+              {!profile?.email ? <SecondaryActionView onClick={onStartAuth}>Entrar com Google</SecondaryActionView> : null}
+            </>
+          )}
+        >
+          <div className="ath-statusGrid">
+            <article className="ath-statusCard">
+              <span className="ath-reviewLabel">Erro atual</span>
+              <strong>{error}</strong>
+              <span>Se isso persistir, você ainda consegue revisar um plano local sem perder a sessão atual.</span>
+            </article>
+            <article className="ath-statusCard">
+              <span className="ath-reviewLabel">Saída rápida</span>
+              <strong>Importar plano manualmente</strong>
+              <span>Abre a revisão antes de qualquer salvamento e mantém o dia utilizável mesmo sem snapshot remoto.</span>
+            </article>
+          </div>
+        </SectionCardView>
+      ) : null}
+
+      {showLoadingState ? (
+        <SectionCardView eyebrow="Sync" title="Montando seu Today" subtitle="Conectando sessão, plano e contexto do dia antes de abrir o treino.">
+          <div className="ath-statusGrid">
+            <article className="ath-statusCard">
+              <span className="ath-reviewLabel">1. Sessão</span>
+              <strong>Validando acesso</strong>
+              <span>Se você voltou do Google agora, esse passo costuma levar só alguns instantes.</span>
+            </article>
+            <article className="ath-statusCard">
+              <span className="ath-reviewLabel">2. Snapshot</span>
+              <strong>Buscando treino do dia</strong>
+              <span>Estamos tentando recuperar seu plano sincronizado e as seleções salvas de semana e dia.</span>
+            </article>
+            <article className="ath-statusCard">
+              <span className="ath-reviewLabel">3. Fallback</span>
+              <strong>Plano local continua disponível</strong>
+              <span>Se o remoto demorar, você ainda pode importar PDF, imagem ou texto para seguir agora.</span>
+            </article>
+          </div>
+        </SectionCardView>
+      ) : null}
 
       {viewModel?.weekItems?.length ? (
         <ChipRailView label="Semanas" items={viewModel.weekItems} onSelect={onSelectWeek} />

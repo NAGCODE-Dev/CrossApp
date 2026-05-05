@@ -1,7 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { loadParsedWeeks } from '../../src/adapters/pdf/pdfRepository.js';
-import { createAthleteImportReviewAdapter } from './athlete-import-review.js';
+import { createAthleteImportReviewAdapter } from './athlete-import-review';
+
+interface ParsedWeeksTestResult {
+  success?: boolean;
+  data?: {
+    weeks?: Array<{
+      workouts?: Array<{
+        blocks?: Array<{
+          lines?: string[];
+        }>;
+      }>;
+    }>;
+  };
+}
 
 beforeEach(() => {
   localStorage.clear();
@@ -29,8 +42,8 @@ Objetivo= acima de 4 rounds`,
 
     const preview = await adapter.previewImportFromFile(file);
     expect(preview.success).toBe(true);
-    expect(preview.review.canEditText).toBe(true);
-    expect(preview.review.weeksCount).toBe(1);
+    expect(preview.review?.canEditText).toBe(true);
+    expect(preview.review?.weeksCount).toBe(1);
 
     const reparsed = await adapter.reparseImportReview(`
 SEMANA 24
@@ -43,15 +56,15 @@ WOD
 Objetivo= acima de 5 rounds
     `);
     expect(reparsed.success).toBe(true);
-    expect(reparsed.review.reviewText).toMatch(/18 MIN AMRAP/);
+    expect(reparsed.review?.reviewText).toMatch(/18 MIN AMRAP/);
 
     const committed = await adapter.commitImportReview();
     expect(committed.success).toBe(true);
     expect(syncImportedPlan).toHaveBeenCalledTimes(1);
 
-    const stored = await loadParsedWeeks();
+    const stored = (await loadParsedWeeks()) as ParsedWeeksTestResult;
     expect(stored.success).toBe(true);
-    expect(stored.data.weeks[0].workouts[0].blocks[0].lines[0]).toContain('18 MIN AMRAP');
+    expect(stored.data?.weeks?.[0]?.workouts?.[0]?.blocks?.[0]?.lines?.[0]).toContain('18 MIN AMRAP');
   });
 
   it('cancela a revisão pendente sem deixar estado residual', async () => {

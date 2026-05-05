@@ -15,6 +15,7 @@ import {
   writeWorkoutDraft,
 } from './storage';
 import {
+  getActionCalloutState,
   benchmarkCategoryLabel,
   benchmarkSourceLabel,
   formatDateLabel,
@@ -22,6 +23,7 @@ import {
   formatNumericValue,
   getAvailableSportOptions,
   getDaysRemaining,
+  getPublishCalloutState,
   getPublishValidationErrors,
   planCard,
   portalSkeletonCard,
@@ -36,13 +38,21 @@ import {
 } from './workspaceTypes';
 import type {
   CoachBenchmarkDetail,
+  CoachBenchmarkPayload,
   CoachDashboardState,
+  CoachGymAccess,
   CoachPortalForms,
   CoachWorkspaceProps,
 } from './workspaceTypes';
 import '../coach/styles.css';
 
 const apiRequest = createCoachApiRequest({ readToken });
+
+function getFieldValue(event: { target: EventTarget | null }) {
+  return (
+    (event.target as HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement | null)?.value || ''
+  );
+}
 
 export default function CoachWorkspace({
   profile: initialProfile = null,
@@ -56,6 +66,17 @@ export default function CoachWorkspace({
   const [draftStatus, setDraftStatus] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [actionFeedback, setActionFeedback] = useState<{
+    scope: 'operation' | 'programming';
+    status: 'idle' | 'loading' | 'success' | 'error';
+    actionLabel: string;
+    detail: string;
+  }>({
+    scope: 'operation',
+    status: 'idle',
+    actionLabel: '',
+    detail: '',
+  });
   const [selectedBenchmarkSlug, setSelectedBenchmarkSlug] = useState('');
   const [selectedBenchmarkDetail, setSelectedBenchmarkDetail] =
     useState<CoachBenchmarkDetail | null>(null);
@@ -150,10 +171,12 @@ export default function CoachWorkspace({
 
       const gyms = gymsRes?.gyms || [];
       const gymAccess = entitlementsRes?.gymAccess || [];
-      const gymAccessById = new Map(
+      const gymAccessById = new Map<number, CoachGymAccess>(
         gymAccess
-          .filter((item) => item?.gymId !== null && item?.gymId !== undefined)
-          .map((item) => [Number(item.gymId), item]),
+          .filter(
+            (item: CoachGymAccess) => item?.gymId !== null && item?.gymId !== undefined,
+          )
+          .map((item: CoachGymAccess) => [Number(item.gymId), item]),
       );
       const selectedGymId = nextGymId || dashboard.selectedGymId || gyms[0]?.id || null;
       let members: CoachDashboardState['members'] = [];
@@ -208,6 +231,12 @@ export default function CoachWorkspace({
     event.preventDefault();
     setLoading(true);
     setError('');
+    setActionFeedback({
+      scope: 'operation',
+      status: 'loading',
+      actionLabel: 'Criando gym',
+      detail: 'Preparando a base do box para membros, grupos e programação.',
+    });
     try {
       const res = await apiRequest('/gyms', {
         method: 'POST',
@@ -215,9 +244,22 @@ export default function CoachWorkspace({
       });
       setForms((prev) => ({ ...prev, gymName: '', gymSlug: '' }));
       setMessage(`Gym criado: ${res?.gym?.name || ''}`);
+      setActionFeedback({
+        scope: 'operation',
+        status: 'success',
+        actionLabel: 'Gym criado',
+        detail: `${res?.gym?.name || 'Novo gym'} já pode receber membros e programação.`,
+      });
       await loadDashboard(res?.gym?.id || null, dashboard.selectedSportType);
     } catch (err) {
-      setError((err as Error | undefined)?.message || 'Erro ao criar gym');
+      const nextError = (err as Error | undefined)?.message || 'Erro ao criar gym';
+      setError(nextError);
+      setActionFeedback({
+        scope: 'operation',
+        status: 'error',
+        actionLabel: 'Não consegui criar o gym',
+        detail: nextError,
+      });
     } finally {
       setLoading(false);
     }
@@ -236,6 +278,12 @@ export default function CoachWorkspace({
     if (!dashboard.selectedGymId) return;
     setLoading(true);
     setError('');
+    setActionFeedback({
+      scope: 'operation',
+      status: 'loading',
+      actionLabel: 'Adicionando membro',
+      detail: 'Enviando convite ou vínculo para o gym selecionado.',
+    });
     try {
       await apiRequest(`/gyms/${dashboard.selectedGymId}/memberships`, {
         method: 'POST',
@@ -246,9 +294,22 @@ export default function CoachWorkspace({
       });
       setForms((prev) => ({ ...prev, memberEmail: '', memberRole: 'athlete' }));
       setMessage('Membro adicionado');
+      setActionFeedback({
+        scope: 'operation',
+        status: 'success',
+        actionLabel: 'Membro adicionado',
+        detail: 'A lista de membros do gym já foi atualizada.',
+      });
       await loadDashboard(dashboard.selectedGymId, dashboard.selectedSportType);
     } catch (err) {
-      setError((err as Error | undefined)?.message || 'Erro ao adicionar membro');
+      const nextError = (err as Error | undefined)?.message || 'Erro ao adicionar membro';
+      setError(nextError);
+      setActionFeedback({
+        scope: 'operation',
+        status: 'error',
+        actionLabel: 'Não consegui adicionar o membro',
+        detail: nextError,
+      });
     } finally {
       setLoading(false);
     }
@@ -259,6 +320,12 @@ export default function CoachWorkspace({
     if (!dashboard.selectedGymId) return;
     setLoading(true);
     setError('');
+    setActionFeedback({
+      scope: 'operation',
+      status: 'loading',
+      actionLabel: 'Criando grupo',
+      detail: 'Salvando grupo e membros selecionados para esse gym.',
+    });
     try {
       await apiRequest(`/gyms/${dashboard.selectedGymId}/groups`, {
         method: 'POST',
@@ -276,9 +343,22 @@ export default function CoachWorkspace({
         selectedGroupMemberIds: [],
       }));
       setMessage('Grupo criado');
+      setActionFeedback({
+        scope: 'operation',
+        status: 'success',
+        actionLabel: 'Grupo criado',
+        detail: 'O novo grupo já está disponível para segmentar publicações.',
+      });
       await loadDashboard(dashboard.selectedGymId, dashboard.selectedSportType);
     } catch (err) {
-      setError((err as Error | undefined)?.message || 'Erro ao criar grupo');
+      const nextError = (err as Error | undefined)?.message || 'Erro ao criar grupo';
+      setError(nextError);
+      setActionFeedback({
+        scope: 'operation',
+        status: 'error',
+        actionLabel: 'Não consegui criar o grupo',
+        detail: nextError,
+      });
     } finally {
       setLoading(false);
     }
@@ -289,6 +369,12 @@ export default function CoachWorkspace({
     if (!dashboard.selectedGymId) return;
     setLoading(true);
     setError('');
+    setActionFeedback({
+      scope: 'operation',
+      status: 'loading',
+      actionLabel: 'Criando sessão',
+      detail: 'Montando agenda, janela de check-in e contexto da aula.',
+    });
     try {
       await apiRequest(`/gyms/${dashboard.selectedGymId}/checkin-sessions`, {
         method: 'POST',
@@ -315,9 +401,22 @@ export default function CoachWorkspace({
         sessionNotes: '',
       }));
       setMessage('Sessão criada');
+      setActionFeedback({
+        scope: 'operation',
+        status: 'success',
+        actionLabel: 'Sessão criada',
+        detail: 'A agenda operacional já foi atualizada com a nova aula.',
+      });
       await loadDashboard(dashboard.selectedGymId, dashboard.selectedSportType);
     } catch (err) {
-      setError((err as Error | undefined)?.message || 'Erro ao criar sessão');
+      const nextError = (err as Error | undefined)?.message || 'Erro ao criar sessão';
+      setError(nextError);
+      setActionFeedback({
+        scope: 'operation',
+        status: 'error',
+        actionLabel: 'Não consegui criar a sessão',
+        detail: nextError,
+      });
     } finally {
       setLoading(false);
     }
@@ -421,6 +520,14 @@ export default function CoachWorkspace({
     if (!dashboard.selectedGymId) return;
     setLoading(true);
     setError('');
+    setActionFeedback({
+      scope: 'programming',
+      status: 'loading',
+      actionLabel: 'Publicando treino',
+      detail: selectedGym?.name
+        ? `Preparando envio para ${selectedGym.name} • ${publishSummary}.`
+        : `Preparando envio do treino • ${publishSummary}.`,
+    });
     try {
       const lines = forms.workoutLines
         .split('\n')
@@ -498,9 +605,24 @@ export default function CoachWorkspace({
       clearWorkoutDraft();
       setDraftStatus('');
       setMessage('Treino publicado');
+      setActionFeedback({
+        scope: 'programming',
+        status: 'success',
+        actionLabel: 'Treino publicado',
+        detail: selectedGym?.name
+          ? `${forms.workoutTitle || 'Treino'} já foi enviado para ${selectedGym.name} • ${publishSummary}.`
+          : `${forms.workoutTitle || 'Treino'} publicado com sucesso.`,
+      });
       await loadDashboard(dashboard.selectedGymId, dashboard.selectedSportType);
     } catch (err) {
-      setError((err as Error | undefined)?.message || 'Erro ao publicar treino');
+      const nextError = (err as Error | undefined)?.message || 'Erro ao publicar treino';
+      setError(nextError);
+      setActionFeedback({
+        scope: 'programming',
+        status: 'error',
+        actionLabel: 'Não consegui publicar o treino',
+        detail: nextError,
+      });
     } finally {
       setLoading(false);
     }
@@ -683,9 +805,24 @@ export default function CoachWorkspace({
     canCoachManage,
   });
   const canPublishWorkout = !loading && publishErrors.length === 0;
+  const publishCallout = getPublishCalloutState({
+    publishErrors,
+    draftStatus,
+    publishSummary,
+    selectedGymName: selectedGym?.name || '',
+    workoutTitle: forms.workoutTitle,
+    canPublishWorkout,
+  });
+  const operationActionCallout = getActionCalloutState(
+    actionFeedback.scope === 'operation' ? actionFeedback : { status: 'idle' },
+  );
+  const programmingActionCallout = getActionCalloutState(
+    actionFeedback.scope === 'programming' ? actionFeedback : { status: 'idle' },
+  );
   const shouldShowBillingAction = !canCoachManage || planStatus !== 'active';
-  const overviewBenchmarks = (dashboard.insights?.topBenchmarks || []).length
-    ? dashboard.insights.topBenchmarks
+  const topBenchmarks = dashboard.insights?.topBenchmarks || [];
+  const overviewBenchmarks = topBenchmarks.length
+    ? topBenchmarks
       .slice(0, 4)
       .map((item) => ({
         key: item.slug || item.name,
@@ -721,9 +858,10 @@ export default function CoachWorkspace({
     }
   }
 
-  function buildBenchmarkFacts(benchmark = {}) {
-    const payload = benchmark?.payload && typeof benchmark.payload === 'object' ? benchmark.payload : {};
-    const facts = [];
+  function buildBenchmarkFacts(benchmark: { payload?: CoachBenchmarkPayload } = {}) {
+    const payload =
+      benchmark?.payload && typeof benchmark.payload === 'object' ? benchmark.payload : {};
+    const facts: string[] = [];
     if (Array.isArray(payload.reps) && payload.reps.length) facts.push(`Reps ${payload.reps.join('-')}`);
     else if (Number.isFinite(payload.reps)) facts.push(`${payload.reps} reps`);
     if (Number.isFinite(payload.rounds)) facts.push(`${payload.rounds} round(s)`);
@@ -747,7 +885,7 @@ export default function CoachWorkspace({
             React.createElement('select', {
               className: 'field',
               value: forms.runningSessionType,
-              onChange: (e) => setForms((prev) => ({ ...prev, runningSessionType: e.target.value })),
+              onChange: (e) => setForms((prev) => ({ ...prev, runningSessionType: getFieldValue(e) })),
             },
               React.createElement('option', { value: 'easy' }, 'Easy run'),
               React.createElement('option', { value: 'interval' }, 'Intervalado'),
@@ -762,7 +900,7 @@ export default function CoachWorkspace({
               step: '0.1',
               placeholder: 'Distância (km)',
               value: forms.runningDistanceKm,
-              onChange: (e) => setForms((prev) => ({ ...prev, runningDistanceKm: e.target.value })),
+              onChange: (e) => setForms((prev) => ({ ...prev, runningDistanceKm: getFieldValue(e) })),
             }),
             React.createElement('input', {
               className: 'field',
@@ -771,13 +909,13 @@ export default function CoachWorkspace({
               step: '1',
               placeholder: 'Duração (min)',
               value: forms.runningDurationMin,
-              onChange: (e) => setForms((prev) => ({ ...prev, runningDurationMin: e.target.value })),
+              onChange: (e) => setForms((prev) => ({ ...prev, runningDurationMin: getFieldValue(e) })),
             }),
             React.createElement('input', {
               className: 'field',
               placeholder: 'Pace alvo (ex: 5:00/km)',
               value: forms.runningTargetPace,
-              onChange: (e) => setForms((prev) => ({ ...prev, runningTargetPace: e.target.value })),
+              onChange: (e) => setForms((prev) => ({ ...prev, runningTargetPace: getFieldValue(e) })),
             }),
           ),
           React.createElement('details', { className: 'publish-advancedToggle' },
@@ -788,13 +926,13 @@ export default function CoachWorkspace({
                   className: 'field',
                   placeholder: 'Zona (ex: Z2, Threshold)',
                   value: forms.runningZone,
-                  onChange: (e) => setForms((prev) => ({ ...prev, runningZone: e.target.value })),
+                  onChange: (e) => setForms((prev) => ({ ...prev, runningZone: getFieldValue(e) })),
                 }),
                 React.createElement('input', {
                   className: 'field',
                   placeholder: 'Notas rápidas',
                   value: forms.runningNotes,
-                  onChange: (e) => setForms((prev) => ({ ...prev, runningNotes: e.target.value })),
+                  onChange: (e) => setForms((prev) => ({ ...prev, runningNotes: getFieldValue(e) })),
                 }),
               ),
               React.createElement('section', { className: 'stack nested-card publish-formSection' },
@@ -813,7 +951,7 @@ export default function CoachWorkspace({
                   className: 'field',
                   placeholder: 'Bloco (ex: 6x400m)',
                   value: segment.label,
-                  onChange: (e) => updateCollectionItem('runningSegments', index, 'label', e.target.value),
+                  onChange: (e) => updateCollectionItem('runningSegments', index, 'label', getFieldValue(e)),
                 }),
                 React.createElement('input', {
                   className: 'field',
@@ -822,13 +960,13 @@ export default function CoachWorkspace({
                   step: '50',
                   placeholder: 'Distância (m)',
                   value: segment.distanceMeters,
-                  onChange: (e) => updateCollectionItem('runningSegments', index, 'distanceMeters', e.target.value),
+                  onChange: (e) => updateCollectionItem('runningSegments', index, 'distanceMeters', getFieldValue(e)),
                 }),
                 React.createElement('input', {
                   className: 'field',
                   placeholder: 'Pace alvo',
                   value: segment.targetPace,
-                  onChange: (e) => updateCollectionItem('runningSegments', index, 'targetPace', e.target.value),
+                  onChange: (e) => updateCollectionItem('runningSegments', index, 'targetPace', getFieldValue(e)),
                 }),
                 React.createElement('input', {
                   className: 'field',
@@ -837,7 +975,7 @@ export default function CoachWorkspace({
                   step: '15',
                   placeholder: 'Descanso (seg)',
                   value: segment.restSeconds,
-                  onChange: (e) => updateCollectionItem('runningSegments', index, 'restSeconds', e.target.value),
+                  onChange: (e) => updateCollectionItem('runningSegments', index, 'restSeconds', getFieldValue(e)),
                 }),
               ),
               React.createElement('div', { className: 'publish-collectionActions' },
@@ -874,13 +1012,13 @@ export default function CoachWorkspace({
               className: 'field',
               placeholder: 'Foco (ex: Lower, Push, Pull)',
               value: forms.strengthFocus,
-              onChange: (e) => setForms((prev) => ({ ...prev, strengthFocus: e.target.value })),
+              onChange: (e) => setForms((prev) => ({ ...prev, strengthFocus: getFieldValue(e) })),
             }),
             React.createElement('input', {
               className: 'field',
               placeholder: 'Carga/guia (ex: 75-80% RM)',
               value: forms.strengthLoadGuidance,
-              onChange: (e) => setForms((prev) => ({ ...prev, strengthLoadGuidance: e.target.value })),
+              onChange: (e) => setForms((prev) => ({ ...prev, strengthLoadGuidance: getFieldValue(e) })),
             }),
             React.createElement('input', {
               className: 'field',
@@ -889,7 +1027,7 @@ export default function CoachWorkspace({
               step: '0.5',
               placeholder: 'RIR',
               value: forms.strengthRir,
-              onChange: (e) => setForms((prev) => ({ ...prev, strengthRir: e.target.value })),
+              onChange: (e) => setForms((prev) => ({ ...prev, strengthRir: getFieldValue(e) })),
             }),
             React.createElement('input', {
               className: 'field',
@@ -898,7 +1036,7 @@ export default function CoachWorkspace({
               step: '15',
               placeholder: 'Descanso (seg)',
               value: forms.strengthRestSeconds,
-              onChange: (e) => setForms((prev) => ({ ...prev, strengthRestSeconds: e.target.value })),
+              onChange: (e) => setForms((prev) => ({ ...prev, strengthRestSeconds: getFieldValue(e) })),
             }),
           ),
           React.createElement('details', { className: 'publish-advancedToggle' },
@@ -919,7 +1057,7 @@ export default function CoachWorkspace({
                   className: 'field',
                   placeholder: 'Exercício',
                   value: exercise.name,
-                  onChange: (e) => updateCollectionItem('strengthExercises', index, 'name', e.target.value),
+                  onChange: (e) => updateCollectionItem('strengthExercises', index, 'name', getFieldValue(e)),
                 }),
                 React.createElement('input', {
                   className: 'field',
@@ -928,19 +1066,19 @@ export default function CoachWorkspace({
                   step: '1',
                   placeholder: 'Sets',
                   value: exercise.sets,
-                  onChange: (e) => updateCollectionItem('strengthExercises', index, 'sets', e.target.value),
+                  onChange: (e) => updateCollectionItem('strengthExercises', index, 'sets', getFieldValue(e)),
                 }),
                 React.createElement('input', {
                   className: 'field',
                   placeholder: 'Reps (ex: 5 ou 8-10)',
                   value: exercise.reps,
-                  onChange: (e) => updateCollectionItem('strengthExercises', index, 'reps', e.target.value),
+                  onChange: (e) => updateCollectionItem('strengthExercises', index, 'reps', getFieldValue(e)),
                 }),
                 React.createElement('input', {
                   className: 'field',
                   placeholder: 'Carga (ex: 100kg ou 75%)',
                   value: exercise.load,
-                  onChange: (e) => updateCollectionItem('strengthExercises', index, 'load', e.target.value),
+                  onChange: (e) => updateCollectionItem('strengthExercises', index, 'load', getFieldValue(e)),
                 }),
                 React.createElement('input', {
                   className: 'field',
@@ -949,7 +1087,7 @@ export default function CoachWorkspace({
                   step: '0.5',
                   placeholder: 'RIR',
                   value: exercise.rir,
-                  onChange: (e) => updateCollectionItem('strengthExercises', index, 'rir', e.target.value),
+                  onChange: (e) => updateCollectionItem('strengthExercises', index, 'rir', getFieldValue(e)),
                 }),
               ),
               React.createElement('div', { className: 'publish-collectionActions' },
@@ -978,8 +1116,8 @@ export default function CoachWorkspace({
         key: 'benchmark',
         className: 'field',
         placeholder: 'benchmark slug opcional (ex: fran)',
-        value: forms.workoutBenchmarkSlug,
-        onChange: (e) => setForms((prev) => ({ ...prev, workoutBenchmarkSlug: e.target.value })),
+	        value: forms.workoutBenchmarkSlug,
+	        onChange: (e) => setForms((prev) => ({ ...prev, workoutBenchmarkSlug: getFieldValue(e) })),
       }),
     ];
   }
@@ -1239,6 +1377,16 @@ export default function CoachWorkspace({
       React.createElement('section', { className: 'grid portal-grid', hidden: !(isOperationSection || isProgrammingSection || isLibrarySection) },
         React.createElement('div', { className: 'card wide operation-shellLayout', hidden: !isOperationSection },
           React.createElement('div', { className: 'stack operation-primaryRail' },
+            operationActionCallout
+              ? React.createElement(
+                  'div',
+                  {
+                    className: `publish-validationCard operation-feedbackCard ${operationActionCallout.tone === 'success' ? 'isReady' : ''} ${operationActionCallout.tone === 'error' ? 'isError' : ''} ${operationActionCallout.tone === 'loading' ? 'isLoading' : ''}`,
+                  },
+                  React.createElement('strong', null, operationActionCallout.title),
+                  React.createElement('span', { className: 'muted' }, operationActionCallout.detail),
+                )
+              : null,
             React.createElement('div', { className: 'card nested-card operation-card' },
               React.createElement('div', { className: 'publish-formSectionHead' },
                 React.createElement('div', { className: 'eyebrow' }, 'Gyms'),
@@ -1268,13 +1416,13 @@ export default function CoachWorkspace({
                   className: 'field',
                   placeholder: 'Nome do gym',
                   value: forms.gymName,
-                  onChange: (e) => setForms((prev) => ({ ...prev, gymName: e.target.value })),
+	                  onChange: (e) => setForms((prev) => ({ ...prev, gymName: getFieldValue(e) })),
                 }),
                 React.createElement('input', {
                   className: 'field',
                   placeholder: 'slug-do-gym',
                   value: forms.gymSlug,
-                  onChange: (e) => setForms((prev) => ({ ...prev, gymSlug: e.target.value })),
+	                  onChange: (e) => setForms((prev) => ({ ...prev, gymSlug: getFieldValue(e) })),
                 }),
                 React.createElement('button', { className: 'btn btn-secondary', type: 'submit', disabled: loading }, 'Criar gym')
               )
@@ -1307,12 +1455,12 @@ export default function CoachWorkspace({
                   type: 'email',
                   placeholder: 'Email do membro',
                   value: forms.memberEmail,
-                  onChange: (e) => setForms((prev) => ({ ...prev, memberEmail: e.target.value })),
+	                  onChange: (e) => setForms((prev) => ({ ...prev, memberEmail: getFieldValue(e) })),
                 }),
                 React.createElement('select', {
                   className: 'field',
                   value: forms.memberRole,
-                  onChange: (e) => setForms((prev) => ({ ...prev, memberRole: e.target.value })),
+	                  onChange: (e) => setForms((prev) => ({ ...prev, memberRole: getFieldValue(e) })),
                 },
                   React.createElement('option', { value: 'athlete' }, 'athlete'),
                   React.createElement('option', { value: 'coach' }, 'coach')
@@ -1387,26 +1535,26 @@ export default function CoachWorkspace({
                   className: 'field',
                   placeholder: 'Título da sessão',
                   value: forms.sessionTitle,
-                  onChange: (e) => setForms((prev) => ({ ...prev, sessionTitle: e.target.value })),
+                  onChange: (e) => setForms((prev) => ({ ...prev, sessionTitle: getFieldValue(e) })),
                 }),
                 React.createElement('div', { className: 'grid dual-grid' },
                   React.createElement('input', {
                     className: 'field',
                     type: 'datetime-local',
                     value: forms.sessionStartsAt,
-                    onChange: (e) => setForms((prev) => ({ ...prev, sessionStartsAt: e.target.value })),
+                    onChange: (e) => setForms((prev) => ({ ...prev, sessionStartsAt: getFieldValue(e) })),
                   }),
                   React.createElement('input', {
                     className: 'field',
                     type: 'datetime-local',
                     value: forms.sessionEndsAt,
-                    onChange: (e) => setForms((prev) => ({ ...prev, sessionEndsAt: e.target.value })),
+                    onChange: (e) => setForms((prev) => ({ ...prev, sessionEndsAt: getFieldValue(e) })),
                   }),
                   React.createElement('input', {
                     className: 'field',
                     type: 'datetime-local',
                     value: forms.sessionCheckInClosesAt,
-                    onChange: (e) => setForms((prev) => ({ ...prev, sessionCheckInClosesAt: e.target.value })),
+                    onChange: (e) => setForms((prev) => ({ ...prev, sessionCheckInClosesAt: getFieldValue(e) })),
                     placeholder: 'Limite do check-in',
                   }),
                   React.createElement('input', {
@@ -1416,20 +1564,20 @@ export default function CoachWorkspace({
                     step: '1',
                     placeholder: 'Capacidade',
                     value: forms.sessionCapacity,
-                    onChange: (e) => setForms((prev) => ({ ...prev, sessionCapacity: e.target.value })),
+                    onChange: (e) => setForms((prev) => ({ ...prev, sessionCapacity: getFieldValue(e) })),
                   }),
                   React.createElement('input', {
                     className: 'field',
                     placeholder: 'Local',
                     value: forms.sessionLocation,
-                    onChange: (e) => setForms((prev) => ({ ...prev, sessionLocation: e.target.value })),
+                    onChange: (e) => setForms((prev) => ({ ...prev, sessionLocation: getFieldValue(e) })),
                   }),
                 ),
                 React.createElement('textarea', {
                   className: 'field textarea',
                   placeholder: 'Notas rápidas da aula / sessão',
                   value: forms.sessionNotes,
-                  onChange: (e) => setForms((prev) => ({ ...prev, sessionNotes: e.target.value })),
+	                    onChange: (e) => setForms((prev) => ({ ...prev, sessionNotes: getFieldValue(e) })),
                 }),
                 React.createElement('button', { className: 'btn btn-secondary', type: 'submit', disabled: loading || !selectedGym || !forms.sessionTitle || !forms.sessionStartsAt }, 'Criar sessão')
               )
@@ -1460,13 +1608,13 @@ export default function CoachWorkspace({
                   className: 'field',
                   placeholder: 'Nome do grupo',
                   value: forms.groupName,
-                  onChange: (e) => setForms((prev) => ({ ...prev, groupName: e.target.value })),
+	                  onChange: (e) => setForms((prev) => ({ ...prev, groupName: getFieldValue(e) })),
                 }),
                 React.createElement('input', {
                   className: 'field',
                   placeholder: 'Descrição curta',
                   value: forms.groupDescription,
-                  onChange: (e) => setForms((prev) => ({ ...prev, groupDescription: e.target.value })),
+	                  onChange: (e) => setForms((prev) => ({ ...prev, groupDescription: getFieldValue(e) })),
                 }),
                 React.createElement('div', { className: 'selection-grid operation-selectionGrid' },
                   athleteMembers.length
@@ -1519,7 +1667,7 @@ export default function CoachWorkspace({
                     ),
                     React.createElement('div', { className: 'list-item static' },
                       React.createElement('strong', null, 'Benchmarks mais usados'),
-                      React.createElement('span', null, (dashboard.insights.topBenchmarks || []).length ? dashboard.insights.topBenchmarks.map((item) => `${item.name} (${item.total})`).join(' • ') : 'Sem volume suficiente ainda')
+                      React.createElement('span', null, (dashboard.insights.topBenchmarks || []).length ? (dashboard.insights.topBenchmarks || []).map((item) => `${item.name} (${item.total})`).join(' • ') : 'Sem volume suficiente ainda')
                     ),
                     React.createElement('div', { className: 'list-item static' },
                       React.createElement('strong', null, 'Últimos PRs'),
@@ -1528,7 +1676,7 @@ export default function CoachWorkspace({
                         null,
                         dashboard.selectedSportType === 'cross'
                           ? ((dashboard.insights.recentPrs || []).length
-                            ? dashboard.insights.recentPrs
+                            ? (dashboard.insights.recentPrs || [])
                               .map((record) => `${record.athlete_name || record.athlete_email || 'Atleta'} • ${record.exercise} ${formatNumericValue(record.value)} ${record.unit || 'kg'}`)
                               .join(' • ')
                             : 'Nenhum PR sincronizado recentemente')
@@ -1559,13 +1707,13 @@ export default function CoachWorkspace({
                       className: 'field',
                       placeholder: 'Título do treino',
                       value: forms.workoutTitle,
-                      onChange: (e) => setForms((prev) => ({ ...prev, workoutTitle: e.target.value })),
+                      onChange: (e) => setForms((prev) => ({ ...prev, workoutTitle: getFieldValue(e) })),
                     }),
                     React.createElement('input', {
                       className: 'field',
                       type: 'date',
                       value: forms.workoutDate,
-                      onChange: (e) => setForms((prev) => ({ ...prev, workoutDate: e.target.value })),
+                      onChange: (e) => setForms((prev) => ({ ...prev, workoutDate: getFieldValue(e) })),
                     }),
                   ),
                   renderSportSpecificWorkoutFields(),
@@ -1577,7 +1725,7 @@ export default function CoachWorkspace({
                         ? 'Uma linha por exercício (ex: Back Squat | 5x5 | 100kg)'
                         : 'Uma linha por exercício',
                     value: forms.workoutLines,
-                    onChange: (e) => setForms((prev) => ({ ...prev, workoutLines: e.target.value })),
+	                    onChange: (e) => setForms((prev) => ({ ...prev, workoutLines: getFieldValue(e) })),
                   })
                 ),
                 React.createElement('section', { className: 'stack nested-card audience-card publish-formSection' },
@@ -1676,6 +1824,16 @@ export default function CoachWorkspace({
                     )
                   )
                 ),
+                programmingActionCallout
+                  ? React.createElement(
+                      'div',
+                      {
+                        className: `publish-validationCard ${programmingActionCallout.tone === 'success' ? 'isReady' : ''} ${programmingActionCallout.tone === 'error' ? 'isError' : ''} ${programmingActionCallout.tone === 'loading' ? 'isLoading' : ''}`,
+                      },
+                      React.createElement('strong', null, programmingActionCallout.title),
+                      React.createElement('span', { className: 'muted' }, programmingActionCallout.detail),
+                    )
+                  : null,
                 React.createElement('div', { className: 'publish-metaCard' },
                   React.createElement('strong', null, 'Resumo rápido'),
                   React.createElement('span', null, selectedGym ? `${selectedGym.name} • ${sportLabel(dashboard.selectedSportType)}` : 'Escolha um gym para publicar'),
@@ -1704,27 +1862,28 @@ export default function CoachWorkspace({
                       )
                     : React.createElement('p', { className: 'muted' }, 'A prévia aparece conforme você preenche o treino.')
                 ),
-                publishErrors.length
-                  ? React.createElement('div', { className: 'publish-validationCard' },
-                      React.createElement('strong', null, 'Falta ajustar antes de publicar'),
-                      React.createElement('div', { className: 'publish-validationList' },
+                React.createElement(
+                  'div',
+                  { className: `publish-validationCard ${publishCallout.tone === 'ready' ? 'isReady' : ''}` },
+                  React.createElement('strong', null, publishCallout.title),
+                  React.createElement('span', { className: 'muted' }, publishCallout.detail),
+                  publishErrors.length
+                    ? React.createElement('div', { className: 'publish-validationList' },
                         publishErrors.map((item) =>
                           React.createElement('span', { key: item, className: 'publish-validationItem' }, item)
                         )
                       )
-                    )
-                  : React.createElement('div', { className: 'publish-validationCard isReady' },
-                      React.createElement('strong', null, 'Pronto para publicar'),
-                      React.createElement('span', { className: 'muted' }, 'O treino já tem o mínimo necessário para ser enviado.')
-                    ),
-                draftStatus ? React.createElement('div', { className: 'draft-statusRow' },
-                  React.createElement('span', { className: 'muted' }, draftStatus),
-                  React.createElement('button', {
-                    type: 'button',
-                    className: 'btn btn-secondary',
-                    onClick: handleClearWorkoutDraft,
-                  }, 'Limpar rascunho')
-                ) : null
+                    : null,
+                  draftStatus
+                    ? React.createElement('div', { className: 'draft-statusRow' },
+                        React.createElement('button', {
+                          type: 'button',
+                          className: 'btn btn-secondary',
+                          onClick: handleClearWorkoutDraft,
+                        }, 'Limpar rascunho')
+                      )
+                    : null
+                )
               )
             ),
             React.createElement('div', { className: 'publish-actionBar' },
@@ -1749,12 +1908,12 @@ export default function CoachWorkspace({
                   className: 'field',
                   placeholder: 'Buscar benchmark',
                   value: forms.benchmarkQuery,
-                  onChange: (e) => setForms((prev) => ({ ...prev, benchmarkQuery: e.target.value })),
+	                  onChange: (e) => setForms((prev) => ({ ...prev, benchmarkQuery: getFieldValue(e) })),
                 }),
                 React.createElement('select', {
                   className: 'field',
                   value: forms.benchmarkSource,
-                  onChange: (e) => setForms((prev) => ({ ...prev, benchmarkSource: e.target.value })),
+	                  onChange: (e) => setForms((prev) => ({ ...prev, benchmarkSource: getFieldValue(e) })),
                 },
                   BENCHMARK_SOURCE_OPTIONS.map((option) =>
                     React.createElement('option', { key: option.value || 'all', value: option.value }, option.label)
@@ -1763,7 +1922,7 @@ export default function CoachWorkspace({
                 React.createElement('select', {
                   className: 'field',
                   value: forms.benchmarkSort,
-                  onChange: (e) => setForms((prev) => ({ ...prev, benchmarkSort: e.target.value })),
+	                  onChange: (e) => setForms((prev) => ({ ...prev, benchmarkSort: getFieldValue(e) })),
                 },
                   React.createElement('option', { value: 'year_desc' }, 'Ano desc'),
                   React.createElement('option', { value: 'year_asc' }, 'Ano asc'),

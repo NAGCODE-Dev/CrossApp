@@ -53,6 +53,7 @@ describe('TodayPage', () => {
         message=""
         progressMessage=""
         onOpenImport={noop}
+        onRetryLoad={noop}
         onSelectWeek={noop}
         onSelectDay={noop}
         onResetDay={noop}
@@ -79,6 +80,7 @@ describe('TodayPage', () => {
         message=""
         progressMessage=""
         onOpenImport={noop}
+        onRetryLoad={noop}
         onSelectWeek={noop}
         onSelectDay={noop}
         onResetDay={noop}
@@ -89,5 +91,57 @@ describe('TodayPage', () => {
 
     expect(screen.getByText(/Sem treino estruturado por aqui ainda/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Importar agora/i })).toBeInTheDocument();
+  });
+
+  it('mostra um estado explícito de retry quando o snapshot falha', () => {
+    const snapshot = buildSnapshot(false);
+
+    render(
+      <TodayPage
+        snapshot={snapshot}
+        viewModel={createTodayViewModel(snapshot)}
+        loading={false}
+        error="Falha ao carregar snapshot remoto"
+        message=""
+        progressMessage=""
+        onOpenImport={noop}
+        onRetryLoad={noop}
+        onSelectWeek={noop}
+        onSelectDay={noop}
+        onResetDay={noop}
+        onStartAuth={noop}
+        onSignOut={noop}
+      />,
+    );
+
+    expect(screen.getByText(/Não consegui sincronizar seu Today agora/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Tentar de novo/i })).toBeInTheDocument();
+    expect(screen.getAllByText(/Falha ao carregar snapshot remoto/i).length).toBeGreaterThan(0);
+  });
+
+  it('mostra um estado de sync quando o cold start ainda está carregando', () => {
+    const snapshot = buildSnapshot(false);
+
+    render(
+      <TodayPage
+        snapshot={snapshot}
+        viewModel={createTodayViewModel(snapshot)}
+        loading
+        error=""
+        message=""
+        progressMessage=""
+        onOpenImport={noop}
+        onRetryLoad={noop}
+        onSelectWeek={noop}
+        onSelectDay={noop}
+        onResetDay={noop}
+        onStartAuth={noop}
+        onSignOut={noop}
+      />,
+    );
+
+    expect(screen.getByText(/Montando seu Today/i)).toBeInTheDocument();
+    expect(screen.getByText(/Validando acesso/i)).toBeInTheDocument();
+    expect(screen.getByText(/Plano local continua disponível/i)).toBeInTheDocument();
   });
 });

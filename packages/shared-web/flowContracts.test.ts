@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validateWorkoutContract, validateOnboardingContract } from './flowContracts.js';
+import { validateWorkoutContract, validateOnboardingContract } from './flowContracts';
 
 describe('flow contracts', () => {
   it('valida workout', () => {

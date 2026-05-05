@@ -1,16 +1,43 @@
-export function validateWorkoutContract(workout) {
-  const errors = [];
+export interface SharedValidationError {
+  path: string;
+  message: string;
+}
+
+export interface SharedWorkoutBlock {
+  type?: string;
+  lines?: unknown[];
+}
+
+export interface SharedWorkoutContract {
+  blocks?: SharedWorkoutBlock[];
+  [key: string]: unknown;
+}
+
+export interface SharedOnboardingContract {
+  profile?: {
+    email?: string;
+    [key: string]: unknown;
+  } | null;
+  [key: string]: unknown;
+}
+
+function buildValidationResult(errors: SharedValidationError[]) {
+  return { valid: errors.length === 0, errors };
+}
+
+export function validateWorkoutContract(workout: unknown) {
+  const errors: SharedValidationError[] = [];
 
   if (!workout || typeof workout !== 'object') {
     errors.push({ path: 'workout', message: 'Workout precisa ser um objeto' });
   }
 
-  if (workout && !Array.isArray(workout.blocks)) {
+  if (workout && !Array.isArray((workout as SharedWorkoutContract).blocks)) {
     errors.push({ path: 'workout.blocks', message: 'Blocks precisa ser array' });
   }
 
-  if (Array.isArray(workout?.blocks)) {
-    workout.blocks.forEach((block, i) => {
+  if (Array.isArray((workout as SharedWorkoutContract | null)?.blocks)) {
+    (workout as SharedWorkoutContract).blocks!.forEach((block, i) => {
       if (!block || typeof block !== 'object') {
         errors.push({ path: `blocks[${i}]`, message: 'Bloco inválido' });
         return;
@@ -26,17 +53,17 @@ export function validateWorkoutContract(workout) {
     });
   }
 
-  return { valid: errors.length === 0, errors };
+  return buildValidationResult(errors);
 }
 
-export function validateOnboardingContract(onboarding) {
-  const errors = [];
+export function validateOnboardingContract(onboarding: unknown) {
+  const errors: SharedValidationError[] = [];
 
   if (!onboarding || typeof onboarding !== 'object') {
     errors.push({ path: 'onboarding', message: 'Onboarding precisa ser objeto' });
   }
 
-  const profile = onboarding?.profile;
+  const profile = (onboarding as SharedOnboardingContract | null)?.profile;
   if (!profile || typeof profile !== 'object') {
     errors.push({ path: 'profile', message: 'Profile precisa ser objeto' });
   }
@@ -48,13 +75,13 @@ export function validateOnboardingContract(onboarding) {
     }
   }
 
-  return { valid: errors.length === 0, errors };
+  return buildValidationResult(errors);
 }
 
-export function sanitizeWorkout(workout) {
+export function sanitizeWorkout(workout: Record<string, unknown>) {
   return {
     ...workout,
-    blocks: (workout?.blocks || []).map((b) => ({
+    blocks: (Array.isArray(workout?.blocks) ? workout.blocks : []).map((b) => ({
       type: b?.type || 'PROGRAMMING',
       lines: Array.isArray(b?.lines) ? b.lines : [],
     })),

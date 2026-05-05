@@ -5,7 +5,16 @@ import {
   loadAthleteTodaySnapshot,
   persistTodaySelection,
   readTodaySelection,
-} from './athlete-shell.js';
+} from './athlete-shell';
+
+interface ParsedWeeksTestResult {
+  success?: boolean;
+  data?: {
+    metadata?: {
+      fileName?: string;
+    };
+  };
+}
 
 function buildWeeks() {
   return [
@@ -28,7 +37,7 @@ function buildWeeks() {
   ];
 }
 
-function jsonResponse(payload) {
+function jsonResponse(payload: unknown) {
   return {
     ok: true,
     status: 200,
@@ -102,14 +111,14 @@ describe('athlete-shell', () => {
     }));
 
     const snapshot = await loadAthleteTodaySnapshot();
-    const localPlan = await loadParsedWeeks();
+    const localPlan = (await loadParsedWeeks()) as ParsedWeeksTestResult;
 
     expect(snapshot.weeks).toHaveLength(1);
-    expect(snapshot.workoutContext.source).toBe('remote');
-    expect(snapshot.workoutContext.stats.activeGyms).toBe(2);
-    expect(snapshot.importedPlanMeta.fileName).toBe('remote-plan.pdf');
+    expect(snapshot.workoutContext?.source).toBe('remote');
+    expect(snapshot.workoutContext?.stats?.activeGyms).toBe(2);
+    expect(snapshot.importedPlanMeta?.fileName).toBe('remote-plan.pdf');
     expect(localPlan.success).toBe(true);
-    expect(localPlan.data.metadata.fileName).toBe('remote-plan.pdf');
+    expect(localPlan.data?.metadata?.fileName).toBe('remote-plan.pdf');
   });
 
   it('persiste seleção de semana e dia com as mesmas chaves do shell legado', async () => {

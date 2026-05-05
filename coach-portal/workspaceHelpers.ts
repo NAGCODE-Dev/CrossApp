@@ -21,6 +21,33 @@ interface PublishValidationOptions {
   canCoachManage?: boolean;
 }
 
+interface PublishCalloutOptions {
+  publishErrors?: string[];
+  draftStatus?: string;
+  publishSummary?: string;
+  selectedGymName?: string;
+  workoutTitle?: string;
+  canPublishWorkout?: boolean;
+}
+
+interface PublishCalloutState {
+  tone: 'warn' | 'ready' | 'draft';
+  title: string;
+  detail: string;
+}
+
+interface ActionCalloutOptions {
+  status?: 'idle' | 'loading' | 'success' | 'error';
+  actionLabel?: string;
+  detail?: string;
+}
+
+interface ActionCalloutState {
+  tone: 'loading' | 'success' | 'error';
+  title: string;
+  detail: string;
+}
+
 interface RuntimeRolloutConfig {
   app?: {
     rollout?: {
@@ -219,6 +246,89 @@ export function getPublishValidationErrors({
   }
 
   return errors;
+}
+
+export function getPublishCalloutState({
+  publishErrors = [],
+  draftStatus = '',
+  publishSummary = '',
+  selectedGymName = '',
+  workoutTitle = '',
+  canPublishWorkout = false,
+}: PublishCalloutOptions = {}): PublishCalloutState {
+  const normalizedSummary = String(publishSummary || '').trim();
+  const normalizedGymName = String(selectedGymName || '').trim();
+  const normalizedTitle = String(workoutTitle || '').trim();
+  const normalizedDraftStatus = String(draftStatus || '').trim();
+
+  if (publishErrors.length) {
+    return {
+      tone: 'warn',
+      title: 'Ainda falta ajustar',
+      detail: publishErrors[0] || 'Revise os dados antes de publicar.',
+    };
+  }
+
+  if (normalizedDraftStatus) {
+    return {
+      tone: 'draft',
+      title: 'Rascunho ativo',
+      detail: normalizedGymName
+        ? `${normalizedDraftStatus}. Destino atual: ${normalizedGymName}.`
+        : normalizedDraftStatus,
+    };
+  }
+
+  if (canPublishWorkout) {
+    const destination = normalizedGymName ? `Vai para ${normalizedGymName}` : 'Destino pendente';
+    const titleLabel = normalizedTitle || 'Treino';
+    return {
+      tone: 'ready',
+      title: 'Pronto para publicar',
+      detail: normalizedSummary
+        ? `${titleLabel} • ${normalizedSummary}. ${destination}.`
+        : `${titleLabel}. ${destination}.`,
+    };
+  }
+
+  return {
+    tone: 'warn',
+    title: 'Publicação em preparação',
+    detail: normalizedSummary || 'Complete os dados para liberar a publicação.',
+  };
+}
+
+export function getActionCalloutState({
+  status = 'idle',
+  actionLabel = '',
+  detail = '',
+}: ActionCalloutOptions = {}): ActionCalloutState | null {
+  const normalizedActionLabel = String(actionLabel || '').trim();
+  const normalizedDetail = String(detail || '').trim();
+
+  if (status === 'idle' || !normalizedActionLabel) return null;
+
+  if (status === 'loading') {
+    return {
+      tone: 'loading',
+      title: normalizedActionLabel,
+      detail: normalizedDetail || 'Processando sua ação no portal.',
+    };
+  }
+
+  if (status === 'error') {
+    return {
+      tone: 'error',
+      title: normalizedActionLabel,
+      detail: normalizedDetail || 'Não consegui concluir essa ação agora.',
+    };
+  }
+
+  return {
+    tone: 'success',
+    title: normalizedActionLabel,
+    detail: normalizedDetail || 'Ação concluída com sucesso.',
+  };
 }
 
 export function resolveBillingProvider(): string {

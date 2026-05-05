@@ -1,10 +1,10 @@
 import { useDeferredValue, useMemo, useRef, useState } from 'react';
 import { hasStoredSession } from '../../../packages/shared-web/auth.js';
-import { createAthleteImportReviewAdapter } from '../../../packages/shared-web/athlete-import-review.js';
-import type { SharedWorkoutWeek } from '../../../packages/shared-web/athlete-shell.js';
-import { saveImportedPlanSnapshot } from '../../../packages/shared-web/athlete-services.js';
-import { persistTodaySelection } from '../../../packages/shared-web/athlete-shell.js';
-import { validateWorkoutContract } from '../../../packages/shared-web/flowContracts.js';
+import { createAthleteImportReviewAdapter } from '../../../packages/shared-web/athlete-import-review';
+import type { SharedWorkoutWeek } from '../../../packages/shared-web/athlete-shell';
+import { saveImportedPlanSnapshot } from '../../../packages/shared-web/athlete-services';
+import { persistTodaySelection } from '../../../packages/shared-web/athlete-shell';
+import { validateWorkoutContract } from '../../../packages/shared-web/flowContracts';
 import type {
   EventLikeWithFiles,
   ImportReview,

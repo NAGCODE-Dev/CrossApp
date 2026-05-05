@@ -144,6 +144,7 @@ export interface TodayPageProps {
   message: string;
   progressMessage: string;
   onOpenImport: AthleteAction;
+  onRetryLoad: AthleteAction;
   onSelectWeek: (item: TodaySelectionItem) => void | Promise<void>;
   onSelectDay: (item: TodaySelectionItem) => void | Promise<void>;
   onResetDay: AthleteAction;

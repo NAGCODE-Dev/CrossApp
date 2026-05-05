@@ -48,7 +48,9 @@
 
 .ath-overviewGrid,
 .ath-roadmapGrid,
-.ath-reviewMetrics {
+.ath-reviewMetrics,
+.ath-reviewContextGrid,
+.ath-statusGrid {
   display: grid;
   gap: 12px;
 }
@@ -58,15 +60,38 @@
 }
 
 .ath-roadmapGrid,
-.ath-reviewMetrics {
+.ath-reviewMetrics,
+.ath-reviewContextGrid,
+.ath-statusGrid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .ath-overviewStat span,
 .ath-roadmapCard span,
-.ath-reviewDay span {
+.ath-reviewDay span,
+.ath-reviewContextCard span,
+.ath-reviewEmpty span {
   color: var(--rx-text-muted);
   line-height: 1.5;
+}
+
+.ath-reviewContextCard,
+.ath-reviewEmpty,
+.ath-statusCard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.ath-reviewContextCard strong,
+.ath-reviewEmpty strong,
+.ath-statusCard strong {
+  font-family: var(--rx-display);
+  font-size: 1rem;
 }
 
 .ath-reviewLabel {
@@ -97,7 +122,9 @@
 @media (max-width: 760px) {
   .ath-overviewGrid,
   .ath-roadmapGrid,
-  .ath-reviewMetrics {
+  .ath-reviewMetrics,
+  .ath-reviewContextGrid,
+  .ath-statusGrid {
     grid-template-columns: 1fr;
   }
 }

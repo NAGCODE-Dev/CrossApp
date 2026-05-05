@@ -203,6 +203,7 @@ function renderRunningLogForm() {
       <input type="hidden" name="workoutId" />
       <input type="hidden" name="completionState" value="manual" />
       <input type="hidden" name="sourceLabel" />
+      <div id="running-prefillSummary" class="hub-lead" style="display:none;font-size:0.94rem;padding:12px 14px;border:1px solid rgba(255,255,255,.08);border-radius:16px;background:rgba(255,255,255,.03);"></div>
       <input class="field" type="text" name="title" placeholder="Título da sessão" />
       <input class="field" type="text" name="sessionType" placeholder="Tipo de sessão: intervalado, longão, recovery..." />
       <div class="hub-grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
@@ -215,7 +216,7 @@ function renderRunningLogForm() {
       </div>
       <input class="field" type="text" name="zone" placeholder="Zona ou intensidade" />
       <textarea class="field" name="notes" placeholder="Notas da sessão" rows="3"></textarea>
-      <button class="hub-primaryAction" type="submit">Registrar corrida</button>
+      <button class="hub-primaryAction" type="submit" data-running-submitLabel>Registrar corrida</button>
     </form>
   `;
 }
@@ -385,6 +386,30 @@ function setFormValue(form, name, value) {
   if (field) field.value = value ?? '';
 }
 
+function setRunningPrefillSummary(form, payload = null) {
+  const summaryNode = form.querySelector('#running-prefillSummary');
+  const submitButton = form.querySelector('[data-running-submitLabel]');
+  if (!(summaryNode instanceof HTMLElement) || !(submitButton instanceof HTMLButtonElement)) return;
+
+  const sourceLabel = String(payload?.sourceLabel || '').trim();
+  const sessionType = String(payload?.sessionType || '').trim();
+
+  if (!sourceLabel && !sessionType) {
+    summaryNode.style.display = 'none';
+    summaryNode.textContent = '';
+    submitButton.textContent = 'Registrar corrida';
+    return;
+  }
+
+  const fragments = [];
+  if (sourceLabel) fragments.push(sourceLabel);
+  if (sessionType) fragments.push(sessionType);
+
+  summaryNode.style.display = 'block';
+  summaryNode.textContent = `Registrando treino do coach${fragments.length ? `: ${fragments.join(' • ')}` : '.'}`;
+  submitButton.textContent = 'Registrar treino do coach';
+}
+
 function hydrateRunningLogForm(encodedPayload) {
   const form = document.getElementById('running-logForm');
   if (!(form instanceof HTMLFormElement)) return;
@@ -401,6 +426,7 @@ function hydrateRunningLogForm(encodedPayload) {
     setFormValue(form, 'targetPace', payload.targetPace);
     setFormValue(form, 'zone', payload.zone);
     setFormValue(form, 'notes', payload.notes);
+    setRunningPrefillSummary(form, payload);
     form.scrollIntoView({ behavior: 'smooth', block: 'center' });
     setStatus('Treino do coach carregado no formulário.');
   } catch {

@@ -201,6 +201,7 @@ function renderStrengthLogForm() {
       <input type="hidden" name="workoutId" />
       <input type="hidden" name="completionState" value="manual" />
       <input type="hidden" name="sourceLabel" />
+      <div id="strength-prefillSummary" class="hub-lead" style="display:none;font-size:0.94rem;padding:12px 14px;border:1px solid rgba(255,255,255,.08);border-radius:16px;background:rgba(255,255,255,.03);"></div>
       <input class="field" type="text" name="exercise" placeholder="Exercício" />
       <div class="hub-grid" style="grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;">
         <input class="field" type="number" step="1" min="0" name="setsCount" placeholder="Sets" />
@@ -212,7 +213,7 @@ function renderStrengthLogForm() {
         <input class="field" type="text" name="loadText" placeholder="Texto de carga opcional" />
       </div>
       <textarea class="field" name="notes" placeholder="Notas da sessão" rows="3"></textarea>
-      <button class="hub-primaryAction" type="submit">Registrar exercício</button>
+      <button class="hub-primaryAction" type="submit" data-strength-submitLabel>Registrar exercício</button>
     </form>
   `;
 }
@@ -388,6 +389,30 @@ function setFormValue(form, name, value) {
   if (field) field.value = value ?? '';
 }
 
+function setStrengthPrefillSummary(form, payload = null) {
+  const summaryNode = form.querySelector('#strength-prefillSummary');
+  const submitButton = form.querySelector('[data-strength-submitLabel]');
+  if (!(summaryNode instanceof HTMLElement) || !(submitButton instanceof HTMLButtonElement)) return;
+
+  const sourceLabel = String(payload?.sourceLabel || '').trim();
+  const exercise = String(payload?.exercise || '').trim();
+
+  if (!sourceLabel && !exercise) {
+    summaryNode.style.display = 'none';
+    summaryNode.textContent = '';
+    submitButton.textContent = 'Registrar exercício';
+    return;
+  }
+
+  const fragments = [];
+  if (sourceLabel) fragments.push(sourceLabel);
+  if (exercise) fragments.push(exercise);
+
+  summaryNode.style.display = 'block';
+  summaryNode.textContent = `Registrando treino do coach${fragments.length ? `: ${fragments.join(' • ')}` : '.'}`;
+  submitButton.textContent = 'Registrar treino do coach';
+}
+
 function hydrateStrengthLogForm(encodedPayload) {
   const form = document.getElementById('strength-logForm');
   if (!(form instanceof HTMLFormElement)) return;
@@ -403,6 +428,7 @@ function hydrateStrengthLogForm(encodedPayload) {
     setFormValue(form, 'loadText', payload.loadText);
     setFormValue(form, 'rir', payload.rir);
     setFormValue(form, 'notes', payload.notes);
+    setStrengthPrefillSummary(form, payload);
     form.scrollIntoView({ behavior: 'smooth', block: 'center' });
     setStatus('Treino do coach carregado no formulário.');
   } catch {

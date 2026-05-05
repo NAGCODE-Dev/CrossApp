@@ -2,16 +2,117 @@ import { previewMultiWeekPdf, saveParsedWeeks } from '../../src/adapters/pdf/pdf
 import { importWorkoutAsWeeks } from '../../src/core/usecases/exportWorkout.js';
 import { classifyUniversalImportFile, isPdfImportFile, isTextLikeImportFile } from '../../src/app/importFileTypes.js';
 import { parseTextIntoWeeks, prepareImportTextForParsing } from '../../src/app/workoutHelpers.js';
+import type { SharedImportedPlanMeta, SharedWorkoutBlock, SharedWorkoutWeek } from './athlete-shell';
+
+export interface SharedImportReviewDay {
+  weekNumber?: number | null;
+  day?: string;
+  periods?: string[];
+  blockTypes?: string[];
+  goal?: string;
+  movements?: string[];
+  intervalSummary?: string;
+}
+
+export interface SharedImportReview {
+  fileName?: string;
+  source?: string;
+  weeksCount?: number;
+  totalDays?: number;
+  totalBlocks?: number;
+  weekNumbers?: number[];
+  days?: SharedImportReviewDay[];
+  reviewText?: string;
+  canEditText?: boolean;
+}
+
+export interface SharedImportReviewResult {
+  success?: boolean;
+  error?: string;
+  source?: string;
+  preview?: boolean;
+  review?: SharedImportReview | null;
+  weeks?: SharedWorkoutWeek[];
+  metadata?: Record<string, unknown>;
+}
+
+export interface SharedImportReviewAdapter {
+  previewImportFromFile(file: File): Promise<SharedImportReviewResult>;
+  reparseImportReview(nextText: string): Promise<SharedImportReviewResult>;
+  commitImportReview(): Promise<SharedImportReviewResult>;
+  cancelImportReview(): Promise<{ success: boolean }>;
+  getPendingReview(): SharedImportReview | null;
+}
+
+export interface SharedImportProgress {
+  stage?: string;
+  message?: string;
+  fileName?: string;
+  source?: string;
+}
+
+export interface SharedImportReviewAdapterOptions {
+  getActiveWeekNumber?: () => number | null;
+  getFallbackDay?: () => string | null;
+  onProgress?: (progress?: SharedImportProgress) => void;
+  syncImportedPlan?: (
+    weeks: SharedWorkoutWeek[],
+    metadata: Record<string, unknown>,
+  ) => Promise<{ success: boolean; skipped?: boolean }>;
+}
+
+interface SharedPreviewPdfResult {
+  success?: boolean;
+  error?: string;
+  data?: {
+    parsedWeeks: SharedWorkoutWeek[];
+    reviewText?: string;
+    metadata?: SharedImportedPlanMeta | null;
+  };
+}
+
+interface SharedSaveParsedWeeksResult {
+  success?: boolean;
+  error?: string;
+  data?: {
+    parsedWeeks: SharedWorkoutWeek[];
+    metadata: Record<string, unknown>;
+  };
+}
+
+interface PendingImportReviewState {
+  parsedWeeks: SharedWorkoutWeek[];
+  metadata: SharedImportedPlanMeta & {
+    fileSize?: number;
+    source?: string;
+  };
+  reviewText: string;
+  activeWeekNumber: number | null;
+  fallbackDay: string | null;
+  review: SharedImportReview;
+}
+
+interface StructuredWorkoutImportResult {
+  success?: boolean;
+  data?: SharedWorkoutWeek[];
+}
+
+type ParseTextIntoWeeksFn = (
+  text: string,
+  activeWeekNumber?: number | null,
+  options?: { fallbackDay?: string | null; fileName?: string },
+) => SharedWorkoutWeek[];
 
 export function createAthleteImportReviewAdapter({
   getActiveWeekNumber = () => null,
   getFallbackDay = () => null,
   onProgress = () => {},
   syncImportedPlan = async () => ({ success: false, skipped: true }),
-} = {}) {
-  let pendingImportReview = null;
+}: SharedImportReviewAdapterOptions = {}): SharedImportReviewAdapter {
+  let pendingImportReview: PendingImportReviewState | null = null;
+  const parseWeeks = parseTextIntoWeeks as unknown as ParseTextIntoWeeksFn;
 
-  async function previewImportFromFile(file) {
+  async function previewImportFromFile(file: File): Promise<SharedImportReviewResult> {
     if (!file) {
       return { success: false, error: 'Arquivo não fornecido' };
     }
@@ -23,12 +124,12 @@ export function createAthleteImportReviewAdapter({
     return previewUniversalImport(file);
   }
 
-  async function reparseImportReview(nextText) {
+  async function reparseImportReview(nextText: string): Promise<SharedImportReviewResult> {
     if (!pendingImportReview?.metadata) {
       return { success: false, error: 'Nenhum preview pendente para revisar' };
     }
 
-    const fileName = pendingImportReview.metadata?.fileName || '';
+    const fileName = String(pendingImportReview.metadata?.fileName || '');
     const editedText = String(nextText || '').trim();
     if (!editedText) {
       return { success: false, error: 'Edite o texto antes de reprocessar o preview' };
@@ -38,11 +139,11 @@ export function createAthleteImportReviewAdapter({
       stage: 'import-reparse',
       message: 'Organizando preview com suas correções...',
       fileName,
-      source: pendingImportReview.metadata?.source || 'arquivo',
+      source: String(pendingImportReview.metadata?.source || 'arquivo'),
     });
 
     const reviewText = prepareImportTextForParsing(editedText, { fileName });
-    const parsedWeeks = parseTextIntoWeeks(reviewText, pendingImportReview.activeWeekNumber, {
+    const parsedWeeks = parseWeeks(reviewText, pendingImportReview.activeWeekNumber, {
       fallbackDay: pendingImportReview.fallbackDay,
       fileName,
     });
@@ -55,17 +156,22 @@ export function createAthleteImportReviewAdapter({
       ...pendingImportReview,
       parsedWeeks,
       reviewText,
-      review: summarizeWeeksForReview(parsedWeeks, pendingImportReview.metadata?.source || 'arquivo', fileName, { reviewText }),
+      review: summarizeWeeksForReview(
+        parsedWeeks,
+        String(pendingImportReview.metadata?.source || 'arquivo'),
+        fileName,
+        { reviewText },
+      ),
     };
 
     return {
       success: true,
       review: pendingImportReview.review,
-      source: pendingImportReview.metadata?.source || 'arquivo',
+      source: String(pendingImportReview.metadata?.source || 'arquivo'),
     };
   }
 
-  async function commitImportReview() {
+  async function commitImportReview(): Promise<SharedImportReviewResult> {
     if (!pendingImportReview?.parsedWeeks?.length) {
       return { success: false, error: 'Nenhuma importação pendente para confirmar' };
     }
@@ -74,13 +180,20 @@ export function createAthleteImportReviewAdapter({
     onProgress({
       stage: 'import-save',
       message: 'Salvando treino importado...',
-      fileName: metadata.fileName || '',
-      source: metadata.source || 'arquivo',
+      fileName: String(metadata.fileName || ''),
+      source: String(metadata.source || 'arquivo'),
     });
 
-    const result = await saveParsedWeeks(pendingImportReview.parsedWeeks, metadata);
+    const result = (await saveParsedWeeks(
+      pendingImportReview.parsedWeeks,
+      metadata,
+    )) as SharedSaveParsedWeeksResult;
     if (!result?.success) {
       return { success: false, error: result?.error || 'Falha ao salvar plano importado' };
+    }
+
+    if (!result.data) {
+      return { success: false, error: 'Falha ao salvar plano importado' };
     }
 
     await syncImportedPlan(result.data.parsedWeeks, result.data.metadata);
@@ -90,7 +203,7 @@ export function createAthleteImportReviewAdapter({
       weeks: result.data.parsedWeeks,
       metadata: result.data.metadata,
       review: pendingImportReview.review,
-      source: metadata.source || 'arquivo',
+      source: String(metadata.source || 'arquivo'),
     };
 
     pendingImportReview = null;
@@ -114,7 +227,7 @@ export function createAthleteImportReviewAdapter({
     getPendingReview,
   };
 
-  async function previewPdfImport(file) {
+  async function previewPdfImport(file: File): Promise<SharedImportReviewResult> {
     onProgress({
       stage: 'pdf-start',
       message: 'Preparando PDF para importação...',
@@ -122,19 +235,23 @@ export function createAthleteImportReviewAdapter({
       source: 'pdf',
     });
 
-    const result = await previewMultiWeekPdf(file, {
-      onProgress: (progress) => onProgress({
+    const result = (await previewMultiWeekPdf(file, {
+      onProgress: (progress: SharedImportProgress = {}) => onProgress({
         fileName: file.name,
         source: 'pdf',
         ...progress,
       }),
-    });
+    })) as SharedPreviewPdfResult;
 
     if (!result?.success) {
       return { success: false, error: result?.error || 'Falha ao preparar preview do PDF' };
     }
 
-    const reviewText = String(result?.data?.reviewText || '').trim();
+    if (!result.data) {
+      return { success: false, error: result?.error || 'Falha ao preparar preview do PDF' };
+    }
+
+    const reviewText = String(result.data.reviewText || '').trim();
     pendingImportReview = {
       parsedWeeks: result.data.parsedWeeks,
       metadata: {
@@ -152,11 +269,11 @@ export function createAthleteImportReviewAdapter({
     return { success: true, review: pendingImportReview.review, source: 'pdf' };
   }
 
-  async function previewUniversalImport(file) {
+  async function previewUniversalImport(file: File): Promise<SharedImportReviewResult> {
     const fileInfo = classifyUniversalImportFile(file);
     let source = 'text';
     let rawText = '';
-    let parsedWeeks = [];
+    let parsedWeeks: SharedWorkoutWeek[] = [];
     let reviewText = '';
 
     try {
@@ -172,10 +289,13 @@ export function createAthleteImportReviewAdapter({
       } else if (isTextLikeImportFile(file)) {
         source = 'text';
         rawText = await file.text();
-        const maybeStructuredWorkout = importWorkoutAsWeeks(rawText, getActiveWeekNumber());
+        const maybeStructuredWorkout = importWorkoutAsWeeks(
+          rawText,
+          getActiveWeekNumber() || undefined,
+        ) as StructuredWorkoutImportResult;
         if (maybeStructuredWorkout?.success) {
           source = 'structured-json';
-          parsedWeeks = maybeStructuredWorkout.data;
+          parsedWeeks = maybeStructuredWorkout.data || [];
         }
       } else {
         throw new Error(fileInfo.error || `Formato não suportado: ${file.type || file.name}`);
@@ -187,7 +307,7 @@ export function createAthleteImportReviewAdapter({
 
       parsedWeeks = parsedWeeks.length
         ? parsedWeeks
-        : parseTextIntoWeeks(rawText, getActiveWeekNumber(), {
+        : parseWeeks(rawText, getActiveWeekNumber(), {
             fallbackDay: getFallbackDay(),
             fileName: file.name,
           });
@@ -216,36 +336,64 @@ export function createAthleteImportReviewAdapter({
         source,
       };
     } catch (error) {
-      return { success: false, error: error?.message || 'Erro ao importar arquivo' };
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Erro ao importar arquivo',
+      };
     }
   }
 }
 
-function isImageImportFile(file) {
+function isImageImportFile(file: File) {
   return !!file?.type?.startsWith('image/');
 }
 
-async function readImageImportText(file) {
+async function readImageImportText(file: File) {
   const { extractTextFromImageFile } = await import('../../src/adapters/media/ocrReader.js');
   return extractTextFromImageFile(file);
 }
 
-function summarizeWeeksForReview(weeks = [], source = 'text', fileName = '', options = {}) {
+function summarizeWeeksForReview(
+  weeks: SharedWorkoutWeek[] = [],
+  source = 'text',
+  fileName = '',
+  options: { reviewText?: string } = {},
+): SharedImportReview {
   const normalizedWeeks = Array.isArray(weeks) ? weeks : [];
-  const previewDays = [];
+  const previewDays: SharedImportReviewDay[] = [];
   let totalBlocks = 0;
 
   for (const week of normalizedWeeks) {
     for (const workout of week?.workouts || []) {
       const blocks = Array.isArray(workout?.blocks) ? workout.blocks : [];
       totalBlocks += blocks.length;
-      const periods = [...new Set(blocks.map((block) => block?.period).filter(Boolean))];
-      const blockTypes = [...new Set(blocks.map((block) => String(block?.type || '').trim()).filter(Boolean))];
-      const goals = [...new Set(blocks.map((block) => block?.parsed?.goal).filter(Boolean))];
-      const movements = [...new Set(blocks.flatMap((block) => (block?.parsed?.items || [])
-        .filter((item) => item?.type === 'movement')
-        .map((item) => item?.canonicalName || item?.name || item?.displayName)
-        .filter(Boolean)))];
+      const periods = [
+        ...new Set(blocks.map((block) => block?.period).filter((value): value is string => Boolean(value))),
+      ];
+      const blockTypes = [
+        ...new Set(
+          blocks
+            .map((block) => String(block?.type || '').trim())
+            .filter((value): value is string => Boolean(value)),
+        ),
+      ];
+      const goals = [
+        ...new Set(
+          blocks
+            .map((block) => block?.parsed?.goal)
+            .filter((value): value is string => Boolean(value)),
+        ),
+      ];
+      const movements = [
+        ...new Set(
+          blocks.flatMap((block) =>
+            (block?.parsed?.items || [])
+              .filter((item) => item?.type === 'movement')
+              .map((item) => item?.canonicalName || item?.name || item?.displayName)
+              .filter((value): value is string => Boolean(value)),
+          ),
+        ),
+      ];
       const intervalSummary = blocks
         .map((block) => buildIntervalReviewSummary(block))
         .find(Boolean) || '';
@@ -268,17 +416,21 @@ function summarizeWeeksForReview(weeks = [], source = 'text', fileName = '', opt
     weeksCount: normalizedWeeks.length,
     totalDays: previewDays.length,
     totalBlocks,
-    weekNumbers: normalizedWeeks.map((week) => week?.weekNumber).filter(Boolean),
+    weekNumbers: normalizedWeeks
+      .map((week) => week?.weekNumber)
+      .filter((weekNumber): weekNumber is number => Number.isFinite(Number(weekNumber))),
     days: previewDays.slice(0, 6),
     reviewText: typeof options.reviewText === 'string' ? options.reviewText : '',
     canEditText: Boolean(options.reviewText),
   };
 }
 
-function buildIntervalReviewSummary(block = {}) {
+function buildIntervalReviewSummary(block: SharedWorkoutBlock = {}) {
   const parsed = block?.parsed || {};
   const rounds = Number(parsed?.rounds || 0);
-  const timedItems = (parsed?.items || []).filter((item) => Number(item?.durationSeconds) > 0);
+  const timedItems = (parsed?.items || []).filter(
+    (item) => Number(item?.durationSeconds) > 0,
+  );
   if (!rounds || !timedItems.length) return '';
 
   const segments = timedItems

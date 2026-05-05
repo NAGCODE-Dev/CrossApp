@@ -4,7 +4,7 @@ import {
   clearTodayDayOverride,
   loadAthleteTodaySnapshot,
   persistTodaySelection,
-} from '../../../packages/shared-web/athlete-shell.js';
+} from '../../../packages/shared-web/athlete-shell';
 import { createTodayViewModel } from '../services/todayViewModel';
 import { buildInitialSnapshot, normalizeAuthMessage } from '../services/appShellState';
 import type {

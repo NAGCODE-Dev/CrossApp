@@ -9,6 +9,8 @@
     "./**/*.js",
     "./**/*.jsx",
     "./**/*.mjs",
+    "../../packages/shared-web/**/*.ts",
+    "../../packages/shared-web/**/*.tsx",
     "../../packages/shared-web/**/*.js",
     "../../packages/shared-web/**/*.jsx",
     "../../packages/shared-web/**/*.mjs",
